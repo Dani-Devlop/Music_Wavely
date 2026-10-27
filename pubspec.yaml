@@ -1,0 +1,113 @@
+name: wavely
+description: "Wavely — a glassy, privacy-first music player for legal sources only."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: "^3.9.0"
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management (Riverpod 2.x per master context)
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Models / codegen annotations
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.12.0
+  collection: ^1.19.1
+
+  # Routing
+  go_router: ^18.1.1
+
+  # Networking
+  dio: ^5.11.1
+  retrofit: ^4.10.0
+  connectivity_plus: ^7.3.2
+  http: ^1.6.0
+
+  # Backend (Supabase: auth + sync)
+  supabase_flutter: ^2.18.3
+
+  # Local database (Drift + SQLite + FTS5)
+  drift: ^2.35.3
+  drift_flutter: ^0.3.1
+  sqlite3_flutter_libs: ^0.6.0
+  path_provider: ^2.1.6
+  path: ^1.9.1
+  shared_preferences: ^2.5.6
+  flutter_secure_storage: ^11.2.0
+
+  # Playback (mobile / desktop / web)
+  just_audio: ^0.10.6
+  audio_service: ^0.18.19
+  audio_session: ^0.2.4
+  media_kit: ^1.2.6
+  media_kit_libs_audio: ^1.0.7
+
+  # Files & metadata
+  audio_metadata_reader: ^1.8.1
+  file_picker: ^13.3.0
+  file_system: ^2.0.9
+
+  # Analytics charts / ids / hashing
+  fl_chart: ^1.3.0
+  uuid: ^4.6.0
+  crypto: ^3.0.8
+
+  # AI chat rendering
+  flutter_markdown: ^0.7.7+1
+
+  # Parental control: offline audio processing (censor rendering)
+  ffmpeg_kit_flutter_new: ^4.6.7
+
+  # Platform / device info
+  cached_network_image: ^4.0.5
+  device_info_plus: ^13.3.0
+  package_info_plus: ^10.2.2
+  window_manager: ^0.5.2
+  tray_manager: ^0.8.0
+  flutter_local_notifications: ^22.3.3
+
+  # Utilities
+  logger: ^2.8.0
+
+  # External links (GitHub tile in settings — https only, external browser)
+  url_launcher: ^6.3.3
+
+  # --- Stage 1.2 dev tooling -------------------------------------------
+  # (none — mocktail/flutter_test already cover the new suites)
+
+  # Crash reporting (crash-only, no PII)
+  sentry_flutter: ^10.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  # Codegen
+  build_runner: ^2.17.1
+  drift_dev: ^2.35.2
+  retrofit_generator: ^10.3.2
+  json_serializable: ^6.15.2
+  freezed: ^3.2.5
+  riverpod_generator: ^2.6.5
+
+  # Lints & testing
+  very_good_analysis: ^11.0.0
+  mocktail: ^1.0.5
+  golden_toolkit: ^0.15.0
+  patrol: ^4.10.0
+
+flutter:
+  uses-material-design: true
+
+  # Fonts are wired in a later commit of this stage once Sora/Inter assets
+  # are added under assets/fonts/ (see Stage 1.1 design-system work).
