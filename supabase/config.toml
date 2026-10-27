@@ -1,0 +1,88 @@
+# Wavely — local Supabase configuration (Stage 1.2, task B2).
+#
+# Generated for supabase CLI >= 1.150 (config schema v1); run `supabase init`
+# in a scratch directory and diff against this file if fields drift between
+# CLI majors (the v1 schema adds sections every few releases — omitted
+# sections below fall back to their defaults).
+#
+# KEYS ARE NOT STORED HERE. `supabase start` prints the local JWT-derived
+# anon/service keys; copy SUPABASE_URL + SUPABASE_ANON_KEY into `.env`
+# (see docs/SUPABASE_SETUP.md). Never commit real keys anywhere in the repo.
+
+project_id = "wavely"
+
+[api]
+enabled = true
+# All major services (local dev only).
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+# Port for the local postgresql database.
+port = 54322
+# Port used by `supabase db reset` / `db diff` shadow database.
+shadow_port = 54327
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1:54321"
+
+# Local mail catcher: magic-link / confirmation mails land here instead of
+# being sent (useful to eyeball confirmation mails during B3 testing).
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+# The Flutter app is not a redirect target (magic links are verified in-app
+# via verifyOTP token_hash) — this URL is only GoTrue's default landing page.
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+# ANON KEY PLACEHOLDER — do not put keys in this file. Local keys are printed
+# by `supabase start` (derived from the local JWT secret) and are safe; the
+# PRODUCTION anon key comes from the Supabase dashboard and goes ONLY into
+# the untracked `.env`.
+
+# Wavely auth surface: email+password and Telegram magic links only.
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# Keep confirmations OFF locally so `supabase db reset` test users can sign
+# in immediately; production projects should flip this to true.
+enable_confirmations = false
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+
+# Edge functions: the Telegram bot and the app talk to these with the
+# TELEGRAM_AUTH_SECRET header instead of a user JWT, so verify_jwt is off
+# (each function authenticates requests itself — see supabase/functions/*).
+[functions.telegram-auth]
+enabled = true
+verify_jwt = false
+
+[functions.telegram-webhook]
+enabled = true
+verify_jwt = false

@@ -1,0 +1,42 @@
+# ── Secrets / env ──────────────────────────────────────────────
+.env
+*.env
+!*.env.example
+secrets/
+
+# ── Keystores & platform secrets ───────────────────────────────
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
+lib/firebase_options.dart
+
+# ── Build artifacts ────────────────────────────────────────────
+build/
+.dart_tool/
+*.g.dart
+*.freezed.dart
+coverage/
+
+# ── IDE ────────────────────────────────────────────────────────
+*.iml
+.idea/
+.vscode/
+*.swp
+
+# ── Flutter / Dart misc ────────────────────────────────────────
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+android/.gradle/
+ios/Pods/
+.windows/
+.linux/
+*.log
+
+# ── OS ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Golden baselines: committed intentionally, do NOT ignore ───
+!test/goldens/**/*.png
