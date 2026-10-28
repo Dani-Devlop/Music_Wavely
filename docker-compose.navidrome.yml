@@ -1,0 +1,38 @@
+# Stage 2.1 — Navidrome fixture for the Subsonic contract test.
+#
+# Usage (local):
+#   docker compose -f docker-compose.navidrome.yml up -d
+#   NAVIDROME_URL=http://localhost:4533 flutter test test/sources/subsonic/
+#
+# CI (.github/workflows/navidrome-contract.yml) runs the same flow.
+# The music volume is seeded by CI (ffmpeg sine-wave mp3); locally any
+# audio files dropped into ./docker/navidrome/music are picked up.
+
+services:
+  navidrome:
+    image: deluan/navidrome:0.54.4
+    container_name: wavely-navidrome-contract
+    ports:
+      - "4533:4533"
+    environment:
+      # Auto-create the CI admin user on first boot.
+      ND_DEVAUTOCREATEADMINPASSWORD: "wavely-ci-password"
+      ND_ENABLEINSIGHTSCOLLECTOR: "false"
+      ND_SCANSCHEDULE: "5s"
+      ND_LOGLEVEL: "info"
+    volumes:
+      - ./docker/navidrome/music:/music:ro
+      - wavely_navidrome_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -qO-
+        - http://localhost:4533/ping
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  wavely_navidrome_data:

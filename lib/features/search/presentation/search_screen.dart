@@ -6,6 +6,7 @@ import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
+import 'package:wavely/features/search/presentation/online_search_pane.dart';
 import 'package:wavely/features/search/presentation/search_providers.dart';
 
 /// Height of the horizontal artist row (circle + breathing room).
@@ -39,6 +40,10 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
 
+  /// Stage 2.1: `library` (default, unchanged behaviour) vs `online`
+  /// (unified search over every enabled source).
+  _SearchScope _scope = _SearchScope.library;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -48,6 +53,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void _onQueryChanged(String text) {
     ref
         .read(searchResultsControllerProvider.notifier)
+        .onQueryChanged(text);
+    // Stage 2.1: the online pane's controller follows the same keystrokes;
+    // its results are only visible while the Online scope is selected.
+    ref
+        .read(onlineSearchControllerProvider.notifier)
         .onQueryChanged(text);
   }
 
@@ -91,7 +101,39 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
             ),
-            Expanded(child: _buildResults(context, state)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: SizedBox(
+                height: 40,
+                child: SegmentedButton<_SearchScope>(
+                  key: const Key('search-scope-toggle'),
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  segments: const <ButtonSegment<_SearchScope>>[
+                    ButtonSegment<_SearchScope>(
+                      value: _SearchScope.library,
+                      label: Text('Library'),
+                    ),
+                    ButtonSegment<_SearchScope>(
+                      value: _SearchScope.online,
+                      label: Text('Online'),
+                    ),
+                  ],
+                  selected: <_SearchScope>{_scope},
+                  onSelectionChanged: (Set<_SearchScope> s) {
+                    setState(() => _scope = s.first);
+                    // Re-run the current query against the new scope.
+                    _onQueryChanged(_controller.text);
+                  },
+                ),
+              ),
+            ),
+            Expanded(
+              child: _scope == _SearchScope.online
+                  ? const OnlineSearchPane()
+                  : _buildResults(context, state),
+            ),
           ],
         ),
       ),
@@ -139,6 +181,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 }
+
+/// Result scope of the search screen (Stage 2.1 additive extension).
+enum _SearchScope { library, online }
 
 /// Heterogeneous result list (builder-based, no full column):
 /// Tracks header + up to [AppConstants.ftsPageSize] tiles, then one header +

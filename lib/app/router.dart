@@ -12,6 +12,8 @@ import 'package:wavely/features/auth/presentation/signup_screen.dart';
 import 'package:wavely/features/auth/presentation/telegram_login_screen.dart';
 import 'package:wavely/features/auth/presentation/welcome_screen.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
+import 'package:wavely/features/downloads/presentation/download_settings_screen.dart';
+import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
 import 'package:wavely/features/library/presentation/album_detail_screen.dart';
 import 'package:wavely/features/library/presentation/artist_detail_screen.dart';
 import 'package:wavely/core/config/env.dart';
@@ -169,6 +171,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: ParentalScreen.route,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ParentalScreen(),
+      ),
+      // -- Stage 2.1: downloads -------------------------------------------
+      GoRoute(
+        path: downloadsRoute,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const DownloadsScreen(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'settings',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => const DownloadSettingsScreen(),
+          ),
+        ],
       ),
     ],
   );

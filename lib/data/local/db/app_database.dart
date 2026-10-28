@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import 'package:wavely/data/local/db/daos/artist_follows_dao.dart';
+import 'package:wavely/data/local/db/daos/downloads_dao.dart';
 import 'package:wavely/data/local/db/daos/http_cache_dao.dart';
 import 'package:wavely/data/local/db/daos/lyrics_dao.dart';
 import 'package:wavely/data/local/db/daos/parental_dao.dart';
@@ -10,10 +11,12 @@ import 'package:wavely/data/local/db/daos/sync_outbox_dao.dart';
 import 'package:wavely/data/local/db/daos/tracks_dao.dart';
 import 'package:wavely/data/local/db/migrations/0001_init.dart';
 import 'package:wavely/data/local/db/migrations/0002_stage_1_2.dart';
+import 'package:wavely/data/local/db/migrations/0003_downloads.dart';
 import 'package:wavely/data/local/db/tables/albums.dart';
 import 'package:wavely/data/local/db/tables/artist_follows.dart';
 import 'package:wavely/data/local/db/tables/artists.dart';
 import 'package:wavely/data/local/db/tables/blocked_words.dart';
+import 'package:wavely/data/local/db/tables/downloads.dart';
 import 'package:wavely/data/local/db/tables/http_cache.dart';
 import 'package:wavely/data/local/db/tables/liked_tracks.dart';
 import 'package:wavely/data/local/db/tables/lyrics_cache.dart';
@@ -32,7 +35,8 @@ part 'app_database.g.dart';
 ///
 /// `schemaVersion` 1 creates all base tables plus the external-content FTS5
 /// index and its sync triggers (see [Migration0001]); version 2 adds the
-/// Stage 1.2 tables (cache/outbox/parental/follows — see [Migration0002]).
+/// Stage 1.2 tables (cache/outbox/parental/follows — see [Migration0002]);
+/// version 3 adds the Stage 2.1 downloads table (see [Migration0003]).
 /// Pass a custom [QueryExecutor]
 /// for tests, e.g. `AppDatabase(NativeDatabase.memory())`.
 @DriftDatabase(
@@ -51,6 +55,7 @@ part 'app_database.g.dart';
     ProfilesLocal,
     ParentalAudit,
     ArtistFollows,
+    Downloads,
   ],
   daos: [
     TracksDao,
@@ -60,13 +65,14 @@ part 'app_database.g.dart';
     SyncOutboxDao,
     ParentalDao,
     ArtistFollowsDao,
+    DownloadsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -80,6 +86,10 @@ class AppDatabase extends _$AppDatabase {
           await createFts();
           if (from < 2) {
             await Migration0002.run(m, this);
+          }
+          if (from < 3) {
+            // Stage 2.1: downloads table.
+            await Migration0003.run(m, this);
           }
         },
       );

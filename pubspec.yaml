@@ -77,6 +77,10 @@ dependencies:
   # Utilities
   logger: ^2.8.0
 
+  # --- Stage 2.1 online sources ---------------------------------------
+  # FMA search-page HTML parsing (search page is the only live endpoint).
+  html: ^0.15.6
+
   # External links (GitHub tile in settings — https only, external browser)
   url_launcher: ^6.3.3
 

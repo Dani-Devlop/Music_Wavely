@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:wavely/design_system/design_system.dart';
+import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
 import 'package:wavely/features/library/presentation/all_tracks_tab.dart';
 import 'package:wavely/features/library/presentation/albums_tab.dart';
 import 'package:wavely/features/library/presentation/artists_tab.dart';
@@ -45,6 +49,16 @@ class LibraryScreen extends ConsumerWidget {
                           color: colors.textPrimary,
                         ),
                       ),
+                    ),
+                    IconButton(
+                      key: const Key('library-downloads-button'),
+                      icon: Icon(Icons.download_rounded,
+                          color: colors.textSecondary),
+                      tooltip: 'Downloads',
+                      // Stage 2.1: additive entry point to the download
+                      // manager (tab count intentionally unchanged).
+                      onPressed: () =>
+                          unawaited<void>(context.push(downloadsRoute)),
                     ),
                     IconButton(
                       icon: Icon(Icons.settings, color: colors.textSecondary),

@@ -13,12 +13,15 @@ import 'package:wavely/features/ai_chat/presentation/ai_chat_screen.dart';
 import 'package:wavely/features/analytics/presentation/analytics_screen.dart';
 import 'package:wavely/features/auth/presentation/welcome_screen.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
+import 'package:wavely/features/downloads/presentation/download_settings_screen.dart';
+import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
 import 'package:wavely/features/library/presentation/library_providers.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/settings/data/cache_cleaner.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/settings/domain/settings.dart';
+import 'package:wavely/features/settings/presentation/widgets/sources_settings_section.dart';
 
 /// Bytes per megabyte for the cache-size row (data math, not a token).
 const int _bytesPerMb = 1024 * 1024;
@@ -281,6 +284,49 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('Clear cache'),
                 onTap: () => unawaited(_clearCache(context, ref)),
               ),
+            ],
+          ),
+          const SizedBox(height: Spacing.lg),
+          // -- Stage 2.1: online sources --------------------------------
+          _SectionGroup(
+            title: 'Sources',
+            children: <Widget>[
+              const SourcesSettingsSection(),
+              const SizedBox(height: Spacing.md),
+            ],
+          ),
+          const SizedBox(height: Spacing.lg),
+          // -- Stage 2.1: downloads -------------------------------------
+          _SectionGroup(
+            title: 'Downloads',
+            children: <Widget>[
+              ListTile(
+                key: const Key('settings-downloads-row'),
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.download_rounded,
+                  color: colors.textSecondary,
+                ),
+                title: const Text('Downloads'),
+                subtitle: const Text('Active, queued and finished downloads'),
+                onTap: () =>
+                    unawaited(context.push(downloadsRoute)),
+              ),
+              ListTile(
+                key: const Key('settings-download-settings-row'),
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.tune_rounded,
+                  color: colors.textSecondary,
+                ),
+                title: const Text('Download settings'),
+                subtitle: const Text(
+                  'Quality, folder template, Wi-Fi-only, concurrency',
+                ),
+                onTap: () =>
+                    unawaited(context.push(downloadSettingsRoute)),
+              ),
+              const SizedBox(height: Spacing.md),
             ],
           ),
           const SizedBox(height: Spacing.lg),

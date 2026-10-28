@@ -1,0 +1,63 @@
+name: Navidrome contract test
+
+# Stage 2.1 — spins up a real Navidrome server (Subsonic API v1.16.1
+# compatible) and runs ONLY the Subsonic contract tests against it.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "lib/sources/subsonic/**"
+      - "test/sources/subsonic/**"
+      - "docker-compose.navidrome.yml"
+      - ".github/workflows/navidrome-contract.yml"
+
+jobs:
+  navidrome-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Seed Navidrome music volume with a sine-wave mp3
+        run: |
+          mkdir -p docker/navidrome/music
+          ffmpeg -hide_banner -loglevel error \
+            -f lavfi -i "sine=frequency=440:duration=5" \
+            -codec:a libmp3lame -b:a 128k \
+            docker/navidrome/music/Wavely_CI_Tone.mp3
+          ls -la docker/navidrome/music
+
+      - name: Start Navidrome
+        run: |
+          docker compose -f docker-compose.navidrome.yml up -d
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:4533/ping >/dev/null 2>&1; then
+              echo "navidrome is up"
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:4533/ping
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Resolve dependencies + codegen
+        run: |
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+
+      - name: Run the Subsonic contract tests only
+        env:
+          NAVIDROME_URL: http://localhost:4533
+          NAVIDROME_USER: admin
+          # ND_DEVAUTOCREATEADMINPASSWORD creates user `admin` with this
+          # password on first boot.
+          NAVIDROME_PASSWORD: wavely-ci-password
+        run: flutter test test/sources/subsonic/
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.navidrome.yml down -v
