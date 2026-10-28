@@ -117,7 +117,10 @@ void main() {
     await tester.pump(kLongPressTimeout);
     await gesture.moveBy(const Offset(0, 90));
     await tester.pump();
-    await gesture.moveBy(const Offset(0, 40));
+    // 72 px rows: 90 px moves Alpha's centre into row 1; the follow-up
+    // nudge must stay inside that row (past 144 px it would drop two slots
+    // and land on Gamma).
+    await gesture.moveBy(const Offset(0, 10));
     await tester.pump();
     await gesture.up();
     await tester.pumpAndSettle();

@@ -167,15 +167,19 @@ void main() {
       expect(launchedUrls.single.path, '/wavely_bot');
       expect(launchedUrls.single.queryParameters['start'], token);
 
-      // Tick 1: not redeemed yet → keep polling.
-      async.elapse(pollInterval);
-      async.flushMicrotasks();
-      expect(outcome, isNull);
+      // Initial tick (immediate, before any interval elapses): not
+      // redeemed yet → keep polling.
       expect(api.rpcCalls, hasLength(1));
       expect(api.rpcCalls.single, token);
 
-      // Tick 2: the row is redeemed → verifyMagicLink establishes the
-      // session and the future completes.
+      // Tick 1 (periodic): still not redeemed → keep polling.
+      async.elapse(pollInterval);
+      async.flushMicrotasks();
+      expect(outcome, isNull);
+      expect(api.rpcCalls, hasLength(2));
+
+      // Tick 2 (periodic): the row is redeemed → verifyMagicLink
+      // establishes the session and the future completes.
       api.rpcRows = <Map<String, dynamic>>[
         <String, dynamic>{'email': 'tg@example.com', 'token_hash': 'th-1'},
       ];

@@ -41,14 +41,22 @@ class SharedPreferencesSettingsStore implements SettingsStore {
 
   @override
   Future<T?> read<T>(String key) async {
-    final Object? value = switch (T) {
-      const (String) => _prefs.getString(key),
-      const (int) => _prefs.getInt(key),
-      const (bool) => _prefs.getBool(key),
-      const (double) => _prefs.getDouble(key),
-      const (List<String>) => _prefs.getStringList(key),
-      _ => null,
-    };
+    // The typed SharedPreferences getters THROW on a stored-type mismatch
+    // (e.g. `getInt` over a string entry) instead of returning null — the
+    // store contract degrades that to a null read.
+    final Object? value;
+    try {
+      value = switch (T) {
+        const (String) => _prefs.getString(key),
+        const (int) => _prefs.getInt(key),
+        const (bool) => _prefs.getBool(key),
+        const (double) => _prefs.getDouble(key),
+        const (List<String>) => _prefs.getStringList(key),
+        _ => null,
+      };
+    } on Object {
+      return null;
+    }
     if (value is T) {
       return value;
     }

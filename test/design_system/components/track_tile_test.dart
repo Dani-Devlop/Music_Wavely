@@ -30,6 +30,7 @@ Track _track({
       addedAt: DateTime(2024, 1, 1),
       updatedAt: DateTime(2024, 1, 1),
       playCount: 5,
+      explicit: explicit,
     );
 
 void main() {

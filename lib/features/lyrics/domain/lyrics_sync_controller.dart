@@ -21,6 +21,7 @@ class LyricsSyncController {
       StreamController<int>.broadcast();
   StreamSubscription<Duration>? _sub;
   int _index = -1;
+  bool _emitted = false;
   Duration? _nextTransition;
 
   /// Active line index stream; emits `-1` before the first line.
@@ -43,9 +44,13 @@ class LyricsSyncController {
     }
     _nextTransition =
         index + 1 < _lines.length ? _lines[index + 1].startTime : null;
-    if (index == _index) {
+    // The FIRST position event always confirms the state (even when it is
+    // still -1 for empty lyrics), so consumers get exactly one initial
+    // value; afterwards identical indices are deduplicated.
+    if (index == _index && _emitted) {
       return;
     }
+    _emitted = true;
     _index = index;
     if (!_activeController.isClosed) {
       _activeController.add(index);
