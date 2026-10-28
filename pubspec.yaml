@@ -117,7 +117,9 @@ dev_dependencies:
   drift_dev: ^2.35.2
   retrofit_generator: ^10.3.2
   json_serializable: ^6.15.2
-  freezed: ^3.2.5
+  freezed: ^4.0.1
+  # ^4 keeps freezed_annotation 3.1.0 (no code changes): the only breaking
+  # change is dropping `final` inside ctor params (Dart 3.13 syntax change).
   riverpod_generator: ^4.0.9
 
   # Lints & testing
