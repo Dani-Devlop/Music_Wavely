@@ -10,7 +10,6 @@ import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/news/data/news_article.dart';
 import 'package:wavely/features/news/data/news_category.dart';
 import 'package:wavely/features/news/data/news_providers.dart';
-import 'package:wavely/features/news/presentation/news_settings_screen.dart';
 
 /// Route of the news screen (registered in the Stage 2.2 router block).
 const String newsRoute = '/news';

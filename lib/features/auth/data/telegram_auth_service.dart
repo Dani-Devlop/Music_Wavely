@@ -250,7 +250,12 @@ class TelegramAuthService {
     Result<Session?> result,
   ) {
     if (completer.isCompleted) return;
+    // Stage 3 audit (BUG-12): cancel the poll timer with the pending flow —
+    // it previously kept firing a no-op 2 s timer for the rest of the
+    // session and allowed overlapping start() calls.
+    final _PendingPoll? pending = _pending;
     _pending = null;
+    pending?.timer.cancel();
     unawaited(_deletePending());
     completer.complete(result);
   }

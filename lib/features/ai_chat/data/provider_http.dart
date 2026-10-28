@@ -12,6 +12,9 @@ const List<Duration> kProviderBackoff = <Duration>[
   Duration(seconds: 2),
 ];
 
+/// Stage 3 audit (SEC-5): per-attempt request timeout.
+const Duration kProviderHttpTimeout = Duration(seconds: 30);
+
 Future<void> _defaultDelay(Duration d) => Future<void>.delayed(d);
 
 /// POSTs a JSON body with the shared retry policy used by every
@@ -30,6 +33,7 @@ Future<Result<http.Response>> postJsonWithRetry({
   required Map<String, Object?> body,
   Future<void> Function(Duration delay)? delay,
   int maxRetries = 3,
+  Duration requestTimeout = kProviderHttpTimeout,
 }) async {
   final sleep = delay ?? _defaultDelay;
   final payload = jsonEncode(body);
@@ -39,11 +43,25 @@ Future<Result<http.Response>> postJsonWithRetry({
     }
     http.Response response;
     try {
-      response = await client.post(
-        uri,
-        headers: headers,
-        body: payload,
-      );
+      // Stage 3 audit (SEC-5): bound each attempt so a stalled provider
+      // cannot hang the retry loop indefinitely.
+      response = await client
+          .post(
+            uri,
+            headers: headers,
+            body: payload,
+          )
+          .timeout(requestTimeout);
+    } on TimeoutException catch (e) {
+      if (attempt == maxRetries) {
+        return Result.err(
+          Failure.network(
+            message: 'The AI provider did not respond in time.',
+            cause: e,
+          ),
+        );
+      }
+      continue;
     } on http.ClientException catch (e) {
       if (attempt == maxRetries) {
         return Result.err(

@@ -10,6 +10,14 @@ import 'package:wavely/core/config/env.dart';
 /// the `Supabase.instance` singleton, so providers stay constructible and
 /// overridable without Flutter bindings or `await Supabase.initialize(...)`.
 ///
+/// Stage 3 audit (BUG-3): this client is now ALSO the sync engine's client
+/// (see `syncBackendProvider`) so a signed-in session carries into RLS-
+/// locked sync requests. Known follow-up (SEC-1, needs SDK to verify): the
+/// default auth storage is in-memory — sessions do not survive restart. The
+/// owner should pass `authOptions` with a `flutter_secure_storage`-backed
+/// `AuthAsyncStorage` adapter once the resolved supabase_auth version's
+/// storage interface is confirmed locally.
+///
 /// Throws [StateError] when Supabase is not configured — feature code must
 /// check [authEnabledProvider] (production: `WavelyEnv.hasSupabase`) BEFORE
 /// watching this provider.

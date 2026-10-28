@@ -16,7 +16,10 @@ services:
       - "4533:4533"
     environment:
       # Auto-create the CI admin user on first boot.
-      ND_DEVAUTOCREATEADMINPASSWORD: "wavely-ci-password"
+      # Stage 3 audit (SEC-12): no hardcoded credential — the password must
+      # come from the environment (CI injects it; `docker compose` fails fast
+      # with a clear message when it is unset).
+      ND_DEVAUTOCREATEADMINPASSWORD: "${NAVIDROME_ADMIN_PASSWORD:?set NAVIDROME_ADMIN_PASSWORD in your environment}"
       ND_ENABLEINSIGHTSCOLLECTOR: "false"
       ND_SCANSCHEDULE: "5s"
       ND_LOGLEVEL: "info"

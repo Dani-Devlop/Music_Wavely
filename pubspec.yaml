@@ -30,6 +30,10 @@ dependencies:
   retrofit: ^4.10.0
   connectivity_plus: ^7.3.2
   http: ^1.6.0
+  # Stage 3 audit: `package:meta` is imported directly by the AI-chat data
+  # layer (immutable annotations) — direct imports need a direct dependency
+  # (depend_on_referenced_packages).
+  meta: ^1.16.0
 
   # Backend (Supabase: auth + sync)
   supabase_flutter: ^2.18.3
@@ -112,6 +116,10 @@ dev_dependencies:
 
   # Lints & testing
   very_good_analysis: ^11.0.0
+  # Stage 3 audit: fake_async is imported directly by three test files
+  # (metadata_http_test, sync_service_test, telegram_auth_service_test) —
+  # direct imports need a direct dev dependency.
+  fake_async: ^1.3.1
   mocktail: ^1.0.5
   golden_toolkit: ^0.15.0
   patrol: ^4.10.0

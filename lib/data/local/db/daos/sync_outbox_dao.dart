@@ -35,7 +35,12 @@ class SyncOutboxDao extends DatabaseAccessor<AppDatabase>
   /// Oldest [limit] pending entries, drained in order.
   Future<List<SyncOutboxRow>> pending({int limit = 50}) =>
       (select(syncOutbox)
-            ..orderBy([(r) => OrderingTerm.asc(r.createdAt)])
+            ..orderBy([
+              (r) => OrderingTerm.asc(r.createdAt),
+              // Stage 3 audit (BUG-15): createdAt has second precision — the
+              // id tiebreaker guarantees FIFO for same-second enqueues.
+              (r) => OrderingTerm.asc(r.id),
+            ])
             ..limit(limit))
           .get();
 

@@ -114,5 +114,33 @@ SentryEvent _stripPii(SentryEvent event, Hint hint) {
         )
         .toList(growable: false);
   }
+  // Stage 3 audit (SEC-17): exception messages and stack frames can embed
+  // absolute paths too (Dio request URIs, file-system errors). sentry
+  // 10.2.0 exposes `SentryException.value` / `SentryStackFrame.absPath` as
+  // mutable fields and `frames` as an unmodifiable view over mutable frame
+  // objects, so scrub in place.
+  final exceptions = event.exceptions;
+  if (exceptions != null) {
+    for (final exception in exceptions) {
+      exception.value = _scrubPaths(exception.value);
+      final trace = exception.stackTrace;
+      if (trace != null) {
+        for (final frame in trace.frames) {
+          final absPath = frame.absPath;
+          if (absPath != null && _pathLike.hasMatch(absPath)) {
+            frame.absPath = '[path]';
+          }
+        }
+      }
+    }
+  }
   return event;
+}
+
+/// Replaces every path-like span in [text] with a `[path]` placeholder.
+String? _scrubPaths(String? text) {
+  if (text == null || !_pathLike.hasMatch(text)) {
+    return text;
+  }
+  return text.replaceAllMapped(_pathLike, (_) => '[path]');
 }

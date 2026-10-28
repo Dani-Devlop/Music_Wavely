@@ -147,6 +147,11 @@ class SearchService {
   bool _sameWork(Track a, Track b) {
     final String titleA = a.title.trim().toLowerCase();
     final String titleB = b.title.trim().toLowerCase();
+    // Stage 3 audit (BUG-14): distance 3 collapses distinct short titles
+    // ("Run" vs "Sun"); short titles therefore require exact equality.
+    if (titleA.length < 5 || titleB.length < 5) {
+      return titleA == titleB;
+    }
     if (levenshtein(titleA, titleB) >= 3) {
       return false;
     }

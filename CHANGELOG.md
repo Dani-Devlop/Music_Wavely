@@ -3,6 +3,63 @@
 All notable changes to Wavely. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1-dev] - Unreleased
+
+### Stage 3 — Comprehensive audit (authored, awaiting local run)
+
+#### Security fixes
+- Download provenance: `sourceTrackId` sanitized in the sidecar path
+  (path traversal) and credential-bearing query params (`t`/`s`/`p`/keys)
+  stripped from the persisted URL (SEC-3, SEC-4)
+- HTTP timeouts everywhere they were missing: metadata (15 s), AI provider
+  per-attempt (30 s), update check (15 s), Subsonic Dio connect/receive
+  (SEC-5)
+- Parental: censor fallbacks now audited; render cache invalidated when
+  the word list changes (SEC-6, SEC-7)
+- New migration `0002_user_id_defaults.sql`: `user_id default auth.uid()`
+  on all sync tables — makes the documented sync contract real (SEC-8)
+- Edge functions: CORS methods header + future-dated `auth_date` rejection
+  (telegram-webapp-auth), generic internal errors (telegram-auth),
+  `verify_jwt = false` declared in config.toml (SEC-9, SEC-13, SEC-14,
+  SEC-19)
+- Gemini API key moved from URL query to `x-goog-api-key` header (SEC-10)
+- PIN hashing hardened to iterated sha256 (`p3$`, 10k rounds; p2/v1 still
+  verify) (SEC-11)
+- Navidrome compose password no longer hardcoded; CI injects it (SEC-12)
+- AI prompt-injection: library snapshot fenced as data with explicit
+  delimiters (SEC-16)
+- Sentry scrubbing extended to exception messages and stack-frame paths
+  (SEC-17); release artifacts now ship SHA256SUMS.txt (SEC-15)
+- Full audit: `docs/SECURITY_AUDIT.md` (0 CRITICAL, 0 HIGH)
+
+#### Bug fixes
+- Compile blockers: missing `await` in sync pull dedupe (BUG-1);
+  out-of-scope `decision` in the queue preload hook (BUG-2)
+- Sync engine now authenticates via the app's session client — pushes no
+  longer 403 for signed-in users (BUG-3); pull watermark anchored to
+  pulled plays instead of the local clock (BUG-6); deterministic outbox
+  FIFO ordering (BUG-15)
+- Downloads: pause/cancel race eliminated (identity-checked job cleanup),
+  duplicate enqueues deduped (BUG-4, BUG-5)
+- Queue: restore seeks to the persisted position; shuffle/repeat + the
+  pre-shuffle order persist across restarts (BUG-10, BUG-11)
+- Scan cancellation is honoured between batches (BUG-7)
+- Telegram sign-in poll timer no longer leaks; onboarding Finish is
+  re-entrancy safe; search dedupe no longer collapses short titles
+  (BUG-12, BUG-13, BUG-14)
+- Full detail: `docs/BUG_FIXES.md`
+
+#### Tests added
+- 3 new suites / 27 cases (authored, awaiting local run): news category
+  classifier (15), AI provider retry/timeout contract (7), download event
+  contract (5); PIN-hash suite rewritten for the v3 format
+- Totals: 120 test files / 1114 cases; matrix + integration specs in
+  `docs/COVERAGE_AUDIT.md`
+
+#### Docs added
+- `docs/SECURITY_AUDIT.md`, `docs/BUG_FIXES.md`, `docs/COVERAGE_AUDIT.md`,
+  `docs/STAGE_3_REPORT.md`
+
 ## [0.1.0-dev] - Unreleased
 
 ### Stage 1.1 — Local Player Core

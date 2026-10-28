@@ -44,11 +44,16 @@ class GeminiProvider implements AiProvider {
 
   @override
   Future<Result<AiReply>> complete(AiConversation conversation) async {
-    final uri = Uri.parse('$_endpoint?key=$apiKey');
+    // Stage 3 audit (SEC-10): the API key moved from the URL query string
+    // (leaks into proxy logs / exception messages) to a request header.
+    final uri = Uri.parse(_endpoint);
     final response = await postJsonWithRetry(
       client: _client,
       uri: uri,
-      headers: <String, String>{'Content-Type': 'application/json'},
+      headers: <String, String>{
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
       body: _buildBody(conversation),
       delay: _delay,
     );

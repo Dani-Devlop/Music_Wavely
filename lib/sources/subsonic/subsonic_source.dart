@@ -23,7 +23,15 @@ class SubsonicSource implements SourceProvider {
     Dio? dio,
     DownloadFileExecutor? executor,
     SubsonicMapper? mapper,
-  })  : _dio = dio ?? Dio(),
+  })  : _dio = dio ??
+            Dio(
+              BaseOptions(
+                // Stage 3 audit (SEC-5): a stalled Subsonic/Navidrome server
+                // must not hang metadata reads or stream resolution forever.
+                connectTimeout: const Duration(seconds: 10),
+                receiveTimeout: const Duration(seconds: 30),
+              ),
+            ),
         _executor = executor ?? IoDownloadFileExecutor(),
         mapper = mapper ?? SubsonicMapper();
 

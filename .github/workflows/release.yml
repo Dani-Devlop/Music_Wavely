@@ -126,11 +126,18 @@ jobs:
           mkdir -p dist
           find artifacts -type f -exec cp {} dist/ \;
           ls -la dist/
+      # Stage 3 audit (SEC-15): publish SHA-256 checksums so the app's update
+      # checker / owner can verify artifact integrity before installing.
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             --title "Wavely ${GITHUB_REF_NAME}" \
-            --notes "Automated release build. Artifacts are UNSIGNED placeholders — see docs/PACKAGING.md." \
+            --notes "Automated release build. Artifacts are UNSIGNED placeholders — verify against SHA256SUMS.txt; see docs/PACKAGING.md." \
             dist/*

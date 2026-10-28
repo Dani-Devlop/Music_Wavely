@@ -37,6 +37,25 @@ class DownloadsDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(d) => OrderingTerm.desc(d.startedAt)]))
           .get();
 
+  /// Stage 3 audit (BUG-5): an existing queued/active row for the same
+  /// source track, used to dedupe concurrent enqueues of one file.
+  Future<DownloadRow?> activeForSourceTrack(
+    String sourceId,
+    String sourceTrackId,
+  ) =>
+      (select(downloads)
+            ..where((d) => d.sourceId.equals(sourceId))
+            ..where((d) => d.sourceTrackId.equals(sourceTrackId))
+            ..where(
+              (d) => d.status.isIn(
+                const [DownloadStatus.queued, DownloadStatus.downloading]
+                    .map((DownloadStatus s) => s.name)
+                    .toList(),
+              ),
+            )
+            ..limit(1))
+          .getSingleOrNull();
+
   /// Live query for the downloads screen sections.
   Stream<List<DownloadRow>> watchByStatuses(List<DownloadStatus> statuses) =>
       (select(downloads)
