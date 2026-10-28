@@ -109,7 +109,10 @@ dev_dependencies:
     sdk: flutter
 
   # Codegen
-  build_runner: ^2.17.1
+  # Pinned (not ^2.17.1): build_runner 2.17.1 needs build 5.x, but
+  # riverpod_generator 4.x needs build <5 — 2.17.0 (build ^4.1.0) satisfies
+  # every codegen tool in this file.
+  build_runner: 2.17.0
   drift_dev: ^2.35.2
   retrofit_generator: ^10.3.2
   json_serializable: ^6.15.2
