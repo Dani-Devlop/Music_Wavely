@@ -67,7 +67,9 @@ void main() {
       final matches = matcher.matches('s h i t');
       expect(matches, hasLength(1));
       expect(matches.single.start, 0);
-      expect(matches.single.end, 5);
+      // The span covers the WHOLE obfuscated word including the last
+      // letter (`t` sits at index 6), so the censor masks every char.
+      expect(matches.single.end, 7);
     });
 
     test('6. hyphenated obfuscation f-u-c-k', () {

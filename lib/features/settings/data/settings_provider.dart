@@ -159,7 +159,15 @@ class SettingsNotifier extends _$SettingsNotifier {
   /// 3-b) so both writers stay readable until the settings screen is the
   /// only writer.
   List<String> _readScanFolders(SharedPreferences prefs) {
-    final stored = prefs.getStringList(_keyScanFolders);
+    // `getStringList` THROWS on a String-stored legacy value (the mock
+    // platform channel hands back the raw object) — degrade to the legacy
+    // JSON-string path instead of crashing the provider build.
+    List<String>? stored;
+    try {
+      stored = prefs.getStringList(_keyScanFolders);
+    } on Object {
+      stored = null;
+    }
     if (stored != null) {
       return List<String>.of(stored);
     }

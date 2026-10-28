@@ -87,9 +87,12 @@ void main() {
       url.query,
       contains('q=cool+jams+%26+more'),
     );
+    // Dart's Uri re-encodes literal `[]` as %5B/%5D on the wire — the
+    // form archive.org accepts; the manual build still guarantees BOTH
+    // fl[] keys (asserted structurally below).
     expect(
       url.toString(),
-      contains('fl[]=identifier&fl[]=title'),
+      contains('fl%5B%5D=identifier&fl%5B%5D=title'),
     );
     expect(url.queryParametersAll['fl[]'],
         <String>['identifier', 'title']);

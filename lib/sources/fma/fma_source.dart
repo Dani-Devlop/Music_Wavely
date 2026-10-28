@@ -118,6 +118,11 @@ class FmaSource implements SourceProvider {
           }
         }
       }
+      if (artist.isEmpty && durationSeconds == 0) {
+        // A bare anchor with no artist and no duration is not a usable
+        // result row (e.g. repeated anchor placeholders) — skip it.
+        continue;
+      }
       hits.add(
         FmaSearchHit(
           trackPath: href,

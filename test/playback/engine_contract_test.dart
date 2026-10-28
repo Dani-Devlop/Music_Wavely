@@ -119,7 +119,11 @@ class _ScriptedEngine implements PlaybackEngine {
   }
 }
 
-Track _track(int id, {String? filePath}) => Track(
+/// Sentinel so `_track(2, filePath: null)` produces a REAL null path
+/// (a plain `?? default` would silently substitute it back).
+const String _kDefaultPath = '#default';
+
+Track _track(int id, {Object? filePath = _kDefaultPath}) => Track(
       id: id,
       sourceId: Track.localSourceId,
       sourceTrackId: 'src-$id',
@@ -127,7 +131,9 @@ Track _track(int id, {String? filePath}) => Track(
       artist: 'Artist',
       durationMs: 60000,
       format: 'mp3',
-      filePath: filePath ?? '/audio/$id.mp3',
+      filePath: filePath == _kDefaultPath
+          ? '/audio/$id.mp3'
+          : filePath as String?,
       addedAt: DateTime(2024),
       updatedAt: DateTime(2024),
     );
