@@ -5,12 +5,19 @@ files, your own Subsonic/Navidrome, and free catalogs (Jamendo, Free Music
 Archive, archive.org). Metadata-only support for Spotify/Deezer/Apple. No ads,
 no paywall, no PII tracking (crash-only reporting, optional).
 
-> **Status — Stage 1.1 (Local Player Core): authored complete, verification
-> pending local run.** The authoring environment had no Flutter/Dart SDK, so
-> nothing here has been compiled or executed yet. See
-> [`docs/STAGE_1_1_REPORT.md`](docs/STAGE_1_1_REPORT.md) for the honest
-> verification ledger and [`docs/STAGE_1_1_AUDIT.md`](docs/STAGE_1_1_AUDIT.md)
-> for the file-by-file audit.
+> **Status — Stages 1.1 / 1.2 / 2.1 authored; verification pending local
+> run.** All merged work was authored in an environment without a
+> Flutter/Dart SDK, so nothing has been compiled or executed yet. Stage 2.2
+> (News, Telegram Mini App, PWA, desktop packaging) is **not present** —
+> never authored or pushed.
+>
+> 👉 **Start here:** [`docs/FINAL_VERIFICATION.md`](docs/FINAL_VERIFICATION.md)
+> — consolidated copy-paste verification flow, known risks, expected
+> first-run behavior, and hygiene steps.
+>
+> Per-stage ledgers: [`docs/STAGE_1_1_REPORT.md`](docs/STAGE_1_1_REPORT.md),
+> [`docs/STAGE_1_2_REPORT.md`](docs/STAGE_1_2_REPORT.md),
+> [`docs/STAGE_2_1_REPORT.md`](docs/STAGE_2_1_REPORT.md).
 
 ## Quick start
 
@@ -20,13 +27,14 @@ flutter create wavely --org app.wavely --platforms android,windows,linux,web
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 flutter analyze
-flutter test --update-goldens test/goldens   # first run only (baselines)
 flutter test --coverage
 flutter run -d linux                          # or -d <android-device>
 ```
 
-Copy `.env.example` to `.env` locally (never committed). Stage 1.1 needs **no
-API keys at all** — the app is fully local.
+Copy `.env.example` to `.env` locally (never committed). The local player
+needs **no API keys at all**; online sources need only `JAMENDO_CLIENT_ID`
+plus your own Subsonic/Navidrome credentials — see
+[`docs/FINAL_VERIFICATION.md`](docs/FINAL_VERIFICATION.md) §5d.
 
 ## Architecture
 
@@ -40,10 +48,12 @@ flowchart TB
 
     subgraph features["lib/features"]
         library["library\nscan · folders/artists/albums/genres/tracks"]
-        search["search\nFTS5 · debounce 300ms"]
+        search["search\nFTS5 · unified local+online"]
         lyrics["lyrics\nembedded → LRCLIB → null"]
         player["player\nnow playing · queue sheet"]
-        settings["settings\nAppSettings (codegen Notifier)"]
+        settings["settings\nsources · downloads · cache"]
+        downloads["downloads\nqueue · templates · provenance"]
+        sources["sources\nSubsonic · Jamendo · archive.org · FMA"]
     end
 
     subgraph playback["lib/playback"]
@@ -82,13 +92,15 @@ lib/
   domain/         entities (freezed), abstract contracts, usecases
   features/
     library/      scanner + 5-tab library UI
-    search/       local FTS search
+    search/       local FTS + unified online search
     lyrics/       LRC parser, providers, synced view
     player/       now playing, queue, mini player
-    settings/     AppSettings + screen
+    settings/     AppSettings, sources + downloads sections
+    downloads/    download manager, folder templates, sanitizer
+  sources/        Subsonic/Navidrome · Jamendo · archive.org · FMA
   playback/       engine abstraction + 3 platform engines, queue, shuffle
   design_system/  tokens, themes, 13 components
-test/             unit · widget · golden · integration-style (274 tests)
+test/             unit · widget · contract · integration-style (1028 tests)
 ```
 
 ## Non-negotiables
@@ -101,6 +113,12 @@ test/             unit · widget · golden · integration-style (274 tests)
 
 ## Docs
 
+- [Final Verification Guide](docs/FINAL_VERIFICATION.md) — **start here**: copy-paste local verify flow, known risks, first-run behavior
+- [Changelog](CHANGELOG.md) — stage-by-stage status incl. what is not present
 - [Stage 1.1 Report](docs/STAGE_1_1_REPORT.md) — built / tests / limits / blockers
 - [Stage 1.1 Audit](docs/STAGE_1_1_AUDIT.md) — file-by-file audit + fixes
+- [Stage 1.2 Report](docs/STAGE_1_2_REPORT.md) — auth / sync / AI / parental / analytics
+- [Stage 2.1 Report](docs/STAGE_2_1_REPORT.md) — online sources + download manager
+- [Known Limitations](docs/KNOWN_LIMITATIONS_FINAL.md) — consolidated, honest
+- [Metadata Sources](docs/METADATA_SOURCES.md) — live-verified API notes
 - [Music_Lyrics_Embedd decision](docs/MUSIC_LYRICS_EMBEDD_REPORT.md) — 404 → own parser
