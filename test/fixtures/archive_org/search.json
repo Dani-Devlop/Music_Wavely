@@ -1,0 +1,21 @@
+{
+  "responseHeader": {"status": 0, "QTime": 42},
+  "response": {
+    "numFound": 2,
+    "start": 0,
+    "docs": [
+      {
+        "identifier": "example_audio_item",
+        "title": "Example Audio Item",
+        "creator": "Example Artist",
+        "year": "1998"
+      },
+      {
+        "identifier": "second_item",
+        "title": "Second Item",
+        "creator": ["Listed", "Artists"],
+        "year": 2005
+      }
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "identifier": "example_audio_item",
+    "title": "Example Audio Item",
+    "creator": "Example Artist",
+    "date": "1998",
+    "licenseurl": "https://creativecommons.org/licenses/by-nc-nd/3.0/"
+  },
+  "files": [
+    {"name": "example_audio_item_meta.xml", "format": "Metadata"},
+    {"name": "01 - First Song.flac", "format": "Flac", "title": "First Song", "length": "03:21", "size": 21000000},
+    {"name": "01 - First Song_vbr.mp3", "format": "VBR MP3", "title": "First Song", "length": "203.5", "size": 4800000},
+    {"name": "01 - First Song.ogg", "format": "Ogg Vorbis", "title": "First Song", "length": "03:21", "size": 3900000},
+    {"name": "spectrogram.png", "format": "PNG"}
+  ]
+}

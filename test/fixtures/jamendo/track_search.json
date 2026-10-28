@@ -1,0 +1,23 @@
+{
+  "headers": {"status": "success", "results_count": 2},
+  "results": [
+    {
+      "id": "123",
+      "name": "Aurora Borealis",
+      "artist_name": "Polar Fields",
+      "album_name": "North",
+      "duration": 210,
+      "audio": "https://prod-1.storage.jamendo.com/?trackid=123&format=mp31",
+      "audiodownload": "https://prod-1.storage.jamendo.com/download/123/aurora.mp3",
+      "license_ccurl": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+      "image": "https://img.example/123.jpg"
+    },
+    {
+      "id": "124",
+      "name": "Nightfall",
+      "artist": {"name": "Polar Fields"},
+      "duration": 180,
+      "audio": "https://prod-1.storage.jamendo.com/?trackid=124&format=mp31"
+    }
+  ]
+}
