@@ -10,6 +10,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/domain/repositories/lyrics_provider.dart';
 import 'package:wavely/features/lyrics/data/embedded_lyrics_provider.dart';

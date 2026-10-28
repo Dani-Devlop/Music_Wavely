@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/features/discovery/follow_artist.dart';

@@ -18,6 +18,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/app/router.dart';
 import 'package:wavely/features/ai_chat/presentation/ai_chat_screen.dart';

@@ -11,6 +11,7 @@ import 'package:drift/native.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
