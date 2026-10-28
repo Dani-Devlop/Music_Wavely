@@ -81,6 +81,12 @@ dependencies:
   # FMA search-page HTML parsing (search page is the only live endpoint).
   html: ^0.15.6
 
+  # --- Stage 2.2 desktop packaging -------------------------------------
+  # Windows auto-update surface (Sparkle/WinSparkle wrapper; the GitHub
+  # Releases check in lib/features/settings/data/update_service.dart is
+  # platform-neutral). Latest verified on pub.dev: 1.0.0.
+  auto_updater: ^1.0.0
+
   # External links (GitHub tile in settings — https only, external browser)
   url_launcher: ^6.3.3
 
@@ -109,6 +115,12 @@ dev_dependencies:
   mocktail: ^1.0.5
   golden_toolkit: ^0.15.0
   patrol: ^4.10.0
+
+  # --- Stage 2.2 packaging tooling -------------------------------------
+  # flutter_distributor drives the AppImage target (latest verified on
+  # pub.dev: 0.6.10). The MSIX dev dependency is added on the fly by the
+  # release workflow (version drift tolerated there).
+  flutter_distributor: ^0.6.10
 
 flutter:
   uses-material-design: true

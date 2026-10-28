@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wavely/data/sync/sync_providers.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/player/presentation/mini_player_widget.dart';
+import 'package:wavely/features/web/ios_guidance_banner.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
 /// One bottom-navigation destination of the app shell.
@@ -53,6 +54,13 @@ class _MainShellState extends ConsumerState<MainShell> {
             ),
       );
     }
+    // Stage 2.2: iOS PWA background-audio guidance (web+iOS only,
+    // dismissible, persisted) — a complete no-op on every other platform.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(maybeShowIosGuidanceBanner(context, ref));
+      }
+    });
   }
 
   @override

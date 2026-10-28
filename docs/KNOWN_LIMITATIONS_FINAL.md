@@ -76,3 +76,28 @@ remains open and what closing it would require.
     `extends`/`implements`/`catch on` type resolves to a lib definition,
     an external package symbol, or a Dart core type, and every
     `*Provider` referenced by tests exists in lib.
+
+## Stage 2.2 additions (news, Telegram Mini App, PWA, packaging)
+
+13. **iOS PWA background audio is unreliable** — Safari suspends
+    `HTMLAudioElement` when the page loses focus; the Media Session API
+    reduces but does not remove the problem. The dismissible iOS guidance
+    banner points users at the Telegram Mini App instead.
+14. **No remote-track download in the PWA** — the Stage 2.1 download
+    executor is io-platform-only by design (conditional export); the web
+    arm throws the documented `UnsupportedError`.
+15. **Codec support varies by browser** — web playback depends on the
+    browser's codec set (FLAC missing on old Safari, etc.); the engine
+    surfaces `PlaybackState.error` and the UI shows the error path.
+16. **No local file scan on web** — the library scanner's web arm is a
+    stub (unchanged from Stage 1.1); the web build plays remote/streaming
+    sources only.
+17. **Telegram Mini App background audio pauses when leaving the app** —
+    the Mini App webview suspends JS timers and audio when backgrounded;
+    playback resumes on return. Documented in docs/TELEGRAM_MINIAPP.md.
+18. **PWA icons are generated placeholders** (solid `#7C5CFF` with a white
+    waveform, all 8 sizes) — the owner must replace them with real brand
+    assets before release (docs/PACKAGING.md).
+19. **MSIX is unsigned** (`sign: false` in `msix_config.yaml`) — the
+    owner must provide a signing certificate; the release workflow
+    packages but does not sign.

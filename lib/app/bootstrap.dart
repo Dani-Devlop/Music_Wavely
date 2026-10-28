@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/app/providers.dart';
 import 'package:wavely/app/wavely_app.dart';
 import 'package:wavely/data/local/db/app_database.dart';
+import 'package:wavely/features/telegram/telegram_bridge.dart';
+import 'package:wavely/features/telegram/telegram_bridge_provider.dart';
 
 /// DSN injected at compile time (`--dart-define=SENTRY_DSN=...`). Empty →
 /// Sentry stays disabled (initializing with an empty DSN throws in
@@ -47,9 +49,30 @@ Future<void> bootstrap() async {
           child: const WavelyApp(),
         ),
       );
+      // Stage 2.2: Telegram Mini App host lifecycle — web-only, no-op
+      // elsewhere (the bridge stub). Never fatal: an unresponsive host
+      // must not take the app down.
+      if (kTelegramMode) {
+        unawaited(_telegramHostReady());
+      }
     },
     (error, stackTrace) => _captureException(error, stackTrace),
   );
+}
+
+/// Stage 2.2: signals the Telegram host that Wavely finished loading and
+/// expands the Mini App. Failures are swallowed by the bridge contract.
+Future<void> _telegramHostReady() async {
+  try {
+    final bridge = createTelegramBridge();
+    if (bridge.snapshot().isInTelegram) {
+      bridge
+        ..ready()
+        ..expand();
+    }
+  } on Object {
+    // Bridge unavailable — the app still runs as a normal web build.
+  }
 }
 
 Future<void> _initSentry() async {

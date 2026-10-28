@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Wavely
+Comment=Cross-platform music player
+Exec=wavely %U
+Icon=app.wavely.music
+Type=Application
+Categories=Audio;Music;Player;
+MimeType=audio/mpeg;audio/flac;audio/ogg;audio/x-wav;
+Terminal=false
+StartupWMClass=wavely

@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:wavely/core/errors/result.dart';
+import 'package:wavely/core/utils/link_launcher.dart';
 import 'package:wavely/data/remote/metadata_clients/deezer_client.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/discovery/discovery_service.dart';
+import 'package:wavely/features/news/data/news_article.dart';
+import 'package:wavely/features/news/data/news_providers.dart';
+import 'package:wavely/features/news/presentation/news_screen.dart' show relativeTime;
 
 /// Discovery root screen (Stage 1.2, B10).
 ///
@@ -40,6 +46,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   _Section<List<DeezerArtist>> _related = const _SectionLoading();
   _Section<List<DiscoveryRelease>> _weekly = const _SectionLoading();
 
+  /// Stage 2.2: "News for you" — `null` while unavailable (service failed
+  /// to build, network down with an empty offline cache, ...) so the
+  /// section is omitted entirely instead of rendering an extra empty
+  /// state. Deliberately fault-silent: discovery's own sections own the
+  /// error surface here.
+  List<NewsArticle>? _news;
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +67,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       _followed = const _SectionLoading();
       _related = const _SectionLoading();
       _weekly = const _SectionLoading();
+      _news = null;
     });
     final service = ref.read(discoveryServiceProvider);
     final followed = await service.getNewFromFollowedArtists();
@@ -71,6 +85,29 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       return;
     }
     setState(() => _weekly = _toSection(weekly));
+    await _loadNews();
+  }
+
+  /// Stage 2.2: loads up to 5 articles for the categories selected in the
+  /// news settings. ANY failure leaves `_news == null` and the section is
+  /// omitted (never throws into the discovery refresh flow).
+  Future<void> _loadNews() async {
+    try {
+      final service = await ref.read(newsServiceProvider.future);
+      final articles = await service.getArticles(
+        categories: ref.read(newsPrefsProvider).selectedOrAll,
+        limit: 5,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() => _news = articles);
+    } on Object {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _news = null);
+    }
   }
 
   @override
@@ -117,6 +154,22 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                 row: (release) => _releaseRow(context, release),
               ),
             ),
+            // -- Stage 2.2: "News for you" (omitted while unavailable) --
+            if (_news != null && _news!.isNotEmpty) ...<Widget>[
+              const SizedBox(height: Spacing.lg),
+              _DiscoverySection(
+                title: 'News for you',
+                child: Column(
+                  children: <Widget>[
+                    for (var i = 0; i < _news!.length; i++) ...<Widget>[
+                      if (i > 0)
+                        Divider(height: 1, color: colors.borderGlass),
+                      _newsRow(context, _news![i]),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -193,6 +246,34 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: WavelyTypography.caption12(color: colors.textSecondary),
+      ),
+    );
+  }
+
+  /// Stage 2.2: one "News for you" row; tap opens the article externally.
+  Widget _newsRow(BuildContext context, NewsArticle article) {
+    final colors = context.wavelyColors;
+    return ListTile(
+      key: ValueKey<String>('discovery-news-${article.dedupeKey}'),
+      contentPadding: EdgeInsets.zero,
+      minLeadingWidth: 24,
+      leading: Icon(Icons.newspaper_rounded, color: colors.textSecondary),
+      title: Text(
+        article.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: WavelyTypography.body14(color: colors.textPrimary),
+      ),
+      subtitle: Text(
+        '${article.source} · ${relativeTime(article.publishedAt)}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: WavelyTypography.caption12(color: colors.textSecondary),
+      ),
+      onTap: () => unawaited(
+        ref
+            .read(linkLauncherProvider)
+            .launchExternal(Uri.parse(article.url)),
       ),
     );
   }

@@ -47,8 +47,19 @@ class WebPlaybackEngine implements PlaybackEngine {
   late final JSFunction _canPlayFn;
   late final JSFunction _errorFn;
   List<Track> _queueTracks = const <Track>[];
+  int _currentIndex = 0;
   PlaybackState _lastState = PlaybackState.stopped;
   bool _disposed = false;
+
+  /// Stage 2.2 (media session): the track currently loaded from the stored
+  /// queue, or `null` before the first [setQueue]/[load].
+  Track? get currentTrack =>
+      _queueTracks.isEmpty || _currentIndex >= _queueTracks.length
+          ? null
+          : _queueTracks[_currentIndex];
+
+  /// Stage 2.2 (media session): index inside the stored queue.
+  int get currentIndex => _currentIndex;
 
   @override
   Stream<Duration> get positionStream => _positionController.stream;
@@ -109,6 +120,7 @@ class WebPlaybackEngine implements PlaybackEngine {
     if (index >= _queueTracks.length) {
       index = _queueTracks.isEmpty ? 0 : _queueTracks.length - 1;
     }
+    _currentIndex = index;
     if (_queueTracks.isEmpty) {
       return;
     }

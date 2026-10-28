@@ -5,11 +5,13 @@ files, your own Subsonic/Navidrome, and free catalogs (Jamendo, Free Music
 Archive, archive.org). Metadata-only support for Spotify/Deezer/Apple. No ads,
 no paywall, no PII tracking (crash-only reporting, optional).
 
-> **Status — Stages 1.1 / 1.2 / 2.1 authored; verification pending local
-> run.** All merged work was authored in an environment without a
+> **Status — Stages 1.1 / 1.2 / 2.1 / 2.2 authored; verification pending
+> local run.** All merged work was authored in an environment without a
 > Flutter/Dart SDK, so nothing has been compiled or executed yet. Stage 2.2
-> (News, Telegram Mini App, PWA, desktop packaging) is **not present** —
-> never authored or pushed.
+> (News, Telegram Mini App, PWA, desktop packaging) is authored on the
+> `feat/stage-2.2` branch (see
+> [`docs/STAGE_2_2_REPORT.md`](docs/STAGE_2_2_REPORT.md)), PR open, not yet
+> merged.
 >
 > 👉 **Start here:** [`docs/FINAL_VERIFICATION.md`](docs/FINAL_VERIFICATION.md)
 > — consolidated copy-paste verification flow, known risks, expected
@@ -17,7 +19,8 @@ no paywall, no PII tracking (crash-only reporting, optional).
 >
 > Per-stage ledgers: [`docs/STAGE_1_1_REPORT.md`](docs/STAGE_1_1_REPORT.md),
 > [`docs/STAGE_1_2_REPORT.md`](docs/STAGE_1_2_REPORT.md),
-> [`docs/STAGE_2_1_REPORT.md`](docs/STAGE_2_1_REPORT.md).
+> [`docs/STAGE_2_1_REPORT.md`](docs/STAGE_2_1_REPORT.md),
+> [`docs/STAGE_2_2_REPORT.md`](docs/STAGE_2_2_REPORT.md).
 
 ## Quick start
 

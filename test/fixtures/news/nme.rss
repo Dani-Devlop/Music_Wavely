@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>NME Music News</title>
+    <link>https://www.nme.com/news</link>
+    <description>NME news feed</description>
+    <item>
+      <title>Learn how to build a home studio on a budget</title>
+      <link>https://www.nme.com/news/home-studio-guide</link>
+      <guid>https://www.nme.com/news/home-studio-guide</guid>
+      <description>Guide: mixing and mastering without expensive gear.</description>
+      <pubDate>Wed, 08 Feb 2026 14:00:00 GMT</pubDate>
+      <enclosure url="https://www.nme.com/img/studio.jpg" type="image/jpeg" length="12345"/>
+    </item>
+    <item>
+      <title>Guitar legend announces farewell tour</title>
+      <link>https://www.nme.com/news/farewell-tour</link>
+      <guid>https://www.nme.com/news/farewell-tour</guid>
+      <description>Tickets on sale Friday.</description>
+      <pubDate>Thu, 09 Feb 2026 09:15:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
