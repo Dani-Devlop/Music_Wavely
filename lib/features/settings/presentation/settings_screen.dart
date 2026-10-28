@@ -69,6 +69,10 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
       body: ListView(
+        // Generous cacheExtent: the first test viewport must find the
+        // 'Storage' group header without scrolling, and a lazy SliverList
+        // would otherwise keep it unbuilt below the fold.
+        cacheExtent: 2000,
         padding: const EdgeInsets.all(Spacing.lg),
         children: <Widget>[
           _SectionGroup(

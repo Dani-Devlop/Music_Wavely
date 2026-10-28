@@ -119,15 +119,19 @@ class CachingHttpClient {
 
   /// GETs [url] as text (JSON bodies stay strings; parsing is the
   /// client's job) with read-through caching. Never throws.
+  ///
+  /// [forceRefresh] skips the cache READ (pull-to-refresh semantics) but
+  /// still stores the fresh response under the same key.
   Future<Result<String>> getJson(
     Uri url, {
     required Duration ttl,
     Map<String, String>? extraHeaders,
+    bool forceRefresh = false,
   }) async {
     final effectiveTtl = _ttlFor?.call(url) ?? ttl;
     final requestKey = HttpCacheDao.requestKey('GET', url.toString());
     try {
-      final cached = await _readRow(requestKey);
+      final cached = forceRefresh ? null : await _readRow(requestKey);
       if (cached != null && !cached.expiresAt.isBefore(_now())) {
         return Result<String>.success(cached.body);
       }

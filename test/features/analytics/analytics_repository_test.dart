@@ -28,7 +28,7 @@ final DateTime _now = DateTime(2026, 6, 15, 12);
 // Bucket day keys used by the seed.
 final _today = DateTime(2026, 6, 15);
 final _yesterday = DateTime(2026, 6, 14);
-final _tenDaysAgo = DateTime(2026, 6, 5); // outside the 7-day window
+final _tenDaysAgo = DateTime(2026, 6, 10); // 5 days before _now, inside the 7-day window
 final _inMonth = DateTime(2026, 6, 1);
 final _inMonthOlder = DateTime(2026, 5, 20);
 final _inYear = DateTime(2026, 2, 10);
@@ -119,7 +119,7 @@ class _Seed {
 /// bucket            plays   tracks
 /// 2026-06-15 (today)   32    t1×10, t2×5, t3×5, t6×8, t8×4(skip)
 /// 2026-06-14           11    t1×10, t10×1(skip-by-threshold)
-/// 2026-06-05            7    t2×5, t9×2 (in month/year, outside week)
+/// 2026-06-10            7    t2×5, t9×2 (inside the week window)
 /// 2026-06-01            5    t1×5
 /// 2026-05-20           10    t4×10
 /// 2026-02-10           15    t2×10, t7×5
@@ -244,13 +244,13 @@ void main() {
       expect(
         await repository.getTotalListeningTime(AnalyticsPeriod.month,
             now: _now),
-        3040000,
+        3640000,
       );
       // year: month + 2026-02-10 (15)
       expect(
         await repository.getTotalListeningTime(AnalyticsPeriod.year,
             now: _now),
-        3940000,
+        4540000,
       );
       // lifetime: everything
       expect(

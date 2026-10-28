@@ -183,8 +183,14 @@ class ScanLibrary {
     required List<String> folders,
     String? coversDir,
   }) {
-    final controller = StreamController<ScanEvent>.broadcast();
-    unawaited(_run(controller, folders, coversDir));
+    // Single-subscription + lazy start: _run begins on the FIRST listen so
+    // the leading ScanStarted is never emitted before a subscriber exists
+    // (a broadcast controller would silently drop it — the stream contract
+    // is "ScanStarted first, ScanCompleted last").
+    late final StreamController<ScanEvent> controller;
+    controller = StreamController<ScanEvent>(
+      onListen: () => unawaited(_run(controller, folders, coversDir)),
+    );
     return controller.stream;
   }
 

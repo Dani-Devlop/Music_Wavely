@@ -30,11 +30,11 @@ class NewsItem {
 /// Sources (docs/METADATA_SOURCES.md, live-verified): Pitchfork
 /// (`/feed/feed-news/rss`, 301 → followed by http.Client) and NME
 /// (`/rss/news`). Each feed is fetched independently through [RssClient]
-/// (1 h TTL per feed); when ONE feed fails the other still contributes —
-/// the call fails only when BOTH fail. Results are memoized for 5 minutes
-/// between refetches; [headlines] `forceRefresh: true` bypasses the memo
-/// (pull-to-refresh) but still honors the underlying HTTP cache. Never
-/// throws.
+/// (feed TTL mirrors the 5-minute memo); when ONE feed fails the other
+/// still contributes — the call fails only when BOTH fail. Results are
+/// memoized for 5 minutes between refetches; [headlines]
+/// `forceRefresh: true` bypasses the memo AND the HTTP cache read (true
+/// pull-to-refresh) while refreshing both stamps. Never throws.
 class NewsService {
   /// Creates the service; [now] is injectable for tests.
   NewsService({required RssClient rss, DateTime Function()? now})
@@ -67,7 +67,17 @@ class NewsService {
     }
     final results = await Future.wait<Result<List<NewsItem>>>(
       <Future<Result<List<NewsItem>>>>[
-        for (final (source, url) in feeds) _fetchOne(source, url),
+        for (final (source, url) in feeds)
+          _fetchOne(
+            source,
+            url,
+            // Feed TTL mirrors the memo window: when the memo expires the
+            // HTTP cache expires with it, so a refetch really reaches the
+            // network. forceRefresh additionally bypasses the HTTP cache
+            // read (pull-to-refresh).
+            ttl: minRefetchInterval,
+            forceRefresh: forceRefresh,
+          ),
       ],
     );
     final merged = <NewsItem>[];
@@ -90,8 +100,13 @@ class NewsService {
     return Result<List<NewsItem>>.success(_memo!);
   }
 
-  Future<Result<List<NewsItem>>> _fetchOne(String source, Uri url) async {
-    final result = await _rss.fetch(url);
+  Future<Result<List<NewsItem>>> _fetchOne(
+    String source,
+    Uri url, {
+    Duration ttl = minRefetchInterval,
+    bool forceRefresh = false,
+  }) async {
+    final result = await _rss.fetch(url, ttl: ttl, forceRefresh: forceRefresh);
     return result.map(
       (items) => <NewsItem>[
         for (final item in items)

@@ -13,11 +13,23 @@ import 'package:wavely/sources/source_providers.dart';
 ///
 /// Additive: rendered as one widget inserted into the existing settings
 /// ListView; the Jamendo client-id row opens a small dialog.
-class SourcesSettingsSection extends ConsumerWidget {
+class SourcesSettingsSection extends ConsumerStatefulWidget {
   /// Creates the section.
   const SourcesSettingsSection({super.key});
 
-  Future<void> _editJamendo(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<SourcesSettingsSection> createState() =>
+      _SourcesSettingsSectionState();
+}
+
+class _SourcesSettingsSectionState
+    extends ConsumerState<SourcesSettingsSection> {
+  /// Optimistic toggle overlay: set synchronously on change so the switch
+  /// reflects the new value immediately while the descriptor provider
+  /// refreshes asynchronously in the background.
+  final Map<String, bool> _optimistic = <String, bool>{};
+
+  Future<void> _editJamendo() async {
     final SourceSettings settings = ref.read(sourceSettingsProvider);
     final TextEditingController controller =
         TextEditingController(text: settings.loadJamendoClientId() ?? '');
@@ -53,27 +65,23 @@ class SourcesSettingsSection extends ConsumerWidget {
     controller.dispose();
   }
 
-  Future<void> _openEditor(
-    BuildContext context,
-    WidgetRef ref,
-    SourceDescriptor d,
-  ) async {
+  Future<void> _openEditor(SourceDescriptor d) async {
     if (d.id == subsonicId) {
       final SubsonicConfig? existing =
           await ref.read(sourceSettingsProvider).loadSubsonic();
-      if (context.mounted) {
+      if (mounted) {
         await SubsonicConfigSheet.show(context, existing: existing);
       }
       return;
     }
     if (d.id == jamendoSourceId) {
-      await _editJamendo(context, ref);
+      await _editJamendo();
     }
     // archive.org and FMA need no configuration — no editor.
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colors = context.wavelyColors;
     final AsyncValue<List<SourceDescriptor>> descriptors =
         ref.watch(sourceDescriptorsProvider);
@@ -104,8 +112,11 @@ class SourcesSettingsSection extends ConsumerWidget {
                 children: <Widget>[
                   Switch(
                     key: Key('source-switch-${d.id}'),
-                    value: d.enabled,
+                    value: _optimistic[d.id] ?? d.enabled,
                     onChanged: (bool v) async {
+                      // Optimistic: reflect the new state on the next frame,
+                      // before the async descriptor refresh completes.
+                      setState(() => _optimistic[d.id] = v);
                       await ref
                           .read(sourceSettingsProvider)
                           .setSourceEnabled(d.id, v);
@@ -118,7 +129,7 @@ class SourcesSettingsSection extends ConsumerWidget {
                       key: Key('source-edit-${d.id}'),
                       tooltip: 'Configure',
                       icon: const Icon(Icons.settings_rounded),
-                      onPressed: () => _openEditor(context, ref, d),
+                      onPressed: () => _openEditor(d),
                     ),
                 ],
               ),

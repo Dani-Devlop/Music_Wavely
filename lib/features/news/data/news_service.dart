@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
+import 'package:xml/xml.dart' as xml;
 
 import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/data/local/db/app_database.dart';
@@ -261,26 +261,28 @@ class NewsService {
     }
   }
 
-  /// RSS 2.0 / Atom-ish parse via the `html` package (a dependency since
-  /// Stage 2.1). Handles `<item>` (RSS) and `<entry>` (Atom). Public so
-  /// the fixture tests exercise the exact production parser.
+  /// RSS 2.0 / Atom-ish parse via the `xml` package. Handles `<item>`
+  /// (RSS) and `<entry>` (Atom). XML — not HTML — parsing matters: the
+  /// HTML5 tree builder treats `<link>` as a void element and drops its
+  /// text, which silently skips every item. Public so the fixture tests
+  /// exercise the exact production parser.
   static List<NewsArticle> parseRss(
     String source,
     String body,
     DateTime fetchedAt,
   ) {
     try {
-      final dom.Document document = html_parser.parse(body);
-      final List<dom.Element> items = <dom.Element>[
-        ...document.querySelectorAll('item'),
-        ...document.querySelectorAll('entry'),
+      final xml.XmlDocument document = xml.XmlDocument.parse(body);
+      final List<xml.XmlElement> items = <xml.XmlElement>[
+        ...document.findAllElements('item'),
+        ...document.findAllElements('entry'),
       ];
       final List<NewsArticle> articles = <NewsArticle>[];
-      for (final dom.Element item in items) {
+      for (final xml.XmlElement item in items) {
         final String title = _textOf(item, 'title');
         final String link = _textOf(item, 'link').isNotEmpty
             ? _textOf(item, 'link')
-            : (_attrOf(item.querySelector('link'), 'href') ?? '');
+            : (_attrOf(item, 'link', 'href') ?? '');
         if (title.isEmpty || link.isEmpty) {
           continue;
         }
@@ -294,7 +296,7 @@ class NewsService {
             ? _textOf(item, 'pubDate')
             : _textOf(item, 'published');
         final DateTime publishedAt = _parseDate(dateText) ?? fetchedAt;
-        String? imageUrl = _attrOf(item.querySelector('thumbnail'), 'url');
+        String? imageUrl = _attrOf(item, 'thumbnail', 'url');
         imageUrl ??= _enclosureImage(item);
         articles.add(
           NewsArticle(
@@ -320,19 +322,35 @@ class NewsService {
     }
   }
 
-  static String _textOf(dom.Element parent, String tag) =>
-      parent.getElementsByTagName(tag).isNotEmpty
-          ? parent.getElementsByTagName(tag).first.text.trim()
-          : '';
+  /// Direct-child text of the first `<tag>` under [parent]. Namespaced
+  /// tags (e.g. `media:thumbnail`) match on the local name so the Yahoo
+  /// Media RSS namespace works regardless of the declared prefix.
+  static String _textOf(xml.XmlElement parent, String tag) {
+    for (final xml.XmlNode child in parent.children) {
+      if (child is xml.XmlElement && child.name.local == tag) {
+        return child.innerText.trim();
+      }
+    }
+    return '';
+  }
 
-  static String? _attrOf(dom.Element? element, String name) =>
-      element?.attributes[name];
+  /// Attribute of the first direct-child `<tag>` (local-name match).
+  static String? _attrOf(xml.XmlElement parent, String tag, String name) {
+    for (final xml.XmlNode child in parent.children) {
+      if (child is xml.XmlElement && child.name.local == tag) {
+        return child.getAttribute(name);
+      }
+    }
+    return null;
+  }
 
-  static String? _enclosureImage(dom.Element item) {
-    for (final dom.Element enclosure
-        in item.getElementsByTagName('enclosure')) {
-      final String type = (enclosure.attributes['type'] ?? '').toLowerCase();
-      final String url = enclosure.attributes['url'] ?? '';
+  static String? _enclosureImage(xml.XmlElement item) {
+    for (final xml.XmlNode child in item.children) {
+      if (child is! xml.XmlElement || child.name.local != 'enclosure') {
+        continue;
+      }
+      final String type = (child.getAttribute('type') ?? '').toLowerCase();
+      final String url = child.getAttribute('url') ?? '';
       if (url.isNotEmpty &&
           (type.startsWith('image') || url.contains('/image'))) {
         return url;
