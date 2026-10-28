@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/design_system/themes/theme_provider.dart';

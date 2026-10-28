@@ -13,9 +13,11 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  # State management (Riverpod 2.x per master context)
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
+  # State management — Riverpod 3.x (cloud-compile fix: riverpod_generator
+  # >=3 requires source_gen >=3, which conflicts with the Riverpod 2 line;
+  # Riverpod 3 keeps StateNotifier/StateProvider via the legacy import).
+  flutter_riverpod: ^3.4.3
+  riverpod_annotation: ^4.0.7
 
   # Models / codegen annotations
   freezed_annotation: ^3.1.0
@@ -112,7 +114,7 @@ dev_dependencies:
   retrofit_generator: ^10.3.2
   json_serializable: ^6.15.2
   freezed: ^3.2.5
-  riverpod_generator: ^2.6.5
+  riverpod_generator: ^4.0.9
 
   # Lints & testing
   very_good_analysis: ^11.0.0

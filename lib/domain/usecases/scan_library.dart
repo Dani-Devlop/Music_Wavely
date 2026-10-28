@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/core/extensions/string_x.dart';
 import 'package:wavely/core/utils/stable_hash.dart';

@@ -20,6 +20,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 
 /// Follow state of one artist (by exact dao key, i.e. the artist name
