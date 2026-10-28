@@ -46,6 +46,12 @@ abstract final class AppConstants {
   static const String queuePersistKey = 'wavely.queue.v1';
   static const String queueIndexPersistKey = 'wavely.queue.index.v1';
   static const String queuePositionPersistKey = 'wavely.queue.position.ms.v1';
+
+  // Stage 3 audit (BUG-11): shuffle/repeat mode and the pre-shuffle order are
+  // persisted so the true album order survives restarts while shuffled.
+  static const String queueShufflePersistKey = 'wavely.queue.shuffle.v1';
+  static const String queueRepeatPersistKey = 'wavely.queue.repeat.v1';
+  static const String queueOriginalPersistKey = 'wavely.queue.original.v1';
   static const String settingsKeyPrefix = 'wavely.settings.';
 
   /// Filesystem layout.

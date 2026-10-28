@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wavely/core/config/env.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
+import 'package:wavely/data/remote/supabase_client_provider.dart';
 import 'package:wavely/data/sync/sync_backend.dart';
 import 'package:wavely/data/sync/sync_service.dart';
 import 'package:wavely/data/sync/supabase_sync_backend.dart';
@@ -11,15 +12,23 @@ import 'package:wavely/design_system/themes/theme_provider.dart';
 ///
 /// Returns null unless `WavelyEnv.hasSupabase` — without configured keys the
 /// [SyncService] idles in `SyncStatus.disabled` and nothing touches the
-/// network. Uses a standalone [SupabaseClient] (no `Supabase.initialize`):
-/// the sync feature only needs the data API, not the full SDK session flow.
+/// network.
+///
+/// Stage 3 audit (BUG-3): the backend previously built its own bare
+/// anon-key [SupabaseClient] with no session ever attached — every RLS-
+/// locked push failed 403 and every pull returned an empty page, so sync
+/// silently never worked, even for signed-in users. It now reuses the app's
+/// auth-bound client ([supabaseClientProvider]), whose session (when the
+/// user is signed in) automatically sends the `Authorization` header.
+/// Signed-out behavior is unchanged (403s park the outbox rows, surfaced
+/// in the UI as before).
 final syncBackendProvider = Provider<SyncBackend?>((ref) {
   final url = WavelyEnv.supabaseUrl;
   final anonKey = WavelyEnv.supabaseAnonKey;
   if (url == null || anonKey == null) {
     return null;
   }
-  return SupabaseSyncBackend(client: SupabaseClient(url, anonKey));
+  return SupabaseSyncBackend(client: ref.watch(supabaseClientProvider));
 });
 
 /// App-wide sync engine binding (never auto-started — the composition root

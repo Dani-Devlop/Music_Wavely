@@ -26,6 +26,9 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  // Stage 3 audit (SEC-9): a browser preflight for POST + application/json
+  // fails without explicit methods — the Mini App webview path needs it.
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 interface TelegramUser {
@@ -114,7 +117,12 @@ async function validateInitData(
     return null;
   }
   const nowSeconds = Math.floor(Date.now() / 1000);
-  if (nowSeconds - authDate > ONE_HOUR_SECONDS) {
+  // Stage 3 audit (SEC-19): future-dated auth_date (clock skew attacks) now
+  // rejected — the freshness window is symmetric.
+  if (
+    nowSeconds - authDate > ONE_HOUR_SECONDS ||
+    authDate - nowSeconds > 60
+  ) {
     return null;
   }
 

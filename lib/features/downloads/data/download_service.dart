@@ -104,6 +104,17 @@ class DownloadService {
     String? quality,
     String? licenseUrl,
   }) async {
+    // Stage 3 audit (BUG-5): dedupe — two enqueues of the same track used to
+    // create two jobs writing the same target file concurrently (corruption).
+    final DownloadRow? existing = await _db.downloadsDao.activeForSourceTrack(
+      track.sourceId,
+      track.sourceTrackId,
+    );
+    if (existing != null) {
+      _emit(DownloadEvent(rowId: existing.id, status: existing.status));
+      await pump();
+      return existing.id;
+    }
     final String dir = await _folderTemplate.renderFor(
       track,
       baseDir: await _resolveBaseDir(),
@@ -202,7 +213,13 @@ class DownloadService {
         ),
       );
     } finally {
-      _active.remove(row.id);
+      // Stage 3 audit (BUG-4): only remove the job if it is still ours — a
+      // pause() during unwind may have already started a replacement job for
+      // this row, and removing that one orphaned it (unpausable + concurrent
+      // writers on one file).
+      if (identical(_active[row.id]?.cancelToken, token)) {
+        _active.remove(row.id);
+      }
       await pump();
     }
   }
@@ -324,8 +341,10 @@ class DownloadService {
       quality: row.quality,
       checksum: checksum,
     );
+    // Stage 3 audit (SEC-3): sourceTrackId comes from remote APIs and must
+    // never be able to traverse paths — sanitize before composing the name.
     final String sidecarPath =
-        '${_dirOf(row.targetPath)}/${row.sourceTrackId}.wavely.json';
+        '${_dirOf(row.targetPath)}/${sanitizeFilename(row.sourceTrackId, maxLength: 120)}.wavely.json';
     await _executor.writeString(sidecarPath, provenance);
     await _db.downloadsDao.markStatus(
       row.id,
@@ -364,12 +383,35 @@ class DownloadService {
       jsonEncode(<String, dynamic>{
         'source': row.sourceId,
         'sourceId': row.sourceTrackId,
-        'url': url,
+        // Stage 3 audit (SEC-4): provenance must not embed replayable
+        // credentials (Subsonic `t=`/`s=`/`p=` auth params, api keys).
+        'url': _redactedProvenanceUrl(url),
         'license': license ?? 'unknown',
         'downloadedAt': DateTime.now().toUtc().toIso8601String(),
         'quality': quality,
         'checksum': checksum,
       });
+
+  /// Strips credential-bearing query parameters from a persisted URL while
+  /// keeping scheme/host/path for provenance display.
+  String _redactedProvenanceUrl(String rawUrl) {
+    final Uri? uri = Uri.tryParse(rawUrl);
+    if (uri == null) {
+      return rawUrl;
+    }
+    final Map<String, String> params =
+        Map<String, String>.of(uri.queryParameters)
+          ..remove('t')
+          ..remove('s')
+          ..remove('p')
+          ..remove('token')
+          ..remove('api_key')
+          ..remove('apikey')
+          ..remove('key');
+    return uri
+        .replace(queryParameters: params.isEmpty ? null : params)
+        .toString();
+  }
 
   String _dirOf(String path) {
     final int i = path.lastIndexOf('/');
@@ -430,7 +472,9 @@ class DownloadService {
     final _ActiveJob? job = _active[rowId];
     if (job != null) {
       job.cancelToken.cancel('paused');
-      _active.remove(rowId);
+      // Stage 3 audit (BUG-4): do NOT remove the job here — the cancelled
+      // _runJob removes itself (identity-checked) when it unwinds. Removing
+      // eagerly let pump() start a second concurrent writer on the file.
     }
     await _db.downloadsDao.markStatus(rowId, DownloadStatus.queued);
     _emit(DownloadEvent(rowId: rowId, status: DownloadStatus.queued));
@@ -442,7 +486,8 @@ class DownloadService {
     final _ActiveJob? job = _active[rowId];
     if (job != null) {
       job.cancelToken.cancel('canceled');
-      _active.remove(rowId);
+      // Stage 3 audit (BUG-4): job removes itself when unwound (identity-
+      // checked) — see pause().
     }
     final DownloadRow? row = await _db.downloadsDao.byId(rowId);
     if (row != null && await _executor.exists(row.targetPath)) {

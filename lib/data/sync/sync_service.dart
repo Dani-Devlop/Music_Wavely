@@ -238,10 +238,19 @@ class SyncService {
       }
       final plays = result.getOrElse((failure) => const <RemotePlay>[]);
       final outcome = await _applyRemotePlays(plays);
-      await _settingsStore.write(
-        lastPulledAtKey,
-        DateTime.now().toIso8601String(),
-      );
+      // Stage 3 audit (BUG-6): the pull watermark previously used this
+      // device's wall clock, so plays recorded earlier (offline recording,
+      // behind clock) but uploaded later were below it and never pulled.
+      // Anchor the watermark to the newest pulled play's started_at; the
+      // dedupe cache makes conservative re-pulls safe.
+      if (plays.isNotEmpty) {
+        final DateTime newestPull = plays.fold<DateTime>(
+          plays.first.startedAt,
+          (DateTime acc, RemotePlay play) =>
+              play.startedAt.isAfter(acc) ? play.startedAt : acc,
+        );
+        await _settingsStore.write(lastPulledAtKey, newestPull.toIso8601String());
+      }
       await _pullSettingsIfAvailable(backend);
       _lastError = null;
       await _emit(SyncStatus.idle);
@@ -293,13 +302,21 @@ class SyncService {
     }
 
     // started-at seconds already recorded per matched track (dedupe cache).
+    // Stage 3 audit (BUG-1): playsForTrack is async — the previous inline
+    // for-in iterated the Future itself (compile error). The dedupe cache is
+    // now prefetched for the batch's matched track ids before the loop.
     final knownStarts = <int, Set<int>>{};
-    Set<int> startsFor(int trackId) => knownStarts.putIfAbsent(trackId, () {
-          return <int>{
-            for (final play in _playsDao.playsForTrack(trackId))
-              _secondOf(play.startedAt),
-          };
-        });
+    for (final trackId in plays
+        .map((play) => fingerprints[play.fingerprint])
+        .whereType<int>()
+        .toSet()) {
+      knownStarts[trackId] = <int>{
+        for (final play in await _playsDao.playsForTrack(trackId))
+          _secondOf(play.startedAt),
+      };
+    }
+    Set<int> startsFor(int trackId) =>
+        knownStarts.putIfAbsent(trackId, () => <int>{});
 
     var inserted = 0;
     var duplicates = 0;

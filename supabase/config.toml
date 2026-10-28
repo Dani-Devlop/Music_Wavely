@@ -86,3 +86,10 @@ verify_jwt = false
 [functions.telegram-webhook]
 enabled = true
 verify_jwt = false
+
+# Stage 3 audit (SEC-14): the Mini App sign-in endpoint also authenticates
+# requests itself (HMAC over initData) and the client sends only an apikey
+# header — platform JWT verification must stay off or it 401s pre-HMAC.
+[functions.telegram-webapp-auth]
+enabled = true
+verify_jwt = false

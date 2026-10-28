@@ -111,6 +111,19 @@ Future<TrackLoadDecision?> _parentalPreload(Ref ref, Track track) async {
     case TrackVerdict.censorNeeded:
       final plan = CensorPlanner.plan(lyrics: lyrics, matcher: matcher);
       if (!plan.hasPlan) {
+        // Stage 3 audit (SEC-6/BUG-9): a track judged explicit whose lyrics
+        // are unsynced cannot be censored — the explicit ORIGINAL plays by
+        // the documented v1 policy. The bypass is now audited so parents
+        // can see it (a "block instead" switch is an owner decision).
+        unawaited(
+          ref.watch(databaseProvider).parentalDao.audit(
+                'censor_skipped_no_synced_lyrics',
+                details: <String, Object?>{
+                  'trackId': trackId,
+                  'title': track.title,
+                },
+              ),
+        );
         return null; // no synced lyrics → nothing to censor; play original
       }
       final service = CensorService(
@@ -123,9 +136,21 @@ Future<TrackLoadDecision?> _parentalPreload(Ref ref, Track track) async {
         onSuccess: (value) => value,
         onFailure: (_) => null,
       );
-      return path == null
-          ? null // fallback policy: censor render failed → original file
-          : TrackLoadDecision.replace(path);
+      if (path == null) {
+        // Stage 3 audit (SEC-6): the ffmpeg render failed and the fallback
+        // policy plays the UNCENSORED original — audit the bypass.
+        unawaited(
+          ref.watch(databaseProvider).parentalDao.audit(
+                'censor_render_failed',
+                details: <String, Object?>{
+                  'trackId': trackId,
+                  'title': track.title,
+                },
+              ),
+        );
+        return null; // fallback policy: censor render failed → original file
+      }
+      return TrackLoadDecision.replace(path);
     case TrackVerdict.allowed:
       return null;
   }

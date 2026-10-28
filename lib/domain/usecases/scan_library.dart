@@ -213,6 +213,15 @@ class ScanLibrary {
       final artistNames = <String>{};
       var processed = 0;
       for (var start = 0; start < files.length; start += _batchSize) {
+        // Stage 3 audit (BUG-7): honour cancellation between batches. The
+        // listener IS the cancel token (ScanStateNotifier.cancel cancels
+        // the subscription); only treated as cancelled once at least one
+        // batch ran, so a stream that nobody has subscribed to yet is not
+        // misread as a cancelled scan. Previously "cancel" merely detached
+        // the UI while the scan kept parsing and writing to completion.
+        if (processed > 0 && !controller.hasListener) {
+          break;
+        }
         final next = start + _batchSize;
         final end = next < files.length ? next : files.length;
         final batch = files.sublist(start, end);

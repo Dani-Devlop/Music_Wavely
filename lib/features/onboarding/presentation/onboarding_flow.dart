@@ -253,6 +253,23 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   /// the parental profile + seed words, then the completion flag, then
   /// navigates to `/library`.
   Future<void> _finish() async {
+    // Stage 3 audit (BUG-13): re-entrancy guard — a Finish double-tap used
+    // to run the flush twice and create duplicate 'family' parental
+    // profiles. The flag resets on failure so the user can retry.
+    if (_finishing) {
+      return;
+    }
+    _finishing = true;
+    try {
+      await _finishOnce();
+    } finally {
+      _finishing = false;
+    }
+  }
+
+  bool _finishing = false;
+
+  Future<void> _finishOnce() async {
     final draft = _draft;
     final notifier = ref.read(settingsProvider.notifier);
     notifier

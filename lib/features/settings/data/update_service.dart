@@ -101,12 +101,16 @@ class UpdateService {
   /// Checks GitHub for a newer release. Never throws.
   Future<UpdateCheckResult> checkForUpdate() async {
     try {
-      final http.Response response = await _client.get(
-        _releasesApi,
-        headers: const <String, String>{
-          'accept': 'application/vnd.github+json',
-        },
-      );
+      // Stage 3 audit (SEC-5): bound the update check so a stalled GitHub
+      // response cannot hang the settings UI.
+      final http.Response response = await _client
+          .get(
+            _releasesApi,
+            headers: const <String, String>{
+              'accept': 'application/vnd.github+json',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) {
         return UpdateCheckResult.upToDate(_currentVersion);
       }

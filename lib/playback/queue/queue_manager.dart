@@ -517,16 +517,70 @@ class QueueManager extends StateNotifier<QueueState> {
     if (index >= tracks.length) {
       index = tracks.length - 1;
     }
+    // Stage 3 audit (BUG-11): shuffle/repeat modes and the pre-shuffle order
+    // are persisted; previously the shuffled order was silently adopted as
+    // the "original" after a restart, losing the true album order.
+    final shuffleRaw =
+        await _store.read<int>(AppConstants.queueShufflePersistKey) ?? 0;
+    final repeatRaw =
+        await _store.read<int>(AppConstants.queueRepeatPersistKey) ?? 0;
+    final originalIdsRaw =
+        await _store.read<String>(AppConstants.queueOriginalPersistKey);
+    var repeatIndex = repeatRaw;
+    if (repeatIndex < 0) {
+      repeatIndex = 0;
+    }
+    if (repeatIndex >= RepeatMode.values.length) {
+      repeatIndex = RepeatMode.values.length - 1;
+    }
+    var unshuffled = List<Track>.of(tracks);
+    var unshuffledIndex = index;
+    if (shuffleRaw == 1 && originalIdsRaw != null && originalIdsRaw.isNotEmpty) {
+      final wanted = originalIdsRaw
+          .split(',')
+          .map((e) => int.tryParse(e.trim()))
+          .whereType<int>()
+          .toList();
+      if (wanted.isNotEmpty) {
+        final byId = <int, Track>{
+          for (final t in tracks)
+            if (t.id != null) t.id!: t,
+        };
+        final ordered = <Track>[
+          for (final id in wanted)
+            if (byId.containsKey(id)) byId[id]!,
+        ];
+        final orderedIds = ordered.map((t) => t.id).toSet();
+        final missing =
+            tracks.where((t) => !orderedIds.contains(t.id)).toList();
+        unshuffled = [...ordered, ...missing];
+        final currentId = tracks[index].id;
+        final pos = unshuffled.indexWhere((t) => t.id == currentId);
+        unshuffledIndex = pos >= 0 ? pos : index;
+      }
+    }
     state = state.copyWith(
       tracks: tracks,
       currentIndex: index,
       position: Duration(milliseconds: positionMs),
       duration: Duration(milliseconds: tracks[index].durationMs),
       playbackState: PlaybackState.stopped,
+      shuffleEnabled: shuffleRaw == 1,
+      repeatMode: RepeatMode.values[repeatIndex],
     );
-    _unshuffledTracks = List<Track>.of(tracks);
-    _unshuffledIndex = index;
+    _unshuffledTracks = unshuffled;
+    _unshuffledIndex = unshuffledIndex;
     await _loadCurrent();
+    // Stage 3 audit (BUG-10): the persisted position was displayed but the
+    // engine always restarted at 0:00. Seek to the persisted offset after
+    // the initial load so resume actually resumes.
+    if (positionMs > 0 && state.playbackState != PlaybackState.error) {
+      try {
+        await _engine.seek(Duration(milliseconds: positionMs));
+      } on Object catch (_) {
+        // A failed resume-seek must not break queue restore.
+      }
+    }
   }
 
   @override
@@ -573,8 +627,10 @@ class QueueManager extends StateNotifier<QueueState> {
       return;
     }
     final hook = trackPreloadHook;
+    // Stage 3 audit (BUG-2): `decision` was previously declared inside the
+    // `if (hook != null)` block but read after it — a compile error. Hoisted.
+    TrackLoadDecision? decision;
     if (hook != null) {
-      TrackLoadDecision? decision;
       try {
         decision = await hook(track);
       } on Object catch (_) {
@@ -698,6 +754,25 @@ class QueueManager extends StateNotifier<QueueState> {
         state.position.inMilliseconds,
       ),
     );
+    // Stage 3 audit (BUG-11): persist shuffle/repeat so they survive restarts,
+    // and the pre-shuffle order while shuffled so un-shuffling restores it.
+    unawaited(
+      _store.write(
+        AppConstants.queueShufflePersistKey,
+        state.shuffleEnabled ? 1 : 0,
+      ),
+    );
+    unawaited(
+      _store.write(AppConstants.queueRepeatPersistKey, state.repeatMode.index),
+    );
+    if (state.shuffleEnabled) {
+      unawaited(
+        _store.write(
+          AppConstants.queueOriginalPersistKey,
+          _unshuffledTracks.map((t) => t.id).whereType<int>().join(','),
+        ),
+      );
+    }
   }
 }
 

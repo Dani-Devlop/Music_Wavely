@@ -209,9 +209,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     await storeSession(admin, request.token, row);
     return json({ email: row.email, token_hash: row.token_hash });
   } catch (error) {
-    return json(
-      { error: error instanceof Error ? error.message : 'internal error' },
-      500,
+    // Stage 3 audit (SEC-13): internal error text (DB/upsert details) must
+    // not reach the caller; log it server-side only.
+    console.error(
+      "telegram-auth internal error:",
+      error instanceof Error ? error.message : error,
     );
+    return json({ error: "internal error" }, 500);
   }
 });

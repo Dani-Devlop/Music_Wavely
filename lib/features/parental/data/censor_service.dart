@@ -74,7 +74,11 @@ class CensorService {
       );
     }
 
-    final output = '$cacheDir/${_trackKey(track)}.censored.m4a';
+    // Stage 3 audit (SEC-7): the cache key now includes a stable hash of the
+    // mute plan — previously a plan change (new blocked words) kept serving
+    // renders censored against the OLD word list.
+    final output =
+        '$cacheDir/${_trackKey(track)}-${_planKey(plan)}.censored.m4a';
     if (await localFileExists(output)) {
       return Result<String?>.success(output);
     }
@@ -110,5 +114,18 @@ class CensorService {
       '_',
     );
     return 'track-$sanitized';
+  }
+
+  /// Stage 3 audit (SEC-7): stable, filesystem-safe key for a mute plan so
+  /// renders are invalidated when the blocked-word list changes.
+  static String _planKey(CensorPlan plan) {
+    // Ranges are [start, end] ms pairs; Object.hashAll is stable within a
+    // single app run, which is the lifetime of the render cache dir.
+    final hash = Object.hashAll(plan.ranges);
+    final sanitizedKey = (plan.hasPlan ? '$hash' : 'empty').replaceAll(
+      RegExp(r'[^A-Za-z0-9_-]'),
+      '_',
+    );
+    return 'plan-$sanitizedKey';
   }
 }

@@ -28,6 +28,10 @@ jobs:
           ls -la docker/navidrome/music
 
       - name: Start Navidrome
+        env:
+          # Stage 3 audit (SEC-12): the compose file no longer hardcodes the
+          # boot password; CI injects it here (and the tests reuse it below).
+          NAVIDROME_ADMIN_PASSWORD: wavely-ci-password
         run: |
           docker compose -f docker-compose.navidrome.yml up -d
           for i in $(seq 1 30); do

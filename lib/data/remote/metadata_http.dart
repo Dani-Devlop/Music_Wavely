@@ -11,6 +11,10 @@ import 'package:wavely/data/local/db/daos/http_cache_dao.dart';
 
 /// Shared HTTP plumbing for the Stage 1.2 metadata clients.
 abstract final class MetadataHttp {
+  /// Stage 3 audit (SEC-5): per-request timeout — a stalled server must not
+  /// hang the shared rate-limiter queue indefinitely.
+  static const Duration kMetadataHttpTimeout = Duration(seconds: 15);
+
   /// Canonical User-Agent sent with every metadata request.
   ///
   /// MusicBrainz requires a descriptive UA (their etiquette policy);
@@ -127,13 +131,17 @@ class CachingHttpClient {
       if (cached != null && !cached.expiresAt.isBefore(_now())) {
         return Result<String>.success(cached.body);
       }
-      final response = await _client.get(
-        url,
-        headers: <String, String>{
-          'user-agent': MetadataHttp.userAgent,
-          ...?extraHeaders,
-        },
-      );
+      // Stage 3 audit (SEC-5): bound the request so a stalled server cannot
+      // hang the rate-limiter queue indefinitely.
+      final response = await _client
+          .get(
+            url,
+            headers: <String, String>{
+              'user-agent': MetadataHttp.userAgent,
+              ...?extraHeaders,
+            },
+          )
+          .timeout(kMetadataHttpTimeout);
       if (response.statusCode != 200) {
         return Result<String>.err(
           Failure.network(
