@@ -57,15 +57,23 @@ class DownloadsDao extends DatabaseAccessor<AppDatabase>
           .getSingleOrNull();
 
   /// Live query for the downloads screen sections.
-  Stream<List<DownloadRow>> watchByStatuses(List<DownloadStatus> statuses) =>
-      (select(downloads)
-            ..where(
-              (d) => d.status.isIn(
-                statuses.map((DownloadStatus s) => s.name).toList(),
-              ),
-            )
-            ..orderBy([(d) => OrderingTerm.desc(d.startedAt)]))
-          .watch();
+  ///
+  /// Emits the current snapshot immediately, then follows table changes —
+  /// the leading `get()` guarantees a first emission even when the watched
+  /// table sees no further writes (Drift's plain `.watch()` only re-emits
+  /// on transactions).
+  Stream<List<DownloadRow>> watchByStatuses(List<DownloadStatus> statuses) async* {
+    final SimpleSelectStatement<Downloads, DownloadRow> query =
+        select(downloads)
+          ..where(
+            (d) => d.status.isIn(
+              statuses.map((DownloadStatus s) => s.name).toList(),
+            ),
+          )
+          ..orderBy([(d) => OrderingTerm.desc(d.startedAt)]);
+    yield await query.get();
+    yield* query.watch();
+  }
 
   /// Updates the progress percentage of [id].
   Future<void> updateProgress(int id, int progress) =>

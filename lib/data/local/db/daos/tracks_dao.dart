@@ -357,9 +357,9 @@ class TracksDao extends DatabaseAccessor<AppDatabase> with _$TracksDaoMixin {
       }
       final token = tokens[i];
       final escaped = token.replaceAll('"', '""');
-      // A token that already carries its own quotes is written as the
-      // doubled-escape form (""hi""); plain tokens become phrases.
-      buffer.write(token.contains('"') ? escaped : '"$escaped"');
+      // Every token is wrapped in a phrase and its inner quotes doubled:
+      // `a"b` -> `"a""b"`, `"hi"` -> `"""hi"""` — FTS5 phrase syntax.
+      buffer.write('"$escaped"');
       if (i == tokens.length - 1) {
         buffer.write('*');
       }

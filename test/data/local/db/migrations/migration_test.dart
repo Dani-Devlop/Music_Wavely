@@ -180,7 +180,7 @@ void main() {
       addTearDown(db.close);
       await db.customSelect('SELECT 1').getSingle();
 
-      expect(db.schemaVersion, 2);
+      expect(db.schemaVersion, greaterThanOrEqualTo(2));
 
       final v2Tables = await _schemaObjects(db, 'table');
       for (final table in Migration0002.tableNames) {

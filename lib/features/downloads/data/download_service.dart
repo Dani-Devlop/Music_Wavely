@@ -120,8 +120,11 @@ class DownloadService {
       track,
       baseDir: await _resolveBaseDir(),
     );
-    final String fileName = buildTrackFilename(track.title, track.format);
-    final String targetPath = '$dir/$fileName';
+    // The quality segment is appended by the service (not the template) so
+    // user templates stay stable across quality changes: default layout is
+    // `<base>/Music/<geo>/<genre>/<quality>/<file>`.
+    final String targetPath =
+        '$dir/${sanitizeFilename(quality ?? _prefs.quality)}/${buildTrackFilename(track.title, track.format)}';
     final int rowId = await _db.downloadsDao.enqueue(
       DownloadsCompanion.insert(
         sourceId: track.sourceId,
@@ -240,6 +243,12 @@ class DownloadService {
         if (e is DioException && e.type == DioExceptionType.cancel) {
           rethrow;
         }
+        // A size mismatch is a permanent protocol error (truncated body,
+        // lying Content-Length): resuming cannot fix it, so fail fast
+        // instead of burning the remaining attempts on the same bytes.
+        if (e is _SizeMismatchError) {
+          rethrow;
+        }
         lastError = e;
         if (attempt < 3) {
           await _backoff(attempt);
@@ -326,7 +335,7 @@ class DownloadService {
     // Size verification against Content-Length / Content-Range total.
     final int finalSize = offset + received;
     if (totalLength != null && finalSize != totalLength) {
-      throw StateError(
+      throw _SizeMismatchError(
         'size mismatch: expected $totalLength bytes, got $finalSize',
       );
     }
@@ -491,7 +500,10 @@ class DownloadService {
       // checked) — see pause().
     }
     final DownloadRow? row = await _db.downloadsDao.byId(rowId);
-    if (row != null && await _executor.exists(row.targetPath)) {
+    if (row != null) {
+      // Unconditional: the executor implementations tolerate a missing
+      // file, and recording the delete keeps cancel semantics honest even
+      // when no bytes landed yet.
       await _executor.delete(row.targetPath);
     }
     await _db.downloadsDao.markStatus(
@@ -518,4 +530,16 @@ class DownloadService {
 
   /// Closes the event stream (composition-root teardown).
   Future<void> dispose() => _events.close();
+}
+
+/// Permanent size-verification failure (non-retryable): the delivered body
+/// does not match the declared Content-Length / Content-Range total, so
+/// resuming cannot fix it — the job fails immediately.
+class _SizeMismatchError extends Error {
+  _SizeMismatchError(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
