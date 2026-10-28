@@ -1,0 +1,46 @@
+{
+  "kind": "Listing",
+  "data": {
+    "children": [
+      {
+        "kind": "t3",
+        "data": {
+          "id": "1abcde",
+          "title": "New AI mastering plugin claims to match human engineers",
+          "selftext": "The plugin uses machine learning trained on mastering chains. Is production automation finally here?",
+          "url": "https://example.com/ai-mastering",
+          "permalink": "/r/Music/comments/1abcde/ai_mastering/",
+          "thumbnail": "https://b.thumbs.redditmedia.com/example.jpg",
+          "created_utc": 1767139200.0,
+          "subreddit": "Music"
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "2fghij",
+          "title": "Aurora announces new album 'Northern Light' drops March 5",
+          "selftext": "",
+          "url": "https://example.com/aurora-album",
+          "permalink": "/r/Music/comments/2fghij/aurora_album/",
+          "thumbnail": "self",
+          "created_utc": 1767225600.0,
+          "subreddit": "Music"
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "3klmno",
+          "title": "How to learn mixing at home: a beginner guide",
+          "selftext": "A long tutorial covering DAW basics and production workflow.",
+          "url": "https://example.com/mixing-guide",
+          "permalink": "/r/Music/comments/3klmno/mixing_guide/",
+          "thumbnail": "default",
+          "created_utc": 1767312000.0,
+          "subreddit": "Music"
+        }
+      }
+    ]
+  }
+}

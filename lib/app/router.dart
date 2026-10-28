@@ -16,6 +16,8 @@ import 'package:wavely/features/downloads/presentation/download_settings_screen.
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
 import 'package:wavely/features/library/presentation/album_detail_screen.dart';
 import 'package:wavely/features/library/presentation/artist_detail_screen.dart';
+import 'package:wavely/features/news/presentation/news_screen.dart';
+import 'package:wavely/features/news/presentation/news_settings_screen.dart';
 import 'package:wavely/core/config/env.dart';
 import 'package:wavely/features/library/presentation/library_screen.dart';
 import 'package:wavely/features/onboarding/data/onboarding_repository.dart';
@@ -182,6 +184,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'settings',
             parentNavigatorKey: rootNavigatorKey,
             builder: (context, state) => const DownloadSettingsScreen(),
+          ),
+        ],
+      ),
+      // -- Stage 2.2: news --------------------------------------------------
+      GoRoute(
+        path: newsRoute,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const NewsScreen(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'settings',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => const NewsSettingsScreen(),
           ),
         ],
       ),

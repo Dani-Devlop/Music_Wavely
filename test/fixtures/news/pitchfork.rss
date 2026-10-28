@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Pitchfork Latest News</title>
+    <link>https://pitchfork.com/news/</link>
+    <description>The latest music news</description>
+    <item>
+      <title>Review: a synthesizer retrospective collects early works</title>
+      <link>https://pitchfork.com/news/synth-retrospective/</link>
+      <guid isPermaLink="false">pf-001</guid>
+      <description><![CDATA[<p>The <b>compilation</b> gathers rare singles.</p>]]></description>
+      <pubDate>Mon, 06 Jan 2025 10:30:00 GMT</pubDate>
+      <media:thumbnail url="https://pitchfork.com/img/pf-001.jpg" />
+    </item>
+    <item>
+      <title>Indie artist drops surprise EP on streaming</title>
+      <link>https://pitchfork.com/news/surprise-ep/</link>
+      <guid isPermaLink="false">pf-002</guid>
+      <description>Short notice release.</description>
+      <pubDate>Tue, 07 Jan 2025 08:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

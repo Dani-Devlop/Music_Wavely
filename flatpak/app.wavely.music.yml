@@ -1,0 +1,31 @@
+app-id: app.wavely.music
+runtime: org.freedesktop.Platform
+runtime-version: "23.08"
+sdk: org.freedesktop.Sdk
+command: wavely
+separate-locales: false
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=pulseaudio
+  - --filesystem=home
+  - --device=dri
+  - --socket=wayland
+  - --socket=fallback-x11
+modules:
+  # The Flutter Linux bundle is built by CI (flutter build linux --release)
+  # and shipped as a tarball artifact; this manifest wraps that bundle for
+  # local flatpak-builder runs. See docs/PACKAGING.md for the full flow.
+  - name: wavely
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 -t /app/bin/ wavely
+      - cp -r data /app/bin/data
+      - cp -r lib /app/bin/lib
+      - install -Dm644 flatpak/app.wavely.music.desktop
+        /app/share/applications/app.wavely.music.desktop
+      - install -Dm644 web/icons/icon-512.png
+        /app/share/icons/hicolor/512x512/apps/app.wavely.music.png
+    sources:
+      - type: dir
+        path: .

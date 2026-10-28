@@ -18,8 +18,10 @@ import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
 import 'package:wavely/features/library/presentation/library_providers.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
+import 'package:wavely/features/news/presentation/news_screen.dart';
 import 'package:wavely/features/settings/data/cache_cleaner.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
+import 'package:wavely/features/settings/data/update_service.dart';
 import 'package:wavely/features/settings/domain/settings.dart';
 import 'package:wavely/features/settings/presentation/widgets/sources_settings_section.dart';
 
@@ -372,6 +374,18 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('Parental controls'),
                 onTap: () => unawaited(context.push(ParentalScreen.route)),
               ),
+              // -- Stage 2.2: news ----------------------------------------
+              ListTile(
+                key: const Key('settings-news-row'),
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.newspaper_rounded,
+                  color: colors.textSecondary,
+                ),
+                title: const Text('News'),
+                subtitle: const Text('Music news from legal, no-key sources'),
+                onTap: () => unawaited(context.push(newsRoute)),
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(
@@ -425,6 +439,18 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('GitHub'),
                 subtitle: const Text('github.com/Dani-Devlop/Music_Wavely'),
                 onTap: () => unawaited(_openGitHub(context, ref)),
+              ),
+              // -- Stage 2.2: auto-updater --------------------------------
+              ListTile(
+                key: const Key('settings-updates-row'),
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.system_update_alt_rounded,
+                  color: colors.textSecondary,
+                ),
+                title: const Text('Check for updates'),
+                subtitle: const Text('Releases are published on GitHub'),
+                onTap: () => unawaited(_checkForUpdates(context, ref)),
               ),
             ],
           ),
@@ -574,6 +600,38 @@ class SettingsScreen extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Open in browser: $_gitHubUrl')),
     );
+  }
+
+  /// Stage 2.2: runs the GitHub-Releases update check and reports the
+  /// outcome as a SnackBar; when an update exists the release page opens
+  /// through the [LinkLauncher] (install flows stay user-visible — see
+  /// docs/PACKAGING.md).
+  Future<void> _checkForUpdates(BuildContext context, WidgetRef ref) async {
+    final service = UpdateService();
+    final UpdateCheckResult result = await service.checkForUpdate();
+    if (!context.mounted) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    if (!result.updateAvailable) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Wavely is up to date.')),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Update available: ${result.latestVersion}'),
+      ),
+    );
+    final url = Uri.parse(result.releaseUrl ?? UpdateService.releasesPage);
+    final launched =
+        await ref.read(linkLauncherProvider).launchExternal(url);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Open in browser: ${url.toString()}')),
+      );
+    }
   }
 }
 

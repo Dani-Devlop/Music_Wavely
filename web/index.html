@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    Flutter web bootstrapping template (regenerated for Stage 2.2):
+    the base template is the standard Flutter 3.35 output with the
+    Stage 2.2 additions marked below — manifest/theme-color/icons,
+    the Telegram Mini App script (loaded only when TELEGRAM_MODE builds
+    request it — the script is a harmless no-op outside Telegram) and the
+    service-worker registration.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A glassy, privacy-first music player for legal sources only.">
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Wavely">
+
+  <!-- Stage 2.2: PWA manifest + theme color + touch icon -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7C5CFF">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+  <!-- Stage 2.2: Telegram Mini App bridge (no-op outside Telegram hosts) -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <title>Wavely</title>
+</head>
+<body>
+  <!-- Stage 2.2: service worker — precache shell + SWR metadata cache;
+       audio streams are never cached (see web/service_worker.js). -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/service_worker.js');
+      });
+    }
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

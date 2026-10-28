@@ -1,0 +1,18 @@
+# Wavely MSIX packaging configuration (Stage 2.2).
+#
+# Used by the `msix` package: `flutter pub add --dev msix && dart run msix:create`
+# (the release workflow adds the dev dependency on the fly).
+#
+# OWNER ACTIONS BEFORE RELEASE (docs/PACKAGING.md §signing):
+# - Replace `publisher` with the certificate subject of YOUR code-signing
+#   certificate.
+# - Provide `certificate_path` + `certificate_password` (never commit them).
+# - Replace the placeholder app icon (windows/runner/resources/app_icon.ico).
+display_name: Wavely
+publisher_display_name: Dani-Devlop
+identity_name: app.wavely.music
+msix_version: 0.1.0.1
+publisher: CN=Dani-Devlop
+logo_path: windows/runner/resources/app_icon.ico
+capabilities: internetClient
+sign: false

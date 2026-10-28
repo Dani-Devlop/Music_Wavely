@@ -17,10 +17,19 @@ All notable changes to Wavely. Format based on
 - Unified search, download manager with folder templates + provenance
 
 ### Stage 2.2 — News, Telegram Mini App, PWA, Desktop Packaging
-- **Not present — never authored or pushed.** No PR, no branch, and no
-  Stage 2.2 artifacts exist in the repository (verified at close-out via the
-  GitHub API). Planned scope only; must be built in a future session.
-  See `docs/FINAL_VERIFICATION.md` §1.
+- News: Reddit JSON + Pitchfork/NME/custom RSS, keyword classifier,
+  offline cache via the existing http_cache (30-min TTL)
+- Telegram Mini App: dart:js_interop bridge, HMAC-validated initData edge
+  function, theme adapter, compile-time TELEGRAM_MODE
+- PWA: manifest + placeholder icons, service worker (shell precache +
+  SWR metadata cache, audio never cached), Media Session wiring,
+  iOS guidance banner
+- Desktop: MSIX config (unsigned), Flatpak manifest + .desktop,
+  GitHub-Releases auto-update check, tag-driven release workflow
+- Docs: TELEGRAM_MINIAPP, PACKAGING, PRIVACY, CONTRIBUTING; LICENSE
+  copyright → Dani-Devlop
+- Authored on `feat/stage-2.2` (was absent before Stage 2.2 authoring —
+  see `docs/STAGE_2_2_REPORT.md`); awaiting owner local verification
 
 ### Pending
 - Local verification: `flutter pub get` + `build_runner` + `flutter analyze`
