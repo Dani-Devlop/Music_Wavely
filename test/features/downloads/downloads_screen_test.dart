@@ -10,6 +10,7 @@
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -52,8 +53,8 @@ DownloadsCompanion _row({
       sourceTrackId: sourceTrackId,
       targetPath: '/x/file',
       quality: 'original',
-      status: Value(status),
-      progress: Value(progress),
+      status: status,
+      progress: progress,
       startedAt: DateTime.utc(2024),
       errorMessage: Value(error),
     );

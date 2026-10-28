@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:html/dom.dart' as html;
 import 'package:html/parser.dart' as html_parser;
 
 import 'package:wavely/data/remote/metadata_http.dart';
@@ -173,7 +174,7 @@ class FmaSource implements SourceProvider {
   }
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,

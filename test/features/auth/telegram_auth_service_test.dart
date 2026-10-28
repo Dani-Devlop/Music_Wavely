@@ -33,7 +33,7 @@ Session _session(String accessToken) => Session.fromJson(<String, dynamic>{
         'user_metadata': <String, dynamic>{},
         'created_at': '2024-01-01T00:00:00Z',
       },
-    });
+    })!;
 
 Success<T> _ok<T>(Result<T> result) => result as Success<T>;
 Err<T> _err<T>(Result<T> result) => result as Err<T>;

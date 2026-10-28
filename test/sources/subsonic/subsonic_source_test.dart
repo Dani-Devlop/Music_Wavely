@@ -12,6 +12,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/sources/source_exception.dart';
+import 'package:wavely/sources/subsonic/subsonic_config.dart';
 import 'package:wavely/sources/subsonic/subsonic_source.dart';
 
 import '../source_contract.dart';

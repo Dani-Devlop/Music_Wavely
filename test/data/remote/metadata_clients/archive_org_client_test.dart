@@ -14,6 +14,7 @@ import 'package:wavely/core/errors/failures.dart';
 import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/remote/metadata_clients/archive_org_client.dart';
+import 'package:wavely/data/remote/metadata_http.dart';
 
 AppDatabase _memoryDb() => AppDatabase(NativeDatabase.memory());
 

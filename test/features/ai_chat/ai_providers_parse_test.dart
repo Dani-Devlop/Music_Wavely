@@ -130,7 +130,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final result = await provider.complete(
         AiConversation(
@@ -176,7 +176,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final reply = (await provider.complete(
         AiConversation(systemPrompt: 'S'),
@@ -197,7 +197,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       await provider.complete(_conversationWithToolResult());
       final request = transport.requests.single;
@@ -247,7 +247,7 @@ void main() {
         );
         final provider = GeminiProvider(
           apiKey: 'gm-key',
-          httpClient: http.MockClient(transport.handler),
+          httpClient: MockClient(transport.handler),
         );
         final result = await provider.complete(
           AiConversation(systemPrompt: 'S'),
@@ -293,7 +293,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final reply = (await provider.complete(
         AiConversation(systemPrompt: 'SYSTEM PROMPT'),
@@ -339,7 +339,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final reply = (await provider.complete(
         AiConversation(systemPrompt: 'S'),
@@ -360,7 +360,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       await provider.complete(_conversationWithToolResult());
       final request = transport.requests.single;
@@ -411,7 +411,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final result = await provider.complete(
         AiConversation(systemPrompt: 'S'),
@@ -433,7 +433,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -452,7 +452,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -478,7 +478,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -496,7 +496,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -514,12 +514,12 @@ void main() {
       final transport = _ScriptedTransport(
         responses: <http.Response>[],
         errors: <http.ClientException>[
-          const http.ClientException('socket closed'),
+          http.ClientException('socket closed'),
         ],
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -544,7 +544,7 @@ void main() {
       final provider = AiProviderFactory.create(
         geminiKey: 'gm',
         openAiKey: 'sk',
-        httpClient: http.MockClient(_noRequests),
+        httpClient: MockClient(_noRequests),
       );
       expect(provider!.id, 'gemini');
     });
@@ -552,7 +552,7 @@ void main() {
     test('falls back to OpenAI when only that key is present', () {
       final provider = AiProviderFactory.create(
         openAiKey: 'sk',
-        httpClient: http.MockClient(_noRequests),
+        httpClient: MockClient(_noRequests),
       );
       expect(provider!.id, 'openai');
     });
@@ -565,7 +565,7 @@ void main() {
         AiProviderFactory.create(
           geminiKey: ' ',
           openAiKey: 'sk',
-          httpClient: http.MockClient(_noRequests),
+          httpClient: MockClient(_noRequests),
         )!
             .id,
         'openai',

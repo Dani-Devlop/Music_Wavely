@@ -35,6 +35,9 @@ class SubsonicSource implements SourceProvider {
         _executor = executor ?? IoDownloadFileExecutor(),
         mapper = mapper ?? SubsonicMapper();
 
+  /// Connection settings (server URL, credentials, API version).
+  final SubsonicConfig config;
+
   /// Dio client (injectable for tests).
   final Dio _dio;
 
@@ -163,7 +166,7 @@ class SubsonicSource implements SourceProvider {
   }
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,

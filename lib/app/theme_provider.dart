@@ -23,7 +23,7 @@ class ThemePair {
 @Riverpod(keepAlive: true)
 ThemePair theme(Ref ref) {
   final settings = ref.watch(settingsProvider);
-  final accent = settings.accent.toWavelyAccent();
+  final accent = settings.accent.toWavelyAccent;
   return ThemePair(
     light: WavelyThemes.light(accent),
     dark: WavelyThemes.dark(accent),

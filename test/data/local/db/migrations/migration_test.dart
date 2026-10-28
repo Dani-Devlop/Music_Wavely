@@ -15,7 +15,7 @@ library;
 
 import 'dart:io';
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -148,7 +148,7 @@ void main() {
 
     test('creates the Stage 1.2 tables and keeps v1 data', () async {
       // ---- build a genuine v1 database -----------------------------
-      final v1 = _V1SchemaAppDatabase(NativeDatabase.file(dbFile));
+      final v1 = _V1SchemaAppDatabase(NativeDatabase.createInBackground(dbFile));
       await v1.customSelect('SELECT 1').getSingle();
 
       final v1Tables = await _schemaObjects(v1, 'table');
@@ -176,7 +176,7 @@ void main() {
       await v1.close();
 
       // ---- reopen with the real database → onUpgrade(1, 2) ----------
-      final db = AppDatabase(NativeDatabase.file(dbFile));
+      final db = AppDatabase(NativeDatabase.createInBackground(dbFile));
       addTearDown(db.close);
       await db.customSelect('SELECT 1').getSingle();
 
@@ -204,7 +204,7 @@ void main() {
 
     test('recreates a working FTS index (new rows become searchable)',
         () async {
-      final v1 = _V1SchemaAppDatabase(NativeDatabase.file(dbFile));
+      final v1 = _V1SchemaAppDatabase(NativeDatabase.createInBackground(dbFile));
       await v1.customSelect('SELECT 1').getSingle();
       await v1.tracksDao.insertTrack(
         TracksCompanion.insert(
@@ -220,7 +220,7 @@ void main() {
       );
       await v1.close();
 
-      final db = AppDatabase(NativeDatabase.file(dbFile));
+      final db = AppDatabase(NativeDatabase.createInBackground(dbFile));
       addTearDown(db.close);
       await db.customSelect('SELECT 1').getSingle();
 
@@ -244,11 +244,11 @@ void main() {
     });
 
     test('creates the idx_sync_outbox_created index', () async {
-      final v1 = _V1SchemaAppDatabase(NativeDatabase.file(dbFile));
+      final v1 = _V1SchemaAppDatabase(NativeDatabase.createInBackground(dbFile));
       await v1.customSelect('SELECT 1').getSingle();
       await v1.close();
 
-      final db = AppDatabase(NativeDatabase.file(dbFile));
+      final db = AppDatabase(NativeDatabase.createInBackground(dbFile));
       addTearDown(db.close);
       await db.customSelect('SELECT 1').getSingle();
 

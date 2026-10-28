@@ -7,7 +7,11 @@ import 'package:wavely/data/remote/metadata_http.dart';
 /// One Reddit post from an `/r/<sub>/new` listing (metadata only).
 class RedditPost {
   /// Creates a post.
-  const RedditPost({required this.title, required this.permalinkUrl});
+  const RedditPost({
+    required this.title,
+    required this.permalinkUrl,
+    this.createdUtc,
+  });
 
   /// Post title.
   final String title;

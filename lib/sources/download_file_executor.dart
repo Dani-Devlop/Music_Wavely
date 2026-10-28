@@ -32,5 +32,10 @@ abstract class DownloadFileExecutor {
 
   /// Returns the platform [File] for [path] (SourceProvider.download
   /// contract return value).
-  File fileAt(String path);
+  ///
+  /// Declared `dynamic` because the io arm's `File` (dart:io) and the
+  /// analyzer-resolved web-stub `File` are distinct nominal types in every
+  /// static context; both implementations override this fine (File <: dynamic,
+  /// Never <: dynamic) while call sites receive the real platform file.
+  dynamic fileAt(String path);
 }

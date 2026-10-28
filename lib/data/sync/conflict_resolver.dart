@@ -30,7 +30,7 @@ class PlaylistRef {
 
 /// What the merger should do with one remote playlist.
 sealed class PlaylistMergeAction {
-  const PlaylistMergeAction._({required this.remote});
+  const PlaylistMergeAction({required this.remote});
 
   /// The remote playlist the action applies to.
   final PlaylistRef remote;

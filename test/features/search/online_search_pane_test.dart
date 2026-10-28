@@ -7,13 +7,18 @@
 // note and the error state. Sources are scripted; the download service
 // runs over an in-memory database + in-memory executor.
 
-import 'package:drift/native.dart';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/data/local/db/app_database.dart';
+import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/data/local/db/tables/downloads.dart';
 import 'package:wavely/domain/entities/entities.dart';
@@ -54,7 +59,7 @@ class _ScriptedSource implements SourceProvider {
       StreamUrl(url: 'https://cdn/${t.sourceTrackId}');
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,
@@ -335,7 +340,7 @@ class _ThrowingSource implements SourceProvider {
       StreamUrl(url: 'https://x');
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,

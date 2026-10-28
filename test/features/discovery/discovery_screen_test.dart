@@ -27,7 +27,7 @@ import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
 /// http.Client stub for the throwaway clients the fake service's super
 /// constructor requires — no call ever reaches it (all three lookups are
 /// overridden).
-class _NoopClient implements http.Client {
+class _NoopClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     throw UnimplementedError('noop client must not be used');

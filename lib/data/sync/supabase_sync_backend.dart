@@ -153,7 +153,7 @@ class SupabaseSyncBackend implements SyncBackend, SettingsPullable {
             ? playPayloadFromRow(row)
             : jsonDecode(row.payload) as Map<String, dynamic>;
         if (row.op == 'delete') {
-          await _client.from(table).delete().match(payload);
+          await _client.from(table).delete().match(payload.cast<String, Object>());
         } else {
           await _client.from(table).upsert(payload);
         }

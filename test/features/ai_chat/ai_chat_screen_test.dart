@@ -20,6 +20,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/design_system/design_system.dart';
+import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/ai_chat/ai_chat_providers.dart';
 import 'package:wavely/features/ai_chat/data/ai_provider.dart';
 import 'package:wavely/features/ai_chat/data/ai_service.dart';

@@ -13,6 +13,7 @@ library;
 
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 /// Pure-Dart metadata payload builder (unit-testable without a browser).
 Map<String, String> buildMediaMetadataPayload({
@@ -78,7 +79,7 @@ class PwaMediaSession {
       final JSObject ctor =
           globalContext.getProperty('MediaMetadata'.toJS) as JSObject;
       final JSObject metadataObject =
-          ctor.callAsConstructor<JSObject>(payload);
+          (ctor as JSFunction).callAsConstructor<JSObject>(payload);
       session.setProperty('metadata'.toJS, metadataObject);
     } on Object {
       // Unsupported browser → no-op.

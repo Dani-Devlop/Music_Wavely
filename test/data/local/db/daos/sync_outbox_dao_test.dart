@@ -10,6 +10,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:wavely/data/local/db/app_database.dart';
+import 'package:wavely/data/local/db/daos/sync_outbox_dao.dart';
 
 void main() {
   late AppDatabase db;
@@ -27,7 +28,7 @@ void main() {
   }) {
     return db.into(db.syncOutbox).insert(
           SyncOutboxCompanion.insert(
-            tableName: 'plays',
+            outboxTable: 'plays',
             rowKey: rowKey,
             op: 'insert',
             payload: '{"id": 1}',
@@ -47,7 +48,7 @@ void main() {
     final row = await (db.select(db.syncOutbox)
           ..where((r) => r.id.equals(id)))
         .getSingle();
-    expect(row.tableName, 'plays');
+    expect(row.outboxTable, 'plays');
     expect(row.rowKey, '42');
     expect(row.op, 'insert');
     expect(row.payload, '{"id": 42}');

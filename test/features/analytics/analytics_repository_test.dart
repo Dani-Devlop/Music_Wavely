@@ -17,6 +17,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/sync/fingerprint.dart';
+import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/analytics/data/analytics_repository.dart';
 
 AppDatabase _memoryDb() => AppDatabase(NativeDatabase.memory());
@@ -531,7 +532,7 @@ void main() {
       final rows = await db.syncOutboxDao.pending();
       expect(rows, hasLength(1));
       final row = rows.single;
-      expect(row.tableName, 'track_stats_daily');
+      expect(row.outboxTable, 'track_stats_daily');
       expect(row.op, 'upsert');
       expect(row.rowKey, '2026-06-15');
 

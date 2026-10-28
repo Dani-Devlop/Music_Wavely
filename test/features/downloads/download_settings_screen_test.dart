@@ -4,6 +4,7 @@
 // defaults render, quality segments persist, folder-template submit
 // persists, Wi-Fi-only switch toggles, concurrency slider writes.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';

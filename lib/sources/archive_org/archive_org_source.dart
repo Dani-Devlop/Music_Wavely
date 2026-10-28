@@ -322,7 +322,7 @@ class ArchiveOrgSource implements SourceProvider {
   }
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,

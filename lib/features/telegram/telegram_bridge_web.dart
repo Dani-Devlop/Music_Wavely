@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:wavely/features/telegram/telegram_bridge.dart';
 import 'package:wavely/features/telegram/telegram_web_app.dart';

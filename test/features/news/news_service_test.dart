@@ -34,18 +34,31 @@ Future<NewsPrefs> _prefs({List<String> muted = const <String>[]}) async {
 
 /// In-memory HTTP client serving canned bodies per URL; counts requests.
 class _FakeHttp extends http_testing.MockClient {
-  _FakeHttp(Map<String, String> bodies, {this.status = 200})
-      : super((request) async {
-          calls++;
-          final String? body = bodies[request.url.toString()];
-          if (body == null) {
-            return http.Response('not found', 404);
-          }
-          return http.Response(body, status);
-        });
+  _FakeHttp._(
+    Future<http.Response> Function(http.Request) handler, {
+    required this.status,
+  }) : super(handler);
+
+  /// Factory keeps the handler in a local `self` reference: initializers
+  /// cannot touch `this`, constructor bodies can (through the local).
+  factory _FakeHttp(Map<String, String> bodies, {int status = 200}) {
+    late final _FakeHttp self;
+    self = _FakeHttp._(
+      (request) async {
+        self.calls++;
+        final String? body = bodies[request.url.toString()];
+        if (body == null) {
+          return http.Response('not found', 404);
+        }
+        return http.Response(body, status);
+      },
+      status: status,
+    );
+    return self;
+  }
 
   int calls = 0;
-  int status;
+  final int status;
 }
 
 const String _redditUrl =
@@ -105,7 +118,7 @@ void main() {
 
   test('word-boundary: "said" does NOT match tech_ai "ai"', () {
     expect(
-      NewsCategoryClassifier.classify('Chairman said tour is over'),
+      NewsCategoryClassifier.classify('Chairman said tour is over', ''),
       NewsCategory.artistNews,
     );
   });

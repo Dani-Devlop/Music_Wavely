@@ -20,6 +20,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/playback/engines/desktop_playback_engine.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
+import 'package:wavely/playback/engines/playback_engine_io.dart';
 import 'package:wavely/playback/engines/mobile_playback_engine.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 
@@ -40,9 +41,9 @@ void runSmokeTests() {
 
     test('guarded live construction (skips when natives are missing)',
         () async {
-      PlaybackEngine? engine;
+      PlaybackEngine? engineOrNull;
       try {
-        engine = createEngine();
+        engineOrNull = createEngine();
       } on Object catch (e) {
         expect(true, isTrue,
             reason: 'skipped: engine natives unavailable on the host '
@@ -50,6 +51,7 @@ void runSmokeTests() {
                 'integration tests');
         return;
       }
+      final engine = engineOrNull!;
       try {
         expect(
           engine is DesktopPlaybackEngine || engine is MobilePlaybackEngine,
@@ -59,7 +61,7 @@ void runSmokeTests() {
         expect(engine.positionStream, isNotNull);
       } finally {
         try {
-          await engine.dispose();
+          await engineOrNull?.dispose();
         } on Object catch (_) {
           // Best-effort teardown of a partially-initialized native engine.
         }

@@ -70,7 +70,7 @@ class DownloadsDao extends DatabaseAccessor<AppDatabase>
   /// Updates the progress percentage of [id].
   Future<void> updateProgress(int id, int progress) =>
       (update(downloads)..where((d) => d.id.equals(id)))
-          .write(DownloadsCompanion(progress: progress.clamp(0, 100)));
+          .write(DownloadsCompanion(progress: Value(progress.clamp(0, 100))));
 
   /// Sets the status and optional error / completion / provenance fields.
   Future<void> markStatus(

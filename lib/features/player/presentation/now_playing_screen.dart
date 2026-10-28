@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/core/extensions/extensions.dart';
@@ -12,6 +12,7 @@ import 'package:wavely/features/library/presentation/local_cover.dart';
 import 'package:wavely/features/lyrics/presentation/lyrics_view.dart';
 import 'package:wavely/features/player/presentation/queue_sheet.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
+import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
 /// Full-screen now-playing view: blurred cover backdrop, seek slider,

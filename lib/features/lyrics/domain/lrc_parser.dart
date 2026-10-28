@@ -52,7 +52,12 @@ class LrcParser {
     var offsetMs = 0;
     var sawTimestamp = false;
 
-    for (final rawLine in text.split('\n')) {
+    final rawLines = text.split('\n');
+    // A trailing newline is a file terminator, not a lyric gap.
+    if (rawLines.isNotEmpty && rawLines.last.isEmpty) {
+      rawLines.removeLast();
+    }
+    for (final rawLine in rawLines) {
       var rest = rawLine;
       var sawAnyTag = false;
       final stamps = <int>[];
@@ -107,10 +112,12 @@ class LrcParser {
     for (final textLine in plain) {
       stamped.add(LyricLine(startTime: Duration.zero, text: textLine));
     }
-    final sorted = mergeSort<LyricLine>(
+    // package:collection's mergeSort sorts in place and returns void.
+    mergeSort<LyricLine>(
       stamped,
       compare: (a, b) => a.startTime.compareTo(b.startTime),
     );
+    final sorted = stamped;
     return LyricsResult(
       lines: List<LyricLine>.unmodifiable(sorted),
       metadata: metadata,

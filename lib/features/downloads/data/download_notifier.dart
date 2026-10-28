@@ -17,6 +17,7 @@ abstract class DownloadNotifier {
 
 /// No-op notifier (tests, and platforms without notification support).
 class NoopDownloadNotifier implements DownloadNotifier {
+  const NoopDownloadNotifier();
   @override
   Future<void> notifyStarted(String title) async {}
 

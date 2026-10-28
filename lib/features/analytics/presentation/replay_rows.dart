@@ -48,7 +48,7 @@ class OnRepeatRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tracks = ref.watch(onRepeatProvider).valueOrNull;
+    final tracks = ref.watch(onRepeatProvider).value;
     if (tracks == null || tracks.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -64,7 +64,7 @@ class TopOfYearRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entries = ref.watch(topOfYearProvider).valueOrNull;
+    final entries = ref.watch(topOfYearProvider).value;
     if (entries == null || entries.isEmpty) {
       return const SizedBox.shrink();
     }

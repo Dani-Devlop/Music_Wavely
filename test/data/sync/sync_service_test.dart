@@ -96,12 +96,12 @@ class _FakeSettingsBackend implements SyncBackend, SettingsPullable {
 SyncOutboxCompanion _outboxRow(
   String rowKey, {
   required DateTime createdAt,
-  String tableName = 'plays',
+  String outboxTableName = 'plays',
   String op = 'insert',
   String payload = '{"ok":true}',
 }) =>
     SyncOutboxCompanion.insert(
-      tableName: tableName,
+      outboxTable: outboxTableName,
       rowKey: rowKey,
       op: op,
       payload: payload,

@@ -221,5 +221,5 @@ class _Target {
   final String word;
   final String severity;
 
-  late final String normalized = letters.join();
+  String get normalized => letters.join();
 }

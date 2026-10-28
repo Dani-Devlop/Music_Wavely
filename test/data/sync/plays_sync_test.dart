@@ -87,7 +87,7 @@ void main() {
       final rows = await db.syncOutboxDao.pending();
       expect(rows, hasLength(1));
       final row = rows.single;
-      expect(row.tableName, 'plays');
+      expect(row.outboxTable, 'plays');
       expect(row.op, 'insert');
       final fingerprint = playFingerprint(track);
       expect(row.rowKey, '$fingerprint:${startedAt.toIso8601String()}');
@@ -248,7 +248,7 @@ void main() {
       final sha1 = 'b' * 40;
       final row = SyncOutboxRow(
         id: 1,
-        tableName: 'plays',
+        outboxTable: 'plays',
         rowKey: '$sha1:2026-06-01T00:00:00.000Z',
         op: 'insert',
         payload: jsonEncode(<String, dynamic>{

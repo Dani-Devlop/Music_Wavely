@@ -130,7 +130,7 @@ class OpenAiProvider implements AiProvider {
       };
     }
     if (node is List) {
-      return <Object>[for (final item in node) _lowercaseTypes(item)];
+      return <Object?>[for (final item in node) _lowercaseTypes(item)];
     }
     return node;
   }

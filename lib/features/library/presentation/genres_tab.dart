@@ -130,7 +130,7 @@ class _GenreTrackList extends ConsumerWidget {
           itemBuilder: (context, index) {
             final track = tracks[index];
             return TrackTile(
-              key: ValueKey<int>('genre-track-${track.id}'),
+              key: ValueKey<String>('genre-track-${track.id}'),
               track: track,
               showSourceBadge: true,
               onTap: () {

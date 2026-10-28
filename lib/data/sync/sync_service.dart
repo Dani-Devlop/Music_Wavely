@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:wavely/core/errors/failures.dart';
+import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/core/settings/settings_store.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/daos/plays_dao.dart';
@@ -191,7 +192,7 @@ class SyncService {
           continue;
         }
         final failure = switch (result) {
-          Err(:final f) => f,
+          Err(failure: final f) => f,
           Success() => null,
         };
         _lastError = _describe(failure);
@@ -229,7 +230,7 @@ class SyncService {
       final result = await backend.pull(since);
       if (result.isErr) {
         final failure = switch (result) {
-          Err(:final f) => f,
+          Err(failure: final f) => f,
           Success() => null,
         };
         _lastError = _describe(failure);
@@ -361,11 +362,15 @@ class SyncService {
   }
 
   Future<void> _pullSettingsIfAvailable(SyncBackend backend) async {
-    if (backend is! SettingsPullable) {
+    // NOTE: the stable analyzer cannot promote to an *abstract* type, so an
+    // explicit cast local is used instead of relying on `is!` + return.
+    final SettingsPullable? pullable =
+        backend is SettingsPullable ? backend as SettingsPullable : null;
+    if (pullable == null) {
       return;
     }
     try {
-      final result = await backend.pullSettings();
+      final result = await pullable.pullSettings();
       final snapshot = switch (result) {
         Success<RemoteSettingsSnapshot?>(:final value) => value,
         Err<RemoteSettingsSnapshot?>() => null,

@@ -49,22 +49,30 @@ class LyricsDao extends DatabaseAccessor<AppDatabase>
     String? syncedLrc,
     String? plainText,
   }) {
-    return customStatement(
-      'INSERT INTO lyrics_cache '
-      '(track_id, provider, synced_lrc, plain_text, offset_ms, fetched_at) '
-      'VALUES (?, ?, ?, ?, 0, ?) '
-      'ON CONFLICT (track_id, provider) DO UPDATE SET '
-      'synced_lrc = COALESCE(excluded.synced_lrc, lyrics_cache.synced_lrc), '
-      'plain_text = COALESCE(excluded.plain_text, lyrics_cache.plain_text), '
-      'offset_ms = 0, '
-      'fetched_at = excluded.fetched_at',
-      [
-        Variable.withInt(trackId),
-        Variable.withString(provider),
-        Variable<String>(syncedLrc),
-        Variable<String>(plainText),
-        Variable.withDateTime(DateTime.now()),
-      ],
+    // Raw customStatement would need raw sqlite values (drift Variables are
+    // not bindable there); the insertable + DoUpdate builder expresses the
+    // same COALESCE-preserve semantics with full type mapping.
+    return into(lyricsCache).insert(
+      LyricsCacheCompanion.insert(
+        trackId: trackId,
+        provider: provider,
+        syncedLrc: Value(syncedLrc),
+        plainText: Value(plainText),
+        fetchedAt: DateTime.now(),
+      ),
+      onConflict: DoUpdate.withExcluded(
+        (_, excluded) => LyricsCacheCompanion.custom(
+          syncedLrc: const CustomExpression<String>(
+            'COALESCE(excluded.synced_lrc, lyrics_cache.synced_lrc)',
+          ),
+          plainText: const CustomExpression<String>(
+            'COALESCE(excluded.plain_text, lyrics_cache.plain_text)',
+          ),
+          offsetMs: const Constant(0),
+          fetchedAt: excluded.fetchedAt,
+        ),
+        target: <Column>[lyricsCache.trackId, lyricsCache.provider],
+      ),
     );
   }
 

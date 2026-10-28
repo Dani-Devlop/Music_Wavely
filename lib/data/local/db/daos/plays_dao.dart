@@ -64,11 +64,11 @@ class PlaysDao extends DatabaseAccessor<AppDatabase> with _$PlaysDaoMixin {
   /// Bumps the play statistics of [trackId]: `playCount + 1` and
   /// `lastPlayedAt = now` in a single SQL statement.
   Future<void> incrementTrackPlayStats(int trackId) {
-    return customStatement(
-      'UPDATE tracks '
-      'SET play_count = play_count + 1, last_played_at = ? '
-      'WHERE id = ?',
-      [Variable.withDateTime(DateTime.now()), Variable.withInt(trackId)],
+    return (update(attachedDatabase.tracks)..where((t) => t.id.equals(trackId))).write(
+      TracksCompanion.custom(
+        playCount: const CustomExpression<int>('play_count + 1'),
+        lastPlayedAt: Variable.withDateTime(DateTime.now()),
+      ),
     );
   }
 }

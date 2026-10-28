@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show Value;
 
+import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/daos/news_dao.dart';
 import 'package:wavely/data/local/db/tables/news_articles.dart';
 import 'package:wavely/features/news/data/news_category.dart';

@@ -6,6 +6,7 @@
 // Levenshtein helper itself. Five scripted sources cover the spec's
 // "5 mocked sources" contract case.
 
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/domain/repositories/source_provider.dart';
@@ -71,7 +72,7 @@ class ScriptedSource implements SourceProvider {
       StreamUrl(url: 'https://example/${t.sourceTrackId}');
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,

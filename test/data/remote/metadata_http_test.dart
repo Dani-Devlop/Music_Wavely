@@ -17,6 +17,7 @@ import 'package:http/testing.dart';
 import 'package:wavely/core/errors/failures.dart';
 import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/data/local/db/app_database.dart';
+import 'package:wavely/data/local/db/daos/http_cache_dao.dart';
 import 'package:wavely/data/remote/metadata_http.dart';
 
 Success<String> _ok(Result<String> result) => result as Success<String>;
@@ -161,7 +162,7 @@ void main() {
         cacheDao: db.httpCacheDao,
         client: MockClient((request) async {
           if (offline) {
-            throw const http.ClientException('device offline');
+            throw http.ClientException('device offline');
           }
           return _json('{"cached": true}');
         }),
@@ -186,7 +187,7 @@ void main() {
       final client = CachingHttpClient(
         cacheDao: db.httpCacheDao,
         client: MockClient((request) async {
-          throw const http.ClientException('DNS failure');
+          throw http.ClientException('DNS failure');
         }),
       );
 

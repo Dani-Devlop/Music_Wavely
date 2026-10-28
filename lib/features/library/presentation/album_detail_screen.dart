@@ -143,7 +143,7 @@ class AlbumDetailScreen extends ConsumerWidget {
                           itemBuilder: (context, index) {
                             final track = tracks[index];
                             return TrackTile(
-                              key: ValueKey<int>('album-track-${track.id}'),
+                              key: ValueKey<String>('album-track-${track.id}'),
                               track: track,
                               showSourceBadge: true,
                               onTap: () {

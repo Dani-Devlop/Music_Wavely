@@ -14,6 +14,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/repositories/drift_lyrics_cache.dart';
+import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 
 void main() {

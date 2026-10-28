@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import 'package:wavely/core/utils/link_launcher.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/news/data/news_article.dart';
+import 'package:wavely/features/news/data/news_service.dart';
+import 'package:wavely/features/news/presentation/news_settings_screen.dart';
 import 'package:wavely/features/news/data/news_category.dart';
 import 'package:wavely/features/news/data/news_providers.dart';
 
@@ -226,7 +228,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                           ),
                         ),
                       ),
-                      errorBuilder: (_, __, ___) => Icon(
+                      errorWidget: (_, __, ___) => Icon(
                         Icons.newspaper_rounded,
                         color: colors.textTertiary,
                       ),

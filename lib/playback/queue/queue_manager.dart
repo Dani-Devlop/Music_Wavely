@@ -783,7 +783,7 @@ class QueueManager extends StateNotifier<QueueState> {
       unawaited(
         _store.write(
           AppConstants.queueOriginalPersistKey,
-          _unshuffledTracks.map((t) => t.id).whereType<int>().join(','),
+          _unshuffledTracks?.map((t) => t.id).whereType<int>().join(',') ?? '',
         ),
       );
     }

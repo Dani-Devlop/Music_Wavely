@@ -98,7 +98,7 @@ class RssClient {
   };
 
   static RssItem? _parseBlock(String block) {
-    final title = _clean(_firstTag(block, 'title'));
+    final title = _clean(_firstTag(block, 'title') ?? '');
     if (title.isEmpty) {
       return null;
     }

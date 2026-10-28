@@ -7,14 +7,15 @@
 // shared SourceProvider contract with expectsStreamFailure.
 
 import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wavely/data/remote/metadata_http.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/sources/fma/fma_source.dart';
 import 'package:wavely/sources/source_exception.dart';
-
 import '../source_contract.dart';
+
+
 
 class FakeFmaAdapter implements HttpClientAdapter {
   FakeFmaAdapter(this.handler);

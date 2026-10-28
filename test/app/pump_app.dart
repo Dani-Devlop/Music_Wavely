@@ -120,6 +120,7 @@ Future<WavelyTestHarness> pumpWavelyApp(
     packageName: 'dev.wavely.test',
     version: '0.1.0',
     buildNumber: '1',
+    buildSignature: 'test',
   );
 
   final db = AppDatabase(NativeDatabase.memory());
@@ -142,7 +143,7 @@ Future<WavelyTestHarness> pumpWavelyApp(
   );
 
   await tester.pumpWidget(
-    ProviderScope(
+    UncontrolledProviderScope(
       container: container,
       child: const WavelyApp(),
     ),

@@ -141,7 +141,7 @@ class CachingHttpClient {
               ...?extraHeaders,
             },
           )
-          .timeout(kMetadataHttpTimeout);
+          .timeout(MetadataHttp.kMetadataHttpTimeout);
       if (response.statusCode != 200) {
         return Result<String>.err(
           Failure.network(

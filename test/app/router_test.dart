@@ -75,7 +75,12 @@ void main() {
       final container = await configContainer();
       addTearDown(container.dispose);
       final router = container.read(routerProvider);
-      expect(router.initialLocation, LibraryScreen.libraryRoute);
+      // go_router 18 removed the `initialLocation` getter; the seed
+      // location is observable through the route information provider.
+      expect(
+        router.routeInformationProvider.value.location,
+        LibraryScreen.libraryRoute,
+      );
     });
 
     test('route table contains exactly the registered paths', () async {

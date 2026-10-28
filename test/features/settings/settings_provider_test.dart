@@ -181,7 +181,7 @@ void main() {
         ..addScanFolder('/music/kept')
         ..setNeverPlayLanguages(<String>['ja']);
       await _flushWrites();
-      await first.dispose();
+      first.dispose();
 
       final ProviderContainer second = _container(prefs);
       addTearDown(second.dispose);

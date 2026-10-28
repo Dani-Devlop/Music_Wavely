@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/design_system/design_system.dart';
+import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
 /// Bottom-of-app mini player bound to the queue state.
@@ -38,7 +39,7 @@ class MiniPlayerHost extends ConsumerWidget {
           );
     return AnimatedSwitcher(
       duration: WavelyDurations.normal,
-      curve: WavelyDurations.standard,
+      switchInCurve: WavelyDurations.standard,
       transitionBuilder: (child, animation) {
         final slide = Tween<Offset>(
           begin: const Offset(0, 1),

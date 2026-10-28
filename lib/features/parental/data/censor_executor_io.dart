@@ -52,7 +52,7 @@ class FfmpegCensorExecutor implements AudioCensorExecutor {
       return Result<String?>.err(
         Failure.storage(
           message: 'ffmpeg censor failed (code $returnCode)',
-          cause: logs.isEmpty ? null : logs,
+          cause: logs == null || logs.isEmpty ? null : logs,
         ),
       );
     } on Object catch (e) {

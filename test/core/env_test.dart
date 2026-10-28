@@ -59,11 +59,11 @@ void main() {
       // The contract: features check flags, never null-string juggling.
       // (isFalse/isTrue assertions in the group above cover the default
       // values; this asserts the TYPE contract via a bool-typed local.)
-      const bool hasSupabase = WavelyEnv.hasSupabase;
-      const bool hasAiProvider = WavelyEnv.hasAiProvider;
-      const bool hasTelegramBot = WavelyEnv.hasTelegramBot;
-      const bool hasSpotify = WavelyEnv.hasSpotify;
-      const bool hasJamendo = WavelyEnv.hasJamendo;
+      final bool hasSupabase = WavelyEnv.hasSupabase;
+      final bool hasAiProvider = WavelyEnv.hasAiProvider;
+      final bool hasTelegramBot = WavelyEnv.hasTelegramBot;
+      final bool hasSpotify = WavelyEnv.hasSpotify;
+      final bool hasJamendo = WavelyEnv.hasJamendo;
       expect(hasSupabase, isA<bool>());
       expect(hasAiProvider, isA<bool>());
       expect(hasTelegramBot, isA<bool>());

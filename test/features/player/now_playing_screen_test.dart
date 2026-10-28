@@ -10,7 +10,7 @@
 /// override is needed.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -19,6 +19,7 @@ import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 import 'package:wavely/features/lyrics/data/lyrics_repository.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
+import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 

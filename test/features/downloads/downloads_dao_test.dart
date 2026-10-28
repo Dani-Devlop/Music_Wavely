@@ -26,8 +26,8 @@ DownloadsCompanion _row({
       sourceTrackId: sourceTrackId,
       targetPath: targetPath,
       quality: 'original',
-      status: Value(status),
-      progress: Value(progress),
+      status: status,
+      progress: progress,
       startedAt: DateTime.utc(2024, 1, 1, 12, startedOffsetSec),
     );
 

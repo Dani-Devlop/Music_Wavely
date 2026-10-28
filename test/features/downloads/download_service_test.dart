@@ -14,6 +14,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -71,6 +72,11 @@ class InMemoryExecutor implements DownloadFileExecutor {
   }
 
   @override
+  Future<void> writeString(String path, String contents) async {
+    files[path] = contents.codeUnits;
+  }
+
+  @override
   Stream<List<int>> readStream(String path) async* {
     final List<int>? data = files[path];
     if (data != null) {
@@ -111,7 +117,7 @@ class FakeSource implements SourceProvider {
   Future<StreamUrl> resolveStream(Track t) async => StreamUrl(url: streamUrl);
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,

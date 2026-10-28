@@ -5,6 +5,7 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import 'package:wavely/core/errors/result.dart';
+import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/daos/news_dao.dart';
 import 'package:wavely/data/remote/metadata_http.dart';
 import 'package:wavely/features/news/data/news_article.dart';

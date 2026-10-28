@@ -118,9 +118,9 @@ class ScriptedLyricsProvider implements LyricsProvider {
   @override
   final String id;
 
-  final LyricsResult? result;
+  LyricsResult? result;
 
-  final Object? error;
+  Object? error;
 
   int calls = 0;
 

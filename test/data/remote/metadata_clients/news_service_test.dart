@@ -15,6 +15,7 @@ import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/remote/metadata_clients/news_service.dart';
 import 'package:wavely/data/remote/metadata_clients/rss_client.dart';
+import 'package:wavely/data/remote/metadata_http.dart';
 
 AppDatabase _memoryDb() => AppDatabase(NativeDatabase.memory());
 

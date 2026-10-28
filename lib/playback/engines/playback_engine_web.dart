@@ -1,3 +1,4 @@
+import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/web/pwa_media_session.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/engines/web_playback_engine.dart';

@@ -8,6 +8,7 @@ import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/core/extensions/extensions.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
+import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 import 'package:wavely/features/lyrics/data/lyrics_repository.dart';
 import 'package:wavely/features/lyrics/domain/lyrics_sync_controller.dart';
 
@@ -192,7 +193,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
               isCurrent ? 1 : AppConstants.lyricsNeighborOpacity,
           child: AnimatedScale(
             duration: WavelyDurations.normal,
-            alignment: AlignmentDirectional.centerStart,
+            alignment: Alignment.centerLeft,
             scale:
                 isCurrent ? AppConstants.lyricsCurrentLineScale : 1,
             child: Padding(

@@ -73,8 +73,8 @@ class NewsService {
     final merged = <NewsItem>[];
     Failure? failure;
     for (final result in results) {
-      if (result case Err<List<NewsItem>>(:final feedFailure)) {
-        failure ??= feedFailure;
+      if (result case Err<List<NewsItem>>(failure: final f)) {
+        failure ??= f;
         continue;
       }
       if (result case Success<List<NewsItem>>(:final value)) {

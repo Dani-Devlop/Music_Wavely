@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/settings/presentation/widgets/subsonic_config_sheet.dart';
 import 'package:wavely/sources/source_registry.dart';
+import 'package:wavely/sources/subsonic/subsonic_config.dart';
 import 'package:wavely/sources/source_providers.dart';
 
 /// Settings section listing every Stage 2.1 online source with an

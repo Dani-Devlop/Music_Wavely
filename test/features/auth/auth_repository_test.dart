@@ -34,7 +34,7 @@ Session _session(String accessToken) => Session.fromJson(<String, dynamic>{
         'user_metadata': <String, dynamic>{},
         'created_at': '2024-01-01T00:00:00Z',
       },
-    });
+    })!;
 
 /// Hand-rolled [AuthApi] fake — scripted results/throws + call recording.
 class _FakeAuthApi implements AuthApi {

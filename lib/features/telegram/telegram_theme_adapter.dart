@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:wavely/features/telegram/telegram_bridge.dart';
 import 'package:wavely/features/telegram/telegram_bridge_provider.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 
