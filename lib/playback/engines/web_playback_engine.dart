@@ -138,6 +138,15 @@ class WebPlaybackEngine implements PlaybackEngine {
   }
 
   @override
+  Future<void> setVolume(double volume) async {
+    // HTMLAudioElement.volume: 0.0 (silent) .. 1.0 (full).
+    _audio.setProperty(
+      'volume'.toJS,
+      volume.clamp(0.0, 1.0).toDouble().toJS,
+    );
+  }
+
+  @override
   Future<void> dispose() async {
     if (_disposed) {
       return;

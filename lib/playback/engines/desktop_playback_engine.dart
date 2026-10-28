@@ -123,6 +123,16 @@ class DesktopPlaybackEngine implements PlaybackEngine {
   }
 
   @override
+  Future<void> setVolume(double volume) async {
+    if (_disposed) {
+      return;
+    }
+    // media_kit scales volume 0..100 (Dart API takes 0..1 in some wrappers;
+    // the raw Player.setVolume contract is percent-based).
+    await _player.setVolume(volume.clamp(0.0, 1.0).toDouble() * 100);
+  }
+
+  @override
   Future<void> dispose() async {
     if (_disposed) {
       return;

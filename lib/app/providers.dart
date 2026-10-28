@@ -16,12 +16,14 @@ import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 import 'package:wavely/features/lyrics/domain/lrc_parser.dart';
 import 'package:wavely/features/parental/data/censor_planner.dart';
 import 'package:wavely/features/parental/data/censor_service.dart';
+import 'package:wavely/features/parental/data/no_lyrics_policy.dart';
 import 'package:wavely/features/parental/data/parental_providers.dart';
 import 'package:wavely/features/parental/data/track_filter.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 import 'package:wavely/playback/shuffle/advanced_shuffle.dart';
+import 'package:wavely/app/root_messenger.dart';
 
 /// Composition root: builds the provider override list for a real app run.
 ///
@@ -111,20 +113,25 @@ Future<TrackLoadDecision?> _parentalPreload(Ref ref, Track track) async {
     case TrackVerdict.censorNeeded:
       final plan = CensorPlanner.plan(lyrics: lyrics, matcher: matcher);
       if (!plan.hasPlan) {
-        // Stage 3 audit (SEC-6/BUG-9): a track judged explicit whose lyrics
-        // are unsynced cannot be censored — the explicit ORIGINAL plays by
-        // the documented v1 policy. The bypass is now audited so parents
-        // can see it (a "block instead" switch is an owner decision).
+        // Stage 3 final polish (BUG-9): an explicit track whose lyrics are
+        // unsynced cannot be censored — the configured policy decides. The
+        // legacy "play uncensored + audit" behavior is now `allow` only;
+        // the DEFAULT is `block` (skip + toast). The bypass stays audited.
         unawaited(
           ref.watch(databaseProvider).parentalDao.audit(
                 'censor_skipped_no_synced_lyrics',
                 details: <String, Object?>{
                   'trackId': trackId,
                   'title': track.title,
+                  'policy': 'noLyricsPolicy',
                 },
               ),
         );
-        return null; // no synced lyrics → nothing to censor; play original
+        return _censorFallbackDecision(
+          await ref.read(noLyricsPolicyProvider.future),
+          track,
+          reason: 'no synced lyrics',
+        );
       }
       final service = CensorService(
         executor: const FfmpegCensorExecutor(),
@@ -137,21 +144,53 @@ Future<TrackLoadDecision?> _parentalPreload(Ref ref, Track track) async {
         onFailure: (_) => null,
       );
       if (path == null) {
-        // Stage 3 audit (SEC-6): the ffmpeg render failed and the fallback
-        // policy plays the UNCENSORED original — audit the bypass.
+        // Stage 3 final polish (BUG-9): the ffmpeg render failed — the
+        // configured policy decides (was: always play the uncensored
+        // original with an audit trail, SEC-6).
         unawaited(
           ref.watch(databaseProvider).parentalDao.audit(
                 'censor_render_failed',
                 details: <String, Object?>{
                   'trackId': trackId,
                   'title': track.title,
+                  'policy': 'noLyricsPolicy',
                 },
               ),
         );
-        return null; // fallback policy: censor render failed → original file
+        return _censorFallbackDecision(
+          await ref.read(noLyricsPolicyProvider.future),
+          track,
+          reason: 'censor render failed',
+        );
       }
       return TrackLoadDecision.replace(path);
     case TrackVerdict.allowed:
       return null;
+  }
+}
+
+/// BUG-9: applies the parental censor-fallback policy when censoring is
+/// impossible. `block` skips with a UI toast, `mute` plays silently, and
+/// only the explicit `allow` choice plays the uncensored original.
+TrackLoadDecision? _censorFallbackDecision(
+  NoLyricsPolicy policy,
+  Track track, {
+  required String reason,
+}) {
+  switch (policy) {
+    case NoLyricsPolicy.block:
+      showRootSnackBar(
+        'Skipped "${track.title}" — explicit track, censoring unavailable '
+        '($reason).',
+      );
+      return const TrackLoadDecision.skip();
+    case NoLyricsPolicy.mute:
+      showRootSnackBar(
+        'Playing "${track.title}" muted — explicit track, censoring '
+        'unavailable ($reason).',
+      );
+      return const TrackLoadDecision.muted();
+    case NoLyricsPolicy.allow:
+      return null; // explicit parental choice: play the uncensored original
   }
 }

@@ -193,6 +193,14 @@ class MobilePlaybackEngine implements PlaybackEngine {
     await load(_queueTracks[index]);
   }
 
+  @override
+  Future<void> setVolume(double volume) async {
+    if (_disposed) {
+      return;
+    }
+    await _player.setVolume(volume.clamp(0.0, 1.0).toDouble());
+  }
+
   /// Convenience for QueueManager-style callers that hold the concrete
   /// engine: loads [index] inside the queue stored by [setQueue].
   Future<bool> skipTo(int index) async {

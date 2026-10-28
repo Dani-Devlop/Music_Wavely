@@ -14,36 +14,36 @@ sync-engine auth gap (BUG-3 in `docs/BUG_FIXES.md`, fixed) and the missing
 
 ## Findings
 
-### SEC-1 — Supabase session never persisted (in-memory storage) · MEDIUM · **documented (needs SDK)**
-- File: `lib/data/remote/supabase_client_provider.dart:30`
-- The client is constructed bare (`SupabaseClient(url, anonKey)`). Verified
-  against the `supabase` package source: with no `authOptions.asyncStorage`,
-  the auth client falls back to `MemoryAuthAsyncStorage()` — sessions are
-  lost on every app restart, and sign-in state cannot survive the process.
-  (Not plaintext-prefs as first suspected: there is **no** persistence at
-  all.) Tokens do not leak, but the UX/security follow-up is real.
-- Recommended fix (owner): pass `authOptions` with a
-  `flutter_secure_storage`-backed `AuthAsyncStorage` adapter
-  (getItem/setItem/removeItem). The exact class name depends on the resolved
-  `supabase_auth` version (`AuthAsyncStorage` on current main; older 2.x
-  lines named it `GotrueAsyncStorage`) — must be verified locally with the
-  real lockfile.
-- Fix risk: needs-SDK (API-name verification against the resolved version).
+### SEC-1 — Supabase session never persisted (in-memory storage) · MEDIUM · **fixed (final polish)**
+- File: `lib/data/remote/supabase_client_provider.dart`
+- The client was constructed bare (`SupabaseClient(url, anonKey)`); with
+  the bare-constructor architecture, supabase_flutter's `SupabaseAuth`
+  persistence layer never runs and sessions died with the process.
+- Fix: `attachSessionPersistence` replays a stored session through
+  `auth.recoverSession()` at construction and persists on
+  `signedIn`/`tokenRefreshed`/`initialSession` (deletes on `signedOut`).
+  Storage backend: `flutter_secure_storage` on mobile/desktop,
+  SharedPreferences on web. Verified against gotrue 2.27.3 / supabase
+  2.16.5 / supabase_flutter 2.18.3 sources (bare gotrue persists only PKCE
+  verifiers, hence the explicit adapter). Sign-in now survives restarts,
+  which also keeps the sync backend (BUG-3) authenticated across runs.
 
-### SEC-2 — Bot-token compromise enables silent account takeover via derived passwords · MEDIUM · **documented**
-- File: `supabase/functions/telegram-webapp-auth/index.ts:191-193`
-- The Supabase password for every Telegram-mapped user is deterministically
-  derived from the bot token alone
-  (`hmac(botToken, 'wavely-telegram-user:<id>')`). The scheme is public in
-  this repo, `SUPABASE_URL` is public, so a leaked `TELEGRAM_BOT_TOKEN`
-  lets an attacker compute any user's password and sign in directly,
-  bypassing the edge function. HMAC validation itself is correct — this is
-  a credential-hygiene design issue.
-- Recommended fix (owner): provision a random per-user password on first
-  sign-in (stored server-side, not derivable), or reuse the Stage 1.2
-  magic-link flow exclusively. Treat bot-token rotation as a global
-  credential-rotation event meanwhile.
-- Fix risk: risky (changes the sign-in contract; needs SDK + server).
+### SEC-2 — Bot-token compromise enables silent account takeover via derived passwords · MEDIUM · **fixed (final polish)**
+- Files: `supabase/functions/telegram-webapp-auth/index.ts`,
+  new `supabase/migrations/0003_telegram_user_passwords.sql`
+- The Supabase password for every Telegram-mapped user was deterministically
+  derived from the bot token alone — a leaked `TELEGRAM_BOT_TOKEN` let an
+  attacker compute any user's password and sign in directly.
+- Fix: the edge function now provisions a cryptographically random 32-byte
+  password (`crypto.getRandomValues`) at find-or-create time and stores the
+  mapping ONLY in `telegram_sessions` (new `telegram_user_id`/`password`
+  columns; deny-all RLS and no anon/authenticated grants are unchanged).
+  Returning users sign in from the stored mapping; a drifted credential is
+  re-provisioned server-side. The password is never derivable and never
+  returned to clients. Bot-token rotation no longer invalidates accounts.
+- Note: after deploying, the migration `0003` must be applied
+  (`supabase db push`); old derived passwords become irrelevant because the
+  first new sign-in overwrites the account password with a random one.
 
 ### SEC-3 — Path traversal via unsanitized `sourceTrackId` in the provenance sidecar path · MEDIUM · **fixed**
 - File: `lib/features/downloads/data/download_service.dart:346-347`
@@ -92,9 +92,9 @@ sync-engine auth gap (BUG-3 in `docs/BUG_FIXES.md`, fixed) and the missing
   UNCENSORED original plays with no audit trail.
 - Fix: both fallback branches now write best-effort local audit events
   (`censor_render_failed`, `censor_skipped_no_synced_lyrics`) through
-  `ParentalDao.audit`. The policy itself is unchanged — see BUG-9 in
-  `docs/BUG_FIXES.md` for the owner decision point ("block instead"
-  switch).
+  `ParentalDao.audit`. The policy itself is now parent-configurable — see
+  BUG-9 in `docs/BUG_FIXES.md` (final polish: default `block`, options
+  block / mute / allow on the Parental screen).
 
 ### SEC-7 — Censor render cache ignored word-list changes · MEDIUM · **fixed**
 - File: `lib/features/parental/data/censor_service.dart:77-81`

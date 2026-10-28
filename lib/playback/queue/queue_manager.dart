@@ -49,7 +49,8 @@ abstract interface class QueueTrackSource {
 /// Returned by [QueueManager.trackPreloadHook]; the manager never imports
 /// the parental feature — the composition root adapts the verdict.
 class TrackLoadDecision {
-  const TrackLoadDecision._(this.replacementPath, this.skip);
+  const TrackLoadDecision._(this.replacementPath, this.skip,
+      [this.muted = false]);
 
   /// Play the original file.
   const TrackLoadDecision.allow() : this._(null, false);
@@ -60,8 +61,16 @@ class TrackLoadDecision {
   /// Skip the track entirely (blocked by parental rules).
   const TrackLoadDecision.skip() : this._(null, true);
 
+  /// Stage 3 final polish (BUG-9): play the original with the engine output
+  /// muted — used by the censor-fallback policy when an explicit track
+  /// cannot be censored and the parent chose "mute".
+  const TrackLoadDecision.muted() : this._(null, false, true);
+
   final String? replacementPath;
   final bool skip;
+
+  /// BUG-9: when true the track loads at engine volume 0 (silenced).
+  final bool muted;
 }
 
 class _NullQueueTrackSource implements QueueTrackSource {
@@ -665,6 +674,10 @@ class QueueManager extends StateNotifier<QueueState> {
       } else {
         await _engine.setQueue(state.tracks, startIndex: state.currentIndex);
       }
+      // Stage 3 final polish (BUG-9): volume state is re-asserted after
+      // every load — a `muted` decision plays silently, everything else
+      // restores full volume (engines may keep volume across sources).
+      await _engine.setVolume((decision?.muted ?? false) ? 0.0 : 1.0);
     } on Object catch (_) {
       state = state.copyWith(playbackState: PlaybackState.error);
     }

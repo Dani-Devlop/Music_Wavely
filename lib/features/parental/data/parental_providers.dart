@@ -4,6 +4,7 @@ import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/daos/parental_dao.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/design_system/themes/theme_provider.dart';
+import 'package:wavely/features/parental/data/no_lyrics_policy.dart';
 import 'package:wavely/features/parental/data/track_filter.dart';
 import 'package:wavely/features/parental/data/word_matcher.dart';
 
@@ -11,6 +12,10 @@ import 'package:wavely/features/parental/data/word_matcher.dart';
 /// (Words, profiles and audit rows live in SQLite via [ParentalDao].)
 const String kParentalEnabledKey = 'wavely.parental.enabled';
 const String kParentalBlockNoLyricsKey = 'wavely.parental.blockNoLyrics';
+/// Stage 3 final polish (BUG-9): what to do when an explicit track cannot
+/// be censored (unsynced lyrics / failed render). String values of
+/// [NoLyricsPolicy]; absent/unknown parses to `block` — the fail-safe.
+const String kParentalNoLyricsPolicyKey = 'wavely.parental.noLyricsPolicy';
 const String kParentalBlockedArtistsKey = 'wavely.parental.blockedArtists';
 const String kParentalBlockedAlbumsKey = 'wavely.parental.blockedAlbums';
 const String kParentalBlockedGenresKey = 'wavely.parental.blockedGenres';
@@ -38,6 +43,15 @@ final parentalStatusProvider = FutureProvider<ParentalStatus>((ref) async {
   final store = ref.watch(settingsStoreProvider);
   final enabled = await store.read<bool>(kParentalEnabledKey) ?? false;
   return ParentalStatus(enabled: enabled);
+});
+
+/// Censor-fallback policy (BUG-9): block / mute / allow for explicit tracks
+/// whose censoring is impossible. Defaults to [NoLyricsPolicy.block].
+final noLyricsPolicyProvider = FutureProvider<NoLyricsPolicy>((ref) async {
+  ref.watch(parentalRefreshProvider);
+  final store = ref.watch(settingsStoreProvider);
+  final raw = await store.read<String>(kParentalNoLyricsPolicyKey);
+  return NoLyricsPolicy.parse(raw);
 });
 
 /// Word matcher rebuilt whenever blocked words / whitelist change.
