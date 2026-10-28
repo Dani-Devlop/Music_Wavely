@@ -1,3 +1,5 @@
+import 'package:wavely/data/local/db/tables/plays.dart';
+import 'package:wavely/data/local/db/tables/tracks.dart';
 import 'package:drift/drift.dart';
 
 import 'package:wavely/data/local/db/app_database.dart';

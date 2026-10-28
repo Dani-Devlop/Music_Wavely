@@ -10,6 +10,7 @@ library;
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';

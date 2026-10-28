@@ -8,7 +8,7 @@ import 'package:drift/drift.dart';
 class ProfilesLocal extends Table {
   IntColumn get id => integer().autoIncrement()();
 
-  TextColumn get name => text();
+  TextColumn get name => text()();
 
   /// salted sha256 of the 4-8 digit PIN, hex-encoded.
   TextColumn get pinHash => text().nullable()();

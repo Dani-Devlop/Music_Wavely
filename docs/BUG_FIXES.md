@@ -39,9 +39,8 @@ queue manager did not build as merged (BUG-1, BUG-2).
   (`supabaseClientProvider`); a signed-in session automatically sends the
   `Authorization` header. Signed-out behaviour is unchanged (403s park rows
   and surface in the UI).
-- Residual: the client's auth storage is in-memory (SEC-1 in
-  `docs/SECURITY_AUDIT.md`), so a session does not survive restart until
-  the owner adds a secure-storage adapter.
+- Residual: none — the client's auth storage is now persistent (SEC-1
+  final polish), so a signed-in session survives restart.
 
 ## MEDIUM
 
@@ -95,16 +94,24 @@ queue manager did not build as merged (BUG-1, BUG-2).
 - Fix risk: needs-SDK — pruning semantics need care with per-folder scans
   and an integration test; not safe to change blind.
 
-### BUG-9 — Explicit track with unsynced lyrics played uncensored with no trace · **fixed (audit) + policy documented**
-- File: `lib/app/providers.dart` (`censorNeeded` branch)
+### BUG-9 — Explicit track with unsynced lyrics played uncensored with no trace · **fixed (final polish: policy enforced)**
+- Files: `lib/app/providers.dart`, new
+  `lib/features/parental/data/no_lyrics_policy.dart`,
+  `lib/features/parental/data/parental_providers.dart`,
+  `lib/playback/queue/queue_manager.dart`, `lib/playback/engines/*`,
+  `lib/features/parental/presentation/parental_screen.dart`
 - `TrackFilter.evaluate` judges the track explicit from plain-text lyrics,
   but `CensorPlanner.plan` returns no plan for unsynced lyrics and the
-  adapter fell back to the original file silently.
-- Fixed: both fallback paths now write audit events (SEC-6).
-- Policy decision left to owner: the documented v1 rule "censoring must
-  never block playback" means an explicit track can still play uncensored
-  when censoring is impossible. A "block instead of play uncensored"
-  switch on the parental profile is the natural follow-up.
+  adapter fell back to the original file silently (legacy "censoring must
+  never block playback" rule).
+- Final fix: a parent-configured `NoLyricsPolicy` (`block` / `mute` /
+  `allow`) now governs BOTH impossible-censoring paths (no synced lyrics
+  and failed ffmpeg render). DEFAULT is `block`: the track is skipped and a
+  UI toast explains why (new root `scaffoldMessengerKey` surfaces toasts
+  from the non-UI preload hook). `mute` plays the original at engine
+  volume 0 (`PlaybackEngine.setVolume`, implemented on all three engines);
+  only the explicit `allow` choice plays uncensored — both bypass paths
+  stay audited. Unknown/absent stored values parse to `block` (fail-safe).
 
 ### BUG-10 — Restored queue showed the persisted position but restarted at 0:00 · **fixed** (safe)
 - File: `lib/playback/queue/queue_manager.dart` (`restore`)

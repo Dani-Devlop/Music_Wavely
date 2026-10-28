@@ -4,6 +4,7 @@ import 'package:wavely/core/settings/settings_store.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/design_system/components/components.dart';
 import 'package:wavely/design_system/themes/semantic_extension.dart';
+import 'package:wavely/features/parental/data/no_lyrics_policy.dart';
 import 'package:wavely/features/parental/data/parental_providers.dart';
 import 'package:wavely/features/parental/data/pin_hash.dart';
 
@@ -91,6 +92,7 @@ class _ParentalScreenState extends ConsumerState<ParentalScreen> {
               _buildWordsSection(),
               _buildBlocksSection(),
               _buildNoLyricsCard(),
+              _buildCensorFallbackCard(),
               _buildAuditSection(),
             ],
           );
@@ -515,6 +517,72 @@ class _ParentalScreenState extends ConsumerState<ParentalScreen> {
         ),
       ),
     );
+  }
+
+  // -- censor-fallback policy (BUG-9) ---------------------------------------
+
+  Widget _buildCensorFallbackCard() {
+    final policyAsync = ref.watch(noLyricsPolicyProvider);
+    return _Card(
+      child: policyAsync.when(
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(8),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        error: (e, _) => Text('Policy unavailable: $e'),
+        data: (policy) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ListTile(
+              title: Text('Explicit fallback policy'),
+              subtitle: Text(
+                'What happens when a track is explicit but censoring is '
+                'impossible (no synced lyrics or render failure).',
+              ),
+              isThreeLine: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+            RadioListTile<NoLyricsPolicy>(
+              title: const Text('Block (skip the track)'),
+              subtitle: const Text('Default — never plays uncensored'),
+              value: NoLyricsPolicy.block,
+              groupValue: policy,
+              onChanged: (_) => _saveNoLyricsPolicy(NoLyricsPolicy.block),
+            ),
+            RadioListTile<NoLyricsPolicy>(
+              title: const Text('Mute (play silently)'),
+              subtitle: const Text('Track plays with the output muted'),
+              value: NoLyricsPolicy.mute,
+              groupValue: policy,
+              onChanged: (_) => _saveNoLyricsPolicy(NoLyricsPolicy.mute),
+            ),
+            RadioListTile<NoLyricsPolicy>(
+              title: const Text('Allow (play uncensored)'),
+              subtitle: const Text('Legacy behavior — every bypass is '
+                  'written to the audit log'),
+              value: NoLyricsPolicy.allow,
+              groupValue: policy,
+              onChanged: (_) => _saveNoLyricsPolicy(NoLyricsPolicy.allow),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveNoLyricsPolicy(NoLyricsPolicy policy) async {
+    await ref
+        .read(settingsStoreProvider)
+        .write(kParentalNoLyricsPolicyKey, policy.name);
+    await ref
+        .read(parentalDaoProvider)
+        .audit(
+          'no_lyrics_policy_changed',
+          details: <String, Object?>{'policy': policy.name},
+        );
+    _bump();
   }
 
   // -- audit log ------------------------------------------------------------

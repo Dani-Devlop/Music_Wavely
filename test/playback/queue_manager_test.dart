@@ -23,6 +23,8 @@ import 'package:wavely/playback/shuffle/advanced_shuffle.dart';
 /// Records every engine interaction; mirrors the real single-track-loader
 /// semantics (setQueue stores the list and loads `tracks[startIndex]`).
 class _RecordingEngine implements PlaybackEngine {
+  double lastVolume = 1.0;
+
   final StreamController<PlaybackState> _states =
       StreamController<PlaybackState>.broadcast();
   final StreamController<Duration> _positions =
@@ -92,7 +94,12 @@ class _RecordingEngine implements PlaybackEngine {
     await load(tracks[index]);
   }
 
-  @override
+    @override
+  Future<void> setVolume(double volume) async {
+    lastVolume = volume;
+  }
+
+@override
   Future<void> dispose() async {
     disposed = true;
     await _states.close();

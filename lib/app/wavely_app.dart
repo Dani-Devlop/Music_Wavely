@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/app/app_providers.dart';
+import 'package:wavely/app/root_messenger.dart';
 import 'package:wavely/app/router.dart';
 import 'package:wavely/app/theme_provider.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
@@ -24,6 +25,8 @@ class WavelyApp extends ConsumerWidget {
       themeMode: settings.themeMode,
       // Zero theme animation avoids a flash when switching mode/accent.
       themeAnimationDuration: Duration.zero,
+      // BUG-9: lets non-UI layers (parental preload hook) show toasts.
+      scaffoldMessengerKey: rootMessengerKey,
       routerConfig: ref.watch(routerProvider),
       locale: locale,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

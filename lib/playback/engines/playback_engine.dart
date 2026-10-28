@@ -25,5 +25,13 @@ abstract class PlaybackEngine {
 
   Future<void> setQueue(List<Track> tracks, {int startIndex = 0});
 
+  /// Adjusts the output volume — 0.0 is silent, 1.0 is full scale.
+  ///
+  /// Stage 3 final polish (BUG-9): used by the parental censor-fallback
+  /// policy (`mute` decision). The base implementation is a no-op so test
+  /// fakes and minimal engines stay source-compatible; platform engines
+  /// override it.
+  Future<void> setVolume(double volume) async {}
+
   Future<void> dispose();
 }

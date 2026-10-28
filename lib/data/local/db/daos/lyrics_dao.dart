@@ -1,3 +1,4 @@
+import 'package:wavely/data/local/db/tables/lyrics_cache.dart';
 import 'package:drift/drift.dart';
 
 import 'package:wavely/data/local/db/app_database.dart';

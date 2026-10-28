@@ -13,6 +13,10 @@
 // - The hash comparison is timing-safe.
 // - The client-derived user object is NEVER trusted: identity comes from
 //   the HMAC-verified `user` field inside initData only.
+// - SEC-2: the mapped account's Supabase password is cryptographically
+//   random (never derived from the bot token) and stored only in the
+//   deny-all telegram_sessions table (migration 0003). A leaked bot token
+//   therefore yields NO usable credentials.
 //
 // Deploy:
 //   supabase functions deploy telegram-webapp-auth \
@@ -138,13 +142,20 @@ async function validateInitData(
   }
 }
 
-/** Deterministic, secret-derived password for the mapped Supabase user. */
-async function derivedPassword(
-  botToken: string,
-  telegramId: number,
-): Promise<string> {
-  const bytes = await hmac(botToken, `wavely-telegram-user:${telegramId}`);
-  return toHex(bytes).slice(0, 40);
+// SEC-2: the mapped account's password is a cryptographically random value
+// generated at provisioning time and stored ONLY in telegram_sessions
+// (service-role reachable; deny-all RLS). Nothing is derivable from the bot
+// token anymore — a leaked TELEGRAM_BOT_TOKEN no longer yields any user's
+// password. Bot-token rotation also no longer invalidates accounts.
+function randomPassword(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return toHex(bytes);
+}
+
+/** Stable sentinel primary key for the per-user credential mapping row. */
+function mappingToken(telegramId: number): string {
+  return `telegram-user:${telegramId}`;
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -193,46 +204,119 @@ Deno.serve(async (req: Request): Promise<Response> => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Deterministic mapping: telegram id -> `<id>@telegram.wavely.app`.
-  // The mapped account carries a deterministic secret-derived password so
-  // the function can re-sign-in on every request without storing sessions.
+  // SEC-2 credential flow:
+  // 1. Look up the stored random password in telegram_sessions and try to
+  //    sign in with it (the fast path for returning users).
+  // 2. When absent or drifted, provision a FRESH random password via the
+  //    admin API (update for a linked user, create otherwise), sign in, and
+  //    persist the mapping for future requests.
+  // The password is never derivable, never returned to the client, and only
+  // ever compared server-side by Supabase auth.
   const email = `${user.id}@telegram.wavely.app`;
-  const password = await derivedPassword(botToken, user.id);
 
-  const created = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: {
-      telegram_id: user.id,
-      username: user.username ?? null,
-      display_name: [user.first_name, user.last_name].filter(Boolean).join(" ") ||
-        user.username ||
-        `telegram-${user.id}`,
-    },
-  });
+  const sessionPayload = (
+    session: { access_token: string; refresh_token: string; expires_in: number },
+    userId: string | null,
+    displayName: string | null,
+  ) =>
+    json({
+      session: {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_in: session.expires_in,
+      },
+      user: {
+        id: userId,
+        display_name: displayName,
+      },
+    });
 
-  let signInError: string | null = null;
-  if (created.error) {
-    // 422 "already registered" is the expected find path: sign in directly.
+  let mapping: {
+    token: string;
+    password: string | null;
+    user_id: string | null;
+  } | null = null;
+  const mappingSelect = await admin
+    .from("telegram_sessions")
+    .select("token, password, user_id")
+    .eq("telegram_user_id", user.id)
+    .maybeSingle();
+  if (!mappingSelect.error && mappingSelect.data) {
+    mapping = mappingSelect.data;
+  }
+
+  if (mapping?.password) {
     const signIn = await admin.auth.signInWithPassword({
       email,
+      password: mapping.password,
+    });
+    if (!signIn.error && signIn.data.session) {
+      return sessionPayload(
+        signIn.data.session,
+        signIn.data.user?.id ?? mapping.user_id,
+        signIn.data.user?.user_metadata?.display_name ?? null,
+      );
+    }
+    // Stored credential drifted (manual password change, partial restore) —
+    // fall through and provision a fresh one.
+  }
+
+  const password = randomPassword();
+  let userId: string | null = mapping?.user_id ?? null;
+
+  const provisionFailed = () =>
+    fail(
+      "rejected",
+      "Telegram identity is valid but the mapped account could not be " +
+        "provisioned. Contact the operator.",
+      401,
+    );
+
+  if (userId) {
+    const updated = await admin.auth.admin.updateUserById(userId, {
       password,
     });
-    if (signIn.error) {
-      signInError = signIn.error.message;
+    if (updated.error) {
+      // Stale mapping (account deleted server-side) — fall back to
+      // find-or-create below.
+      userId = null;
     }
   }
 
-  if (signInError) {
-    // Bot-token rotation invalidates the deterministic password — surfaced
-    // honestly instead of silently failing.
-    return fail(
-      "rejected",
-      "Telegram identity is valid but the mapped account could not be " +
-        "signed in (likely a bot token rotation). Re-provision the account.",
-      401,
-    );
+  if (!userId) {
+    const link = await admin
+      .from("telegram_links")
+      .select("user_id")
+      .eq("telegram_id", user.id)
+      .maybeSingle();
+    if (!link.error && link.data?.user_id) {
+      const updated = await admin.auth.admin.updateUserById(
+        link.data.user_id as string,
+        { password },
+      );
+      if (updated.error) {
+        return provisionFailed();
+      }
+      userId = link.data.user_id as string;
+    } else {
+      const created = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          telegram_id: user.id,
+          username: user.username ?? null,
+          display_name:
+            [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+            user.username ||
+            `telegram-${user.id}`,
+        },
+      });
+      if (created.error || !created.data.user) {
+        return provisionFailed();
+      }
+      userId = created.data.user.id;
+    }
   }
 
   const signIn = await admin.auth.signInWithPassword({ email, password });
@@ -240,15 +324,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return fail("rejected", "Could not establish a session.", 401);
   }
 
-  return json({
-    session: {
-      access_token: signIn.data.session.access_token,
-      refresh_token: signIn.data.session.refresh_token,
-      expires_in: signIn.data.session.expires_in,
+  // Persist the credential mapping (best effort AFTER the session exists —
+  // a mapping write failure only costs a re-provision on the next request).
+  await admin.from("telegram_sessions").upsert(
+    {
+      token: mappingToken(user.id),
+      telegram_user_id: user.id,
+      user_id: userId,
+      email,
+      password,
+      used: false,
     },
-    user: {
-      id: signIn.data.user?.id ?? null,
-      display_name: signIn.data.user?.user_metadata?.display_name ?? null,
-    },
-  });
+    { onConflict: "token" },
+  );
+
+  return sessionPayload(
+    signIn.data.session,
+    signIn.data.user?.id ?? userId,
+    signIn.data.user?.user_metadata?.display_name ?? null,
+  );
 });

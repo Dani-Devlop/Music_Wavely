@@ -7,7 +7,7 @@ class BlockedWords extends Table {
 
   /// The word as entered by the parent (lowercased by [WordMatcher] input
   /// preparation, stored verbatim here).
-  TextColumn get word => text().unique();
+  TextColumn get word => text().unique()();
 
   /// `mild` | `moderate` | `severe` — drives the censor beep vs mute choice.
   TextColumn get severity => text().withDefault(const Constant('moderate'))();

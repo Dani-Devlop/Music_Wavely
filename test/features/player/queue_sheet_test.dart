@@ -12,6 +12,7 @@ import 'package:flutter/gestures.dart' show kLongPressTimeout;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/player/presentation/queue_sheet.dart';

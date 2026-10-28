@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/downloads/data/download_service.dart';
 import 'package:wavely/features/downloads/data/downloads_providers.dart';

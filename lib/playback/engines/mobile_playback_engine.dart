@@ -13,7 +13,7 @@ import 'package:wavely/playback/engines/playback_engine.dart';
 /// in its constructor. `AudioService.init` is NOT called by the composition
 /// root: [MobilePlaybackEngine] initializes the service lazily and
 /// idempotently on first playback (see `_ensureAudioService`).
-class WavelyAudioHandler extends BaseAudioHandler {
+class WavelyAudioHandler extends asv.BaseAudioHandler {
   WavelyAudioHandler({
     void Function()? onPlay,
     void Function()? onPause,
@@ -191,6 +191,14 @@ class MobilePlaybackEngine implements PlaybackEngine {
       return;
     }
     await load(_queueTracks[index]);
+  }
+
+  @override
+  Future<void> setVolume(double volume) async {
+    if (_disposed) {
+      return;
+    }
+    await _player.setVolume(volume.clamp(0.0, 1.0).toDouble());
   }
 
   /// Convenience for QueueManager-style callers that hold the concrete

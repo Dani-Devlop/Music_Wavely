@@ -18,6 +18,8 @@ import 'package:wavely/playback/engines/playback_engine.dart';
 /// engines do: `load` emits loading -> paused (ready), `play`/`pause`
 /// mirror into the state stream, `dispose` is guarded and idempotent.
 class _ScriptedEngine implements PlaybackEngine {
+  double lastVolume = 1.0;
+
   final StreamController<PlaybackState> _states =
       StreamController<PlaybackState>.broadcast();
   final StreamController<Duration> _positions =
@@ -101,7 +103,12 @@ class _ScriptedEngine implements PlaybackEngine {
     await load(tracks[index]);
   }
 
-  @override
+    @override
+  Future<void> setVolume(double volume) async {
+    lastVolume = volume;
+  }
+
+@override
   Future<void> dispose() async {
     if (disposed) {
       return; // idempotent

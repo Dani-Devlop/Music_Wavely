@@ -27,7 +27,7 @@ String _iteratedHash(String seed) {
 
 void main() {
   group('hashPin (v3 hardened)', () {
-    test('produces a p3$-prefixed iterated hash that verifies', () {
+    test('produces a p3\$-prefixed iterated hash that verifies', () {
       final hash = hashPin('4821');
       expect(hash.startsWith('p3\$'), isTrue);
       final body = hash.substring(3);
@@ -63,7 +63,7 @@ void main() {
   });
 
   group('verifyPin (legacy migration)', () {
-    test('still accepts p2$ salted hashes (pre-Stage-3 profiles)', () {
+    test('still accepts p2\$ salted hashes (pre-Stage-3 profiles)', () {
       // Recreate the exact v2 format: sha256('<saltHex>:<pin>'), one round.
       const saltHex = 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4';
       final v2Digest =

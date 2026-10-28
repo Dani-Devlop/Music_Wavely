@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:wavely/features/telegram/telegram_bridge.dart';
 
 /// Compile-time Telegram Mini App build flag:

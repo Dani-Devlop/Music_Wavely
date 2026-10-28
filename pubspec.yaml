@@ -13,9 +13,11 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  # State management (Riverpod 2.x per master context)
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
+  # State management — Riverpod 3.x (cloud-compile fix: riverpod_generator
+  # >=3 requires source_gen >=3, which conflicts with the Riverpod 2 line;
+  # Riverpod 3 keeps StateNotifier/StateProvider via the legacy import).
+  flutter_riverpod: ^3.4.3
+  riverpod_annotation: ^4.0.7
 
   # Models / codegen annotations
   freezed_annotation: ^3.1.0
@@ -107,12 +109,18 @@ dev_dependencies:
     sdk: flutter
 
   # Codegen
-  build_runner: ^2.17.1
+  # Pinned: build_runner 2.17.1 needs build >=5.0.0 (2.17.0 is retracted)
+  # while riverpod_generator 4.x needs build >=3.0.0 <5.0.0 — 2.16.2
+  # (build ^4.0.9) is the newest non-retracted version satisfying every
+  # codegen tool in this file.
+  build_runner: 2.16.2
   drift_dev: ^2.35.2
   retrofit_generator: ^10.3.2
   json_serializable: ^6.15.2
-  freezed: ^3.2.5
-  riverpod_generator: ^2.6.5
+  freezed: ^4.0.1
+  # ^4 keeps freezed_annotation 3.1.0 (no code changes): the only breaking
+  # change is dropping `final` inside ctor params (Dart 3.13 syntax change).
+  riverpod_generator: ^4.0.9
 
   # Lints & testing
   very_good_analysis: ^11.0.0

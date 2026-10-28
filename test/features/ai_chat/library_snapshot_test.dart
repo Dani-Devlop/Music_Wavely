@@ -128,7 +128,7 @@ void main() {
     // `d` is duration in whole seconds.
     final first = (decoded['tracks'] as List<Object?>).first
         as Map<String, Object?>;
-    expect(first['d'], (100000 + (first['id']! as int - 1) * 137) ~/ 1000);
+    expect(first['d'], (100000 + ((first['id']! as int) - 1) * 137) ~/ 1000);
   });
 
   test('output is canonical compact JSON (no whitespace padding)', () async {

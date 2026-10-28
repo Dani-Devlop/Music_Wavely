@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:media_kit/media_kit.dart';
-import 'package:wavely/domain/entities/entities.dart';
+import 'package:media_kit/media_kit.dart' hide Track;
+import 'package:wavely/domain/entities/entities.dart' hide Playlist;
 import 'package:wavely/playback/engines/playback_engine.dart';
 
 /// Desktop (Windows / macOS / Linux) engine backed by media_kit.
@@ -120,6 +120,16 @@ class DesktopPlaybackEngine implements PlaybackEngine {
     }
     await load(_queueTracks[index]);
     return true;
+  }
+
+  @override
+  Future<void> setVolume(double volume) async {
+    if (_disposed) {
+      return;
+    }
+    // media_kit scales volume 0..100 (Dart API takes 0..1 in some wrappers;
+    // the raw Player.setVolume contract is percent-based).
+    await _player.setVolume(volume.clamp(0.0, 1.0).toDouble() * 100);
   }
 
   @override

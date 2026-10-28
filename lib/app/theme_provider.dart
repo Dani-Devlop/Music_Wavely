@@ -21,7 +21,7 @@ class ThemePair {
 /// changes. Registered [WavelySemanticColors] extension is guaranteed by the
 /// design-system factories.
 @Riverpod(keepAlive: true)
-ThemePair theme(ThemeRef ref) {
+ThemePair theme(Ref ref) {
   final settings = ref.watch(settingsProvider);
   final accent = settings.accent.toWavelyAccent();
   return ThemePair(
