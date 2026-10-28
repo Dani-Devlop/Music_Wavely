@@ -78,7 +78,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SearchScreen), findsOneWidget);
 
-      await tester.tap(find.text('Library'));
+      // The stateful shell keeps visited branches alive in the IndexedStack,
+      // so the Library page title AND the nav label both match — the nav
+      // label is the later widget in tree order.
+      await tester.tap(find.text('Library').last);
       await tester.pumpAndSettle();
       expect(find.byType(LibraryScreen), findsOneWidget);
       expect(find.byType(SearchScreen), findsNothing);

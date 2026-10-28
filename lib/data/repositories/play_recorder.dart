@@ -29,16 +29,22 @@ class PlayRecorder {
     if (trackId == null) {
       return;
     }
-    await _playsDao.insertPlay(
-      PlaysCompanion.insert(
-        trackId: trackId,
-        startedAt: DateTime.now(),
-        listenedMs: 0,
-        completed: const Value(false),
-        source: track.sourceId,
-        deviceId: _deviceId ?? PlatformUtils.currentTargetPlatform.name,
-      ),
-    );
+    try {
+      await _playsDao.insertPlay(
+        PlaysCompanion.insert(
+          trackId: trackId,
+          startedAt: DateTime.now(),
+          listenedMs: 0,
+          completed: const Value(false),
+          source: track.sourceId,
+          deviceId: _deviceId ?? PlatformUtils.currentTargetPlatform.name,
+        ),
+      );
+    } on Object {
+      // History is best-effort by design: a missing local row (online-only
+      // track violating the plays FK), a closed db or a full disk must
+      // never break playback.
+    }
   }
 }
 

@@ -51,7 +51,7 @@ class HttpCacheDao extends DatabaseAccessor<AppDatabase>
           expiresAt: expiresAt,
         ),
         onConflict: DoUpdate(
-          (HttpCacheRow old) => HttpCacheCompanion(
+          ($HttpCacheTable old) => HttpCacheCompanion(
             body: Value(body),
             statusCode: Value(statusCode),
             fetchedAt: Value(DateTime.now()),
