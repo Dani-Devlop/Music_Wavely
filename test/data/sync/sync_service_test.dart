@@ -29,6 +29,7 @@ import 'package:wavely/data/sync/fingerprint.dart';
 import 'package:wavely/data/sync/sync_backend.dart';
 import 'package:wavely/data/sync/sync_service.dart';
 import 'package:wavely/data/sync/sync_status.dart';
+import 'package:wavely/domain/entities/entities.dart';
 
 AppDatabase _memoryDb() => AppDatabase(NativeDatabase.memory());
 

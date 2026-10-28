@@ -16,7 +16,7 @@ part 'settings_provider.g.dart';
 /// `buildOverrides`) replaces this provider with the real instance using
 /// `overrideWithValue`, so every consumer reads the same snapshot.
 @Riverpod(keepAlive: true)
-SharedPreferences sharedPrefs(SharedPrefsRef ref) =>
+SharedPreferences sharedPrefs(Ref ref) =>
     throw UnimplementedError('overridden with the bootstrap instance');
 
 /// Loads, keeps and persists the canonical [AppSettings].

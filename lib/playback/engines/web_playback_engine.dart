@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';

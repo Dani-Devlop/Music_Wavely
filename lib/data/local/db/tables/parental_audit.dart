@@ -8,7 +8,7 @@ class ParentalAudit extends Table {
 
   /// What happened: `pin_set` | `pin_changed` | `word_added` | `word_removed`
   /// | `track_blocked` | `track_censored` | `profile_created` | ...
-  TextColumn get event => text();
+  TextColumn get event => text()();
 
   /// Free-form details (JSON), e.g. `{"trackId": 12, "word": "x"}`.
   TextColumn get details => text().withDefault(const Constant('{}'))();

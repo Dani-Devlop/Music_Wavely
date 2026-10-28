@@ -15,16 +15,16 @@ class SyncOutbox extends Table {
 
   /// Logical local table the mutation happened in (`plays`, `playlists`,
   /// `user_settings`, `artist_follows`, ...).
-  TextColumn get tableName => text();
+  TextColumn get outboxTable => text().named('table_name')();
 
   /// Local primary key of the mutated row.
-  TextColumn get rowKey => text();
+  TextColumn get rowKey => text()();
 
   /// `insert` | `update` | `delete`.
-  TextColumn get op => text();
+  TextColumn get op => text()();
 
   /// JSON payload of the changed row (delete ops carry key fields only).
-  TextColumn get payload => text();
+  TextColumn get payload => text()();
 
   /// Number of push attempts so far (reset on schema migration only).
   IntColumn get attempts => integer().withDefault(const Constant(0))();

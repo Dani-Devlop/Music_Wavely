@@ -12,7 +12,7 @@ import 'package:wavely/data/sync/sync_backend.dart';
 /// static function below and unit tested in
 /// `test/data/sync/supabase_sync_backend_test.dart` WITHOUT a client):
 ///
-/// - push:  for each row -> `remoteTableFor(row.tableName)`
+/// - push:  for each row -> `remoteTableFor(row.outboxTable)`
 ///          -> normal ops: `client.from(table).upsert(payload)`, or
 ///             `client.from(table).delete().match(payload)` when
 ///             `op == 'delete'`
@@ -139,7 +139,7 @@ class SupabaseSyncBackend implements SyncBackend, SettingsPullable {
   Future<Result<void>> push(List<SyncOutboxRow> batch) async {
     try {
       for (final row in batch) {
-        final table = remoteTableFor(row.tableName);
+        final table = remoteTableFor(row.outboxTable);
         if (table == null) {
           continue;
         }
@@ -149,7 +149,7 @@ class SupabaseSyncBackend implements SyncBackend, SettingsPullable {
           }
           continue;
         }
-        final payload = row.tableName == 'plays'
+        final payload = row.outboxTable == 'plays'
             ? playPayloadFromRow(row)
             : jsonDecode(row.payload) as Map<String, dynamic>;
         if (row.op == 'delete') {

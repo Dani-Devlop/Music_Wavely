@@ -13,7 +13,7 @@ import 'package:wavely/playback/engines/playback_engine.dart';
 /// in its constructor. `AudioService.init` is NOT called by the composition
 /// root: [MobilePlaybackEngine] initializes the service lazily and
 /// idempotently on first playback (see `_ensureAudioService`).
-class WavelyAudioHandler extends BaseAudioHandler {
+class WavelyAudioHandler extends asv.BaseAudioHandler {
   WavelyAudioHandler({
     void Function()? onPlay,
     void Function()? onPause,

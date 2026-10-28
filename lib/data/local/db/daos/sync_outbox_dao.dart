@@ -24,7 +24,7 @@ class SyncOutboxDao extends DatabaseAccessor<AppDatabase>
   }) =>
       into(syncOutbox).insert(
         SyncOutboxCompanion.insert(
-          tableName: tableName,
+          outboxTable: tableName,
           rowKey: rowKey,
           op: op,
           payload: payload,

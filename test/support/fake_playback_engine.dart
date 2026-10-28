@@ -11,6 +11,7 @@
 /// Stream<Duration> get positionStream;
 /// Stream<PlaybackState> get stateStream;
 /// Future<void> setQueue(List<Track> tracks, {int startIndex = 0});
+/// Future<void> setVolume(double volume);
 /// Future<void> dispose();
 /// ```
 ///
@@ -94,6 +95,9 @@ class FakePlaybackEngine implements PlaybackEngine {
 
   /// Number of `seek()` calls.
   int seekCalls = 0;
+
+  /// Number of `setVolume()` calls.
+  int setVolumeCalls = 0;
 
   /// Number of `dispose()` calls.
   int disposeCalls = 0;
@@ -185,6 +189,15 @@ class FakePlaybackEngine implements PlaybackEngine {
       loadedTrack = tracks[index];
     }
     onSetQueue?.call(lastSetQueue, startIndex);
+  }
+
+  /// Volume applied by the last [setVolume] call (BUG-9 mute assertions).
+  double lastVolume = 1.0;
+
+  @override
+  Future<void> setVolume(double volume) async {
+    setVolumeCalls += 1;
+    lastVolume = volume;
   }
 
   @override

@@ -26,7 +26,7 @@ class Downloads extends Table {
   /// Requested quality: `320` | `flac` | `original`.
   TextColumn get quality => text()();
 
-  TextEnum<DownloadStatus> get status => textEnum<DownloadStatus>()();
+  TextColumn get status => textEnum<DownloadStatus>()();
 
   /// 0–100 percent.
   IntColumn get progress => integer()();

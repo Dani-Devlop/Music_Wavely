@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:media_kit/media_kit.dart';
-import 'package:wavely/domain/entities/entities.dart';
+import 'package:media_kit/media_kit.dart' hide Track;
+import 'package:wavely/domain/entities/entities.dart' hide Playlist;
 import 'package:wavely/playback/engines/playback_engine.dart';
 
 /// Desktop (Windows / macOS / Linux) engine backed by media_kit.

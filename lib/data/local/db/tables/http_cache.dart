@@ -10,10 +10,10 @@ class HttpCache extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   /// Stable request key: sha256 of method + URL (+ sorted query params).
-  TextColumn get requestKey => text().unique();
+  TextColumn get requestKey => text().unique()();
 
   /// Raw response body (JSON text).
-  TextColumn get body => text();
+  TextColumn get body => text()();
 
   /// HTTP status code of the cached response (2xx bodies only are stored).
   IntColumn get statusCode => integer()();

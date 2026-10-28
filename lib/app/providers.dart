@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/data/repositories/drift_lyrics_cache.dart';
 import 'package:wavely/data/repositories/drift_queue_track_source.dart';
+import 'package:wavely/data/repositories/play_recorder.dart';
 import 'package:wavely/data/repositories/queue_track_launcher.dart';
 import 'package:wavely/data/repositories/shared_prefs_settings_store.dart';
 import 'package:wavely/design_system/themes/theme_provider.dart';
@@ -79,7 +81,7 @@ List<Override> buildOverrides({
         ),
       ),
       trackLauncherProvider.overrideWith(
-        (ref) => QueueTrackLauncher(ref.watch(queueManagerProvider)),
+        (ref) => QueueTrackLauncher(ref.watch(queueManagerProvider.notifier)),
       ),
       advancedShuffleConfigProvider.overrideWith(
         (ref) => ShuffleConfigNotifier(ref.watch(sharedPrefsProvider)),
@@ -141,7 +143,7 @@ Future<TrackLoadDecision?> _parentalPreload(Ref ref, Track track) async {
       final rendered = await service.censorTrack(track: track, plan: plan);
       final path = rendered.fold(
         onSuccess: (value) => value,
-        onFailure: (_) => null,
+        onErr: (_) => null,
       );
       if (path == null) {
         // Stage 3 final polish (BUG-9): the ffmpeg render failed — the

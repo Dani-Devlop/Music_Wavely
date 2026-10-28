@@ -6,7 +6,7 @@ import 'package:drift/drift.dart';
 class ArtistFollows extends Table {
   IntColumn get id => integer().autoIncrement()();
 
-  TextColumn get artistName => text().unique();
+  TextColumn get artistName => text().unique()();
 
   /// MusicBrainz MBID when resolvable (drives the discovery lookup).
   TextColumn get mbid => text().nullable()();
