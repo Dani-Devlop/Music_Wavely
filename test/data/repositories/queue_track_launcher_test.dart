@@ -17,6 +17,8 @@ import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
 class _RecordingEngine implements PlaybackEngine {
+  double lastVolume = 1.0;
+
   final StreamController<PlaybackState> _states =
       StreamController<PlaybackState>.broadcast();
   final StreamController<Duration> _positions =
@@ -69,7 +71,12 @@ class _RecordingEngine implements PlaybackEngine {
     await load(tracks[index]);
   }
 
-  @override
+    @override
+  Future<void> setVolume(double volume) async {
+    lastVolume = volume;
+  }
+
+@override
   Future<void> dispose() async {
     await _states.close();
     await _positions.close();

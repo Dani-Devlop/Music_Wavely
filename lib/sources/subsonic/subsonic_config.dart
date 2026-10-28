@@ -110,9 +110,7 @@ class SecureSubsonicCredentialStore implements SubsonicCredentialStore {
 
   final String _key;
 
-  static const AndroidOptions _android = AndroidOptions(
-    encryptedSharedPreferences: true,
-  );
+  static const AndroidOptions _android = const AndroidOptions();
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: _android,

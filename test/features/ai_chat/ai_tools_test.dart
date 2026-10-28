@@ -12,6 +12,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/data/local/db/app_database.dart';
+import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/ai_chat/data/ai_provider.dart';
 import 'package:wavely/features/ai_chat/data/ai_tools.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';

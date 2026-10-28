@@ -1,3 +1,6 @@
+import 'package:wavely/data/local/db/tables/albums.dart';
+import 'package:wavely/data/local/db/tables/artists.dart';
+import 'package:wavely/data/local/db/tables/tracks.dart';
 import 'package:drift/drift.dart';
 
 import 'package:wavely/core/constants/app_constants.dart';

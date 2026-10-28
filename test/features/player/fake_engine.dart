@@ -11,6 +11,8 @@ import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 
 class FakePlaybackEngine implements PlaybackEngine {
+  double lastVolume = 1.0;
+
   final StreamController<PlaybackState> _stateController =
       StreamController<PlaybackState>.broadcast();
 
@@ -86,7 +88,12 @@ class FakePlaybackEngine implements PlaybackEngine {
   /// Emits an engine lifecycle state (simulates the real engine pipeline).
   void emitState(PlaybackState state) => _stateController.add(state);
 
-  @override
+    @override
+  Future<void> setVolume(double volume) async {
+    lastVolume = volume;
+  }
+
+@override
   Future<void> dispose() async {
     await _stateController.close();
     await _positionController.close();
