@@ -788,7 +788,13 @@ class _Card extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.borderGlass),
       ),
-      child: child,
+      // ListTile paints its background/ink on the nearest Material ancestor;
+      // without this the decorated container above hides them and the
+      // framework assertion fires.
+      child: Material(
+        type: MaterialType.transparency,
+        child: child,
+      ),
     );
   }
 }

@@ -170,10 +170,24 @@ class _OnlineSearchPaneState extends ConsumerState<OnlineSearchPane> {
       );
     }
     if (state.hits.isEmpty) {
+      // The honest note must survive the zero-hit case too: when every
+      // source failed there are no hits AND a reason to report.
       return Center(
-        child: Text(
-          'No online results for "${state.query}"',
-          style: TextStyle(color: colors.textTertiary),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              'No online results for "${state.query}"',
+              style: TextStyle(color: colors.textTertiary),
+            ),
+            if (state.failedSources.isNotEmpty) ...<Widget>[
+              const SizedBox(height: Spacing.sm),
+              Text(
+                'Some sources failed: ${state.failedSources.join(', ')}',
+                style: TextStyle(color: colors.textTertiary),
+              ),
+            ],
+          ],
         ),
       );
     }

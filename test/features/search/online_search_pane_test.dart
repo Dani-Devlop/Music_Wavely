@@ -213,7 +213,13 @@ void main() {
     final SearchService service = SearchService(
       sources: <SourceProvider>[
         _ScriptedSource('jamendo', <Track>[_hit('jamendo', 'j-1', 'Aurora')]),
-        _ScriptedSource('archive', <Track>[_hit('archive', 'a|f.flac', 'Aurora')]),
+        // A DIFFERENT work: the unified dedupe collapses identical
+        // title+artist across sources by design (same release found twice),
+        // so the two-row badge/download contract needs distinct titles.
+        _ScriptedSource(
+          'archive',
+          <Track>[_hit('archive', 'a|f.flac', 'Northern Lights')],
+        ),
       ],
     );
     await _pump(tester, db: db, searchService: service);
@@ -228,7 +234,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
 
-    expect(find.text('Aurora'), findsNWidgets(2));
+    expect(find.text('Aurora'), findsOneWidget);
+    expect(find.text('Northern Lights'), findsOneWidget);
     expect(find.textContaining('FLAC'), findsNWidgets(2));
     expect(find.byKey(const ValueKey<String>('download-online-j-1')),
         findsOneWidget);

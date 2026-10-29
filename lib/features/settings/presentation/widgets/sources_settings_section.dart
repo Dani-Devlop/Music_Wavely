@@ -31,38 +31,16 @@ class _SourcesSettingsSectionState
 
   Future<void> _editJamendo() async {
     final SourceSettings settings = ref.read(sourceSettingsProvider);
-    final TextEditingController controller =
-        TextEditingController(text: settings.loadJamendoClientId() ?? '');
     final String? result = await showDialog<String>(
       context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('Jamendo client id'),
-        content: TextField(
-          key: const Key('jamendo-clientid-field'),
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: 'Register at developer.jamendo.com',
-          ),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: const Key('jamendo-save-button'),
-            onPressed: () => Navigator.of(ctx).pop(controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      builder: (BuildContext ctx) =>
+          _JamendoClientIdDialog(initial: settings.loadJamendoClientId()),
     );
     if (result != null) {
       await settings.saveJamendoClientId(result);
       ref.invalidate(enabledSourcesProvider);
       ref.invalidate(sourceDescriptorsProvider);
     }
-    controller.dispose();
   }
 
   Future<void> _openEditor(SourceDescriptor d) async {
@@ -135,6 +113,56 @@ class _SourcesSettingsSectionState
               ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// Jamendo client-id dialog. Owns its [TextEditingController] so the
+/// controller is disposed exactly when the dialog subtree unmounts (end of
+/// the pop animation) — disposing it from the caller after async saves
+/// raced the route's exit animation and crashed rebuilds with
+/// "used after being disposed".
+class _JamendoClientIdDialog extends StatefulWidget {
+  const _JamendoClientIdDialog({required this.initial});
+
+  final String? initial;
+
+  @override
+  State<_JamendoClientIdDialog> createState() => _JamendoClientIdDialogState();
+}
+
+class _JamendoClientIdDialogState extends State<_JamendoClientIdDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initial ?? '');
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Jamendo client id'),
+      content: TextField(
+        key: const Key('jamendo-clientid-field'),
+        controller: _controller,
+        decoration: const InputDecoration(
+          hintText: 'Register at developer.jamendo.com',
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const Key('jamendo-save-button'),
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Save'),
+        ),
       ],
     );
   }

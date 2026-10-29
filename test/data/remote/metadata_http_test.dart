@@ -319,10 +319,13 @@ void main() {
     });
 
     test('storage failures never mask a good response', () async {
-      // A dao bound to an already-closed database makes BOTH the cached read
-      // and the cache write throw; the live response must still win and the
-      // call must stay a success.
+      // A dao bound to a closed database makes BOTH the cached read and the
+      // cache write throw; the live response must still win and the call
+      // must stay a success. The db is warmed up BEFORE closing: drift's
+      // close() on a never-opened lazy database is a no-op and the first
+      // later query would silently re-open it (defeating the test).
       final brokenDb = AppDatabase(NativeDatabase.memory());
+      await brokenDb.httpCacheDao.get('warmup');
       await brokenDb.close();
       var calls = 0;
       final client = CachingHttpClient(

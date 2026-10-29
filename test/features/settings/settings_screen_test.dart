@@ -69,6 +69,10 @@ void main() {
 
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('Playback'), findsOneWidget);
+    // The lazy ListView builds below-the-fold sections on demand — scroll
+    // to Storage before asserting (the group's existence is the contract,
+    // not its first-viewport position).
+    await _scrollTo(tester, find.text('Storage'));
     expect(find.text('Storage'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
 

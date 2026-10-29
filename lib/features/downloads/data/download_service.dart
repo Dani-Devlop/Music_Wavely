@@ -264,6 +264,10 @@ class DownloadService {
     CancelToken token,
     String? license,
   ) async {
+    // The quality segment is appended by the service, so the leaf directory
+    // may not exist even when the template part does — create it before the
+    // first byte is written (idempotent, cheap on the io arm).
+    await _executor.ensureDir(_dirOf(row.targetPath));
     var offset = await _executor.exists(row.targetPath)
         ? await _executor.fileSize(row.targetPath)
         : 0;

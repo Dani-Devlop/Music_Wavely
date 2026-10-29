@@ -135,7 +135,15 @@ void main() {
     );
     final Finder row =
         find.byKey(const ValueKey<String>('news-muted-reddit/Music'));
-    await tester.ensureVisible(row);
+    // The settings body is a lazy ListView: the muted section sits below
+    // the fold and its elements are not built until scrolled into the
+    // cache extent — ensureVisible cannot find an unbuilt element, so
+    // scroll first (dragUntilVisible re-evaluates after each drag).
+    await tester.scrollUntilVisible(
+      row,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Unmute'));

@@ -192,6 +192,10 @@ void main() {
     testWidgets('a failed toggle never crashes the caller (closed db)',
         (WidgetTester tester) async {
       final db = _memoryDb();
+      // Warm up before closing: drift's close() on a never-opened lazy
+      // database is a no-op and the provider's first query would silently
+      // re-open it instead of surfacing the error state.
+      await db.artistFollowsDao.all();
       await db.close(); // every dao call from now on throws
 
       await tester.pumpWidget(_wrap(db, artist: 'Aurora'));

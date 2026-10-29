@@ -298,16 +298,20 @@ class DiscoveryService {
     );
   }
 
-  /// Top artist names: play-history occurrence counts when [playsDao]
-  /// exists (top 10 tracks, one point per track), else the sum of
+  /// Top artist names: play-history play totals when [playsDao] exists
+  /// (top 10 tracks weighted by their exact play counts), else the sum of
   /// `playCount` over the first 200 tracks of the library.
   Future<List<String>> _topArtistNames() async {
     final counts = <String, int>{};
     final display = <String, String>{};
     final playsDao = this.playsDao;
     if (playsDao != null) {
-      for (final track in await playsDao.topTracks(limit: _topTracksPoolSize)) {
-        _bump(counts, display, track.artist, 1);
+      // Weight by real play totals: an artist with 19 plays must outrank
+      // one with 6 even when the former owns two tracks of the top pool.
+      for (final (track, plays) in await playsDao.topTracksWithCounts(
+        limit: _topTracksPoolSize,
+      )) {
+        _bump(counts, display, track.artist, plays);
       }
     } else {
       for (final track in await _tracksDao.getAll(

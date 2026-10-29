@@ -110,8 +110,9 @@ class AiToolOutcome {
   /// JSON string fed back to the model as the tool message content.
   final String resultJson;
 
-  /// Tracks validated against the database AND actually handed to the
-  /// launcher (only ever populated by `build_queue`).
+  /// Tracks validated against the database and attached to the queue
+  /// suggestion bubble (only ever populated by `build_queue`). Playback
+  /// starts only when the user taps 'Play all' in the chat UI.
   final List<Track> queuedTracks;
 
   final String? queueReason;
@@ -129,10 +130,11 @@ class AiToolOutcome {
 /// - [listeningStatsFallback] lets the orchestrator bridge the analytics
 ///   feature without importing it here; `null` → 'stats unavailable'.
 ///
-/// SECURITY: [execute] is the ONLY path from model output to playback. Track
-/// ids are re-resolved via [TracksDao.byIds]; any id that does not exist in
-/// the library fails the whole call ("fabricated ids rejected") and nothing
-/// is queued. Model text claiming ids is never trusted by [AiService].
+/// SECURITY: [execute] is the ONLY path from model output to library data.
+/// Track ids are re-resolved via [TracksDao.byIds]; any id that does not
+/// exist in the library fails the whole call ("fabricated ids rejected") and
+/// nothing is queued. Model text claiming ids is never trusted by
+/// [AiService]. Playback itself is user-initiated in the chat UI.
 class AiToolExecutor {
   AiToolExecutor({
     required this.tracksDao,
@@ -142,6 +144,11 @@ class AiToolExecutor {
   });
 
   final TracksDao tracksDao;
+
+  /// Retained for API stability and for harnesses asserting that tool
+  /// execution never launches playback by itself (see
+  /// ai_tools_test.dart); `build_queue` does not call it — the chat UI's
+  /// 'Play all' button is the single launch point.
   final TrackLauncher launcher;
 
   /// Orchestrator-provided bridge to the (future) playlists feature.
@@ -217,7 +224,10 @@ class AiToolExecutor {
         Failure.unknown(message: 'Unknown track ids: $missing'),
       );
     }
-    await launcher.playTracks(found);
+    // NOTE: build_queue deliberately does NOT auto-launch playback. The
+    // queue lands as a suggestion bubble with an explicit 'Play all' action
+    // (the UI's trackLauncherProvider call) — launching here AND there made
+    // every AI mix play twice. The executor's job is validation only.
     final reason = args['reason'] as String?;
     return Result.success(
       AiToolOutcome(

@@ -73,6 +73,11 @@ NewsService _service(
             pitchforkFails: pitchforkFails,
             nmeFails: nmeFails,
           ),
+          // The HTTP cache must share the service's injected clock — in
+          // production both layers read the same wall clock, and the memo
+          // contract ("when the memo expires the HTTP cache expires with
+          // it") only holds if this test fast-forwards BOTH clocks.
+          now: now,
         ),
       ),
       now: now,

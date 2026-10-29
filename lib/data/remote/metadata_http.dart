@@ -58,15 +58,17 @@ class RateLimiter {
     final now = _now();
     final remaining =
         last == null ? Duration.zero : minInterval - now.difference(last);
-    if (remaining <= Duration.zero) {
-      _lastTurnAt = now;
-      completer.complete();
-      return;
+    if (remaining > Duration.zero) {
+      // Await INSIDE the queued step: the next caller's _acquire must not
+      // run before this turn has stamped _lastTurnAt, or two concurrent
+      // callers would both schedule the same short delay and complete
+      // together, violating the interval contract.
+      await Future<void>.delayed(remaining);
     }
-    Timer(remaining, () {
-      _lastTurnAt = _now();
+    _lastTurnAt = _now();
+    if (!completer.isCompleted) {
       completer.complete();
-    });
+    }
   }
 }
 

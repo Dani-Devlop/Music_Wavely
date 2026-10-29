@@ -87,7 +87,7 @@ void main() {
         progress: 37,
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('37%'), findsOneWidget);
     expect(find.text('jamendo · tr-9'), findsOneWidget);
@@ -117,7 +117,7 @@ void main() {
         error: 'size mismatch',
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('size mismatch'), findsOneWidget);
     expect(find.byKey(ValueKey<String>('retry-$id')), findsOneWidget);
@@ -145,7 +145,7 @@ void main() {
         progress: 100,
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('archive · item|file.flac'), findsOneWidget);
     // Completed section now filled; the other three still empty.

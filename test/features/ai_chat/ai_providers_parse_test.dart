@@ -201,13 +201,15 @@ void main() {
       );
       await provider.complete(_conversationWithToolResult());
       final request = transport.requests.single;
+      // Stage 3 audit (SEC-10): the API key moved OUT of the URL (it leaked
+      // into proxy logs / exception messages) onto the x-goog-api-key
+      // header — assert the secure wire contract.
       expect(
         request.url.toString(),
-        contains(
-          'https://generativelanguage.googleapis.com/v1beta/models/'
-          'gemini-2.0-flash:generateContent?key=gm-key',
-        ),
+        'https://generativelanguage.googleapis.com/v1beta/models/'
+        'gemini-2.0-flash:generateContent',
       );
+      expect(request.headers['x-goog-api-key'], 'gm-key');
       final body = jsonDecode(request.body) as Map<String, Object?>;
       final systemInstruction = body['systemInstruction'] as Map;
       final systemPart = (systemInstruction['parts'] as List).single as Map;
@@ -372,17 +374,22 @@ void main() {
       final body = jsonDecode(request.body) as Map<String, Object?>;
       expect(body['model'], 'gpt-4o-mini');
       final messages = body['messages'] as List<Object?>;
-      expect(messages, hasLength(3));
+      // The conversation is [user 'hi', assistant(tool_call), tool result]:
+      // a faithful OpenAI replay keeps ALL turns — dropping the user message
+      // would lose the question the tool call was answering.
+      expect(messages, hasLength(4));
       expect((messages[0] as Map)['role'], 'system');
       expect((messages[0] as Map)['content'], 'SYSTEM PROMPT');
+      expect((messages[1] as Map)['role'], 'user');
+      expect((messages[1] as Map)['content'], 'hi');
       // Assistant turns replay the tool_calls; executor results go back as
       // role:'tool' with the originating id.
-      final assistant = messages[1] as Map<String, Object?>;
+      final assistant = messages[2] as Map<String, Object?>;
       expect(assistant['role'], 'assistant');
       final replayed = (assistant['tool_calls'] as List).single as Map;
       expect(replayed['id'], 'call_1');
       expect((replayed['function'] as Map)['name'], 'search_library');
-      final tool = messages[2] as Map<String, Object?>;
+      final tool = messages[3] as Map<String, Object?>;
       expect(tool['role'], 'tool');
       expect(tool['tool_call_id'], 'call_1');
       expect(tool['content'], '{"matches":[]}');

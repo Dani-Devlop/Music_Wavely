@@ -21,7 +21,7 @@ import 'package:wavely/data/local/db/daos/lyrics_dao.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/domain/usecases/scan_library.dart';
 
-const String _pngMagic = '89 50 4E 47 0D 0A 1A 0A';
+const String _pngMagic = '89 50 4e 47 0d 0a 1a 0a';
 
 /// (title, artist, album, genre) per test/fixtures/audio fixture plan
 /// (tools/gen_fixtures.py).

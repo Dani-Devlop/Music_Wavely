@@ -189,7 +189,9 @@ void main() {
       expect(articles.first.imageUrl, 'https://www.nme.com/img/studio.jpg');
       expect(articles.first.publishedAt, DateTime.utc(2026, 2, 8, 14));
       expect(articles.first.categories, contains(NewsCategory.education));
-      expect(articles[1].categories, NewsCategory.artistNews);
+      // categories is a list (the classifier can in principle tag several);
+      // assert membership, not a bare-enum equality against the list.
+      expect(articles[1].categories, contains(NewsCategory.artistNews));
     });
   });
 

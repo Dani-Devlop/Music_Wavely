@@ -125,6 +125,9 @@ void main() {
     expect(find.text('Only One'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(launcher.calls, isEmpty);
-    expect(container.read(libraryCountProvider).hasValue, isTrue);
+    // The count provider is only watched on the folders tab, so reading it
+    // here STARTS it — await the future instead of asserting on the
+    // inevitably-still-loading AsyncValue.
+    expect(await container.read(libraryCountProvider.future), 1);
   });
 }
