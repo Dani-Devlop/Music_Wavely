@@ -106,6 +106,14 @@ void main() {
     addTearDown(db.close);
     await _tapPin(tester, '2468');
     await tester.pumpAndSettle();
+    // The audit card is the LAST section of a lazy ListView — below the
+    // fold and therefore not built until scrolled into the cache extent.
+    await tester.scrollUntilVisible(
+      find.text('Audit log'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Audit log'), findsOneWidget);
     expect(find.text('pin_unlocked'), findsOneWidget);
   });

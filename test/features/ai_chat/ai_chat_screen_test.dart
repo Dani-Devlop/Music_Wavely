@@ -336,6 +336,9 @@ void main() {
     expect(find.text('Play all'), findsOneWidget);
     expect(find.text('Regenerate'), findsOneWidget);
     expect(provider.calls, 2); // tool turn + text turn, no re-run
-    expect(launcher.played, hasLength(1));
+    // Regenerate re-renders the bubble but NEVER launches playback —
+    // under the single-launch-point architecture the executor does not
+    // auto-launch and only the explicit 'Play all' tap does.
+    expect(launcher.played, isEmpty);
   });
 }

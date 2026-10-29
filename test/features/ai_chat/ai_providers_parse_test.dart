@@ -396,10 +396,18 @@ void main() {
       // Same schemas, converted to the OpenAI shape with lowercased types.
       final tools = body['tools'] as List<Object?>;
       expect(tools, hasLength(4));
-      final first = tools[0] as Map<String, Object?>;
-      expect(first['type'], 'function');
+      // Assert build_queue's schema specifically: it is the declaration
+      // with the ARRAY-of-INTEGER track_ids parameter (search_library —
+      // tools[0] — only has the STRING query).
+      final buildQueue = tools
+          .map((Object? t) => t as Map<String, Object?>)
+          .firstWhere(
+        (Map<String, Object?> t) =>
+            ((t['function'] as Map<String, Object?>)['name']) == 'build_queue',
+      );
+      expect(buildQueue['type'], 'function');
       final parameters =
-          (first['function'] as Map<String, Object?>)['parameters']
+          (buildQueue['function'] as Map<String, Object?>)['parameters']
               as Map<String, Object?>;
       expect(parameters['type'], 'object');
       final trackIds =

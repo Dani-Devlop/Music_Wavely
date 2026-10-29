@@ -115,13 +115,16 @@ void main() {
       tester.getCenter(find.text('Alpha')),
     );
     await tester.pump(kLongPressTimeout);
+    // Let the drag actually lift before moving: without settling here the
+    // first moveBy lands while the drag state machine is still starting.
+    await tester.pumpAndSettle();
     await gesture.moveBy(const Offset(0, 90));
-    await tester.pump();
+    await tester.pumpAndSettle();
     // 72 px rows: 90 px moves Alpha's centre into row 1; the follow-up
     // nudge must stay inside that row (past 144 px it would drop two slots
     // and land on Gamma).
     await gesture.moveBy(const Offset(0, 10));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await gesture.up();
     await tester.pumpAndSettle();
 

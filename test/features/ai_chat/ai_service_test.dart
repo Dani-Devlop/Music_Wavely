@@ -315,7 +315,10 @@ void main() {
         [for (final t in queue.tracks) t.id],
         <int?>[1, 2],
       );
-      expect(launcher.played, hasLength(1));
+      // ARCHITECTURE: the executor returns the validated QueueBuildSummary;
+      // playback launches only from the chat UI's 'Play all' (see
+      // ai_tools_test.dart) — sending a prompt never starts audio itself.
+      expect(launcher.played, isEmpty);
     });
 
     test('maxTurns caps provider calls at the configured limit', () async {

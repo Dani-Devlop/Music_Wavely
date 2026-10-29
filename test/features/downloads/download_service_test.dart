@@ -194,6 +194,12 @@ class ScriptedAdapter implements HttpClientAdapter {
       extra['content-range'] =
           'bytes $start-${body.length - 1}/${body.length}';
     }
+    // The gate only holds requests made BEFORE it was released: once
+    // completed, later fetches stream normally. (A completed Future wrapped
+    // in Stream.fromFuture emits before a late subscriber attaches, which
+    // silently dropped the body for follow-up jobs.)
+    final Completer<void>? gate =
+        (this.gate != null && !this.gate!.isCompleted) ? this.gate : null;
     final Stream<Uint8List> stream;
     if (gate == null) {
       stream = Stream<Uint8List>.value(Uint8List.fromList(slice));
@@ -201,7 +207,7 @@ class ScriptedAdapter implements HttpClientAdapter {
       // Broadcast: the accounting listener and dio's own subscription both
       // listen (a single-subscription stream would throw on the second).
       _openResponses++;
-      final Completer<void> g = gate!;
+      final Completer<void> g = gate;
       final Stream<Uint8List> single =
           Stream<Uint8List>.fromFuture(
         g.future.then((_) => Uint8List.fromList(slice)),

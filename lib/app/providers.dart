@@ -75,8 +75,17 @@ List<Override> buildOverrides({
           engine: ref.watch(playbackEngineProvider),
           store: ref.watch(settingsStoreProvider),
           trackSource: ref.watch(queueTrackSourceProvider),
-          onTrackStarted: (track) =>
-              unawaited(ref.read(playRecorderProvider).record(track)),
+          onTrackStarted: (track) => unawaited(
+            // record() propagates DAO failures BY CONTRACT
+            // (play_recorder_test.dart); QueueManager's guard only sees
+            // synchronous throws, so the composition root is the async
+            // containment boundary (e.g. an online-only track violating the
+            // plays FK, a closed db, a full disk — never break playback).
+            ref
+                .read(playRecorderProvider)
+                .record(track)
+                .catchError((Object e, StackTrace st) {}),
+          ),
           advancedShuffleConfig: ref.watch(advancedShuffleConfigProvider),
           trackPreloadHook: (track) => _parentalPreload(ref, track),
         ),

@@ -108,7 +108,7 @@ void main() {
 
     // Two 'Add folder' texts are legitimate UI (toolbar button + the
     // empty-state CTA); target the toolbar FilledButton specifically.
-    await tester.tap(find.widgetWithText(FilledButton, 'Add folder'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Add folder').first);
     await tester.pumpAndSettle();
 
     expect(find.text('/music/picked'), findsOneWidget);
@@ -141,7 +141,7 @@ void main() {
 
     // Two 'Add folder' texts are legitimate UI (toolbar button + the
     // empty-state CTA); target the toolbar FilledButton specifically.
-    await tester.tap(find.widgetWithText(FilledButton, 'Add folder'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Add folder').first);
     await tester.pumpAndSettle();
 
     expect(find.text('/music/a'), findsOneWidget);

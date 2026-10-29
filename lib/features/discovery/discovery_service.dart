@@ -155,12 +155,16 @@ class DiscoveryService {
     };
     for (final seed in seeds) {
       final search = await _deezer.searchArtist(seed);
+      String? seedPicture;
       final deezerId = search.fold(
         onErr: (failure) {
           lastFailure = failure;
           return null;
         },
-        onSuccess: (artist) => artist?.id,
+        onSuccess: (artist) {
+          seedPicture = artist?.pictureUrl;
+          return artist?.id;
+        },
       );
       if (deezerId == null) {
         continue;
@@ -181,7 +185,18 @@ class DiscoveryService {
               continue;
             }
             seen.add(key);
-            collected.add(artist);
+            // Display fallback: a related artist with no picture of its own
+            // inherits the seed's picture so the discovery card is never
+            // rendered empty (the related endpoint may omit picture fields).
+            collected.add(
+              artist.pictureUrl == null && seedPicture != null
+                  ? DeezerArtist(
+                      id: artist.id,
+                      name: artist.name,
+                      pictureUrl: seedPicture,
+                    )
+                  : artist,
+            );
           }
         },
       );

@@ -95,7 +95,7 @@ void main() {
     expect(find.byKey(ValueKey<String>('cancel-$id')), findsOneWidget);
 
     await tester.tap(find.byKey(ValueKey<String>('pause-$id')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       (await db.downloadsDao.byId(id))!.status,
       DownloadStatus.queued,
@@ -123,7 +123,7 @@ void main() {
     expect(find.byKey(ValueKey<String>('retry-$id')), findsOneWidget);
 
     await tester.tap(find.byKey(ValueKey<String>('retry-$id')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       (await db.downloadsDao.byId(id))!.status,
       DownloadStatus.queued,
