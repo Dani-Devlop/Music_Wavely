@@ -111,20 +111,29 @@ void main() {
         await _pumpSeeded(tester, onClose: null);
 
     // Measure the REAL row pitch from the rendered rows instead of assuming
-    // 72 px: WavelyTypography's title/subtitle metrics make the ListTile
-    // taller than the Material default, so a hand-picked -80 px landed the
-    // dragged proxy's centre INSIDE Alpha's drop bucket — the reorder never
-    // fired at all. Alpha and Beta are equivalent rows, so the distance
-    // between their title centres IS the row pitch H. Moving up by 1.25·H
-    // puts the proxy centre at 0.25·H from the list top — above Alpha's
-    // centre (0.5·H) for centre-crossing drop math AND above Alpha's top
-    // edge (0) for edge-crossing math, with 0.25·H margin under every
-    // ReorderableListView drop-bucket model. Upward overshoot is safe
-    // because the insert index clamps at 0. (Dragging the current row
-    // downward instead hit the framework's shifted-gap hysteresis: at
-    // 120 px the drop bucket landed two slots down.) The current track is
-    // Alpha: dragging the NON-current row still asserts the follow logic —
-    // Alpha slides to index 1 and must not reload.
+    // a Material default: WavelyTypography's title/subtitle metrics size the
+    // ListTile independently, and the drag window must be computed from the
+    // actual geometry. Alpha and Beta are equivalent rows, so the distance
+    // between their title centres IS the row pitch H.
+    //
+    // Flutter 3.47.8's ReorderableListState._dragUpdateItems compares the
+    // proxy's START/END EDGES against each row's halves (not centres):
+    // dragging up, the gap opens above Alpha only while Alpha's extent
+    // satisfies `itemStart <= proxyStart <= itemMiddle` — i.e. the proxy's
+    // TOP edge must sit inside Alpha's UPPER half. Overshooting above
+    // Alpha's top edge (proxyStart < itemStart) matches NO condition and
+    // freezes the insert index at the original slot — the drop fires
+    // onReorder(1, 1) and the queue is unchanged. That is exactly why both
+    // a fixed -80 px and a 1.25x-pitch move silently no-oped on CI.
+    //
+    // So the working window is 0.5·H < d <= H; 0.75·H puts the proxy top
+    // edge at 0.25·H from the list top — the midpoint of Alpha's upper
+    // half — the widest safety margin inside the window, and the
+    // post-gap-shift re-evaluation keeps insert index 0 there. (Dragging
+    // the current row downward instead hit the framework's shifted-gap
+    // hysteresis.) The current track is Alpha: dragging the NON-current
+    // row still asserts the follow logic — Alpha slides to index 1 and
+    // must not reload.
     final double rowPitch = tester.getCenter(find.text('Beta')).dy -
         tester.getCenter(find.text('Alpha')).dy;
     final TestGesture gesture = await tester.startGesture(
@@ -133,7 +142,7 @@ void main() {
     await tester.pump(kLongPressTimeout);
     // Let the drag actually lift before moving.
     await tester.pumpAndSettle();
-    await gesture.moveBy(Offset(0, -rowPitch * 1.25));
+    await gesture.moveBy(Offset(0, -rowPitch * 0.75));
     await tester.pumpAndSettle();
     await gesture.up();
     await tester.pumpAndSettle();

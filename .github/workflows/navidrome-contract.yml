@@ -25,10 +25,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install ffmpeg (dropped from the ubuntu-24.04 runner image)
+      - name: Install Linux dev libs + ffmpeg (dropped from the ubuntu-24.04 runner image)
+        # Parity with verify.yml: desktop-targeted tests compile Linux host
+        # code (GTK / media_kit headers) during `flutter test` — the
+        # cnativeapi native-assets hook pkg-configs gtk+-3.0 / x11 / xi and
+        # fails the whole `flutter test` invocation without these packages.
+        # ffmpeg is needed to seed the sine-wave mp3 below.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev libmpv-dev mpv ninja-build clang cmake pkg-config ffmpeg
 
       - name: Seed Navidrome music volume with a sine-wave mp3
         run: |
