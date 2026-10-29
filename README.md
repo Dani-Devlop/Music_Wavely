@@ -142,14 +142,18 @@ cd Music_Wavely
 flutter config --enable-windows-desktop --enable-linux-desktop
 flutter create . --platforms=android,windows,linux,web --org app.wavely --project-name wavely
 
-# 2. Dependencies + code generation
+# 2. Enable desugaring for the Android runner (flutter_local_notifications
+#    requirement — no-op if you only scaffolded desktop targets)
+python3 tools/patch_android_desugaring.py
+
+# 3. Dependencies + code generation
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 
-# 3. Configuration — optional! The local player needs NO API keys at all.
+# 4. Configuration — optional! The local player needs NO API keys at all.
 cp .env.example .env   # add JAMENDO_CLIENT_ID / Subsonic / Supabase if you want them
 
-# 4. Run
+# 5. Run
 flutter run -d linux            # or -d windows, or an Android device id
 ```
 
