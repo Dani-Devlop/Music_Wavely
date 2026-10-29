@@ -98,9 +98,11 @@ jobs:
       # (GTK / media_kit headers) — without these the build fails on
       # pkg-config gtk+-3.0.
       - name: Install Linux dev libs
-        # libjson-glib-dev: ffmpeg_kit_flutter_new's Linux CMakeLists
-        # pkg-checks json-glib-1.0; the rest is the verify.yml parity set.
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libmpv-dev mpv ninja-build clang cmake pkg-config libjson-glib-dev
+        # Plugin parity: ffmpeg_kit_flutter_new pkg-checks json-glib-1.0,
+        # flutter_secure_storage_linux pkg-checks libsecret-1 (>= 0.18.4),
+        # sentry-native links libcurl; libgtk-3-dev/libmpv-dev are the
+        # verify.yml parity set for the desktop engine.
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libmpv-dev mpv ninja-build clang cmake pkg-config libjson-glib-dev libsecret-1-dev libcurl4-openssl-dev
       # Scaffold the missing Linux runner (see README "Getting Started").
       - run: flutter config --enable-linux-desktop
       - run: flutter create . --platforms=linux --org app.wavely --project-name wavely

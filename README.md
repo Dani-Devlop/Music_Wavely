@@ -142,8 +142,8 @@ cd Music_Wavely
 flutter config --enable-windows-desktop --enable-linux-desktop
 flutter create . --platforms=android,windows,linux,web --org app.wavely --project-name wavely
 
-# 2. Enable desugaring for the Android runner (flutter_local_notifications
-#    requirement — no-op if you only scaffolded desktop targets)
+# 2. Patch the Android runner for Wavely's plugin set (desugaring +
+#    minSdk 26; no-op if you only scaffolded desktop targets)
 python3 tools/patch_android_desugaring.py
 
 # 3. Dependencies + code generation
