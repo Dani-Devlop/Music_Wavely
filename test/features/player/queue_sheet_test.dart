@@ -111,6 +111,10 @@ void main() {
         await _pumpSeeded(tester, onClose: null);
 
     // Current track is Alpha (index 0). Drag it one row down.
+    // 72 px rows → item centres at 36 / 108 / 180. A 120 px move puts the
+    // proxy top at 120 and its centre at 156: past Beta's centre (gap opens
+    // below Beta) but short of Gamma's centre (144 would leave the proxy
+    // top exactly on Beta's edge, where drop-index algorithms disagree).
     final TestGesture gesture = await tester.startGesture(
       tester.getCenter(find.text('Alpha')),
     );
@@ -118,11 +122,8 @@ void main() {
     // Let the drag actually lift before moving: without settling here the
     // first moveBy lands while the drag state machine is still starting.
     await tester.pumpAndSettle();
-    await gesture.moveBy(const Offset(0, 90));
+    await gesture.moveBy(const Offset(0, 110));
     await tester.pumpAndSettle();
-    // 72 px rows: 90 px moves Alpha's centre into row 1; the follow-up
-    // nudge must stay inside that row (past 144 px it would drop two slots
-    // and land on Gamma).
     await gesture.moveBy(const Offset(0, 10));
     await tester.pumpAndSettle();
     await gesture.up();

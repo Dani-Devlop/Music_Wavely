@@ -8,6 +8,11 @@
 // are driven through the real service semantics (pause/retry/cancel write
 // status through the DAO even without an in-flight HTTP job).
 
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -18,16 +23,71 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/data/local/db/tables/downloads.dart';
+import 'package:wavely/domain/repositories/source_provider.dart';
+import 'package:wavely/features/downloads/data/download_prefs.dart';
+import 'package:wavely/features/downloads/data/download_service.dart';
+import 'package:wavely/features/downloads/data/downloads_providers.dart';
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
+import 'package:wavely/sources/download_file_executor.dart';
+
+/// Filesystem-in-memory executor: the row actions under test (pause/retry)
+/// never touch storage (the queue pump is gated), so every method is a
+/// no-op; `fileAt` is io-arm-only.
+class _StubExecutor implements DownloadFileExecutor {
+  @override
+  Future<void> ensureDir(String dirPath) async {}
+
+  @override
+  Future<void> writeFromStream(
+    Stream<List<int>> bytes,
+    String path, {
+    int startOffset = 0,
+  }) async {}
+
+  @override
+  Future<int> fileSize(String path) async => 0;
+
+  @override
+  Future<bool> exists(String path) async => false;
+
+  @override
+  Future<void> delete(String path) async {}
+
+  @override
+  Future<void> writeString(String path, String contents) async {}
+
+  @override
+  Stream<List<int>> readStream(String path) async* {}
+
+  @override
+  File fileAt(String path) => throw UnimplementedError('io-arm only');
+}
 
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   required AppDatabase db,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
+  // The row actions delegate to the REAL DownloadService through
+  // downloadServiceProvider — provide one over the same db. wifiOnly keeps
+  // its default (true) and the network reports metered, so the queue pump
+  // stays gated exactly like a phone off Wi-Fi: pause/retry re-queue the
+  // row and the pump deterministically does not re-pick it.
+  final DownloadPrefs prefs = DownloadPrefs(await SharedPreferences.getInstance());
+  final DownloadService service = DownloadService(
+    db: db,
+    prefs: prefs,
+    resolveSources: () async => const <SourceProvider>[],
+    baseDir: () async => '/base',
+    executor: _StubExecutor(),
+    dio: Dio(),
+    isUnmetered: () async => false,
+  );
+  addTearDown(service.dispose);
   final ProviderContainer container = ProviderContainer(
     overrides: <Override>[
       databaseProvider.overrideWithValue(db),
+      downloadServiceProvider.overrideWith((Ref ref) async => service),
     ],
   );
   addTearDown(container.dispose);
