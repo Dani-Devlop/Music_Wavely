@@ -110,21 +110,22 @@ void main() {
     final (ProviderContainer container, FakePlaybackEngine engine) =
         await _pumpSeeded(tester, onClose: null);
 
-    // Current track is Alpha (index 0). Drag it one row down.
-    // 72 px rows → item centres at 36 / 108 / 180. A 120 px move puts the
-    // proxy top at 120 and its centre at 156: past Beta's centre (gap opens
-    // below Beta) but short of Gamma's centre (144 would leave the proxy
-    // top exactly on Beta's edge, where drop-index algorithms disagree).
+    // Drag Beta one row UP. 72 px rows → item centres at 36 / 108 / 180;
+    // an 80 px upward move puts Beta's proxy centre at 28 — past Alpha's
+    // centre (36) for centre-crossing drop math and past Alpha's top edge
+    // for edge-crossing math, so the gap opens above Alpha under every
+    // ReorderableListView drop-bucket model. (Dragging the current row
+    // downward instead hit the framework's shifted-gap hysteresis: at
+    // 120 px the drop bucket landed two slots down.) The current track is
+    // Alpha: dragging the NON-current row still asserts the follow logic —
+    // Alpha slides to index 1 and must not reload.
     final TestGesture gesture = await tester.startGesture(
-      tester.getCenter(find.text('Alpha')),
+      tester.getCenter(find.text('Beta')),
     );
     await tester.pump(kLongPressTimeout);
-    // Let the drag actually lift before moving: without settling here the
-    // first moveBy lands while the drag state machine is still starting.
+    // Let the drag actually lift before moving.
     await tester.pumpAndSettle();
-    await gesture.moveBy(const Offset(0, 110));
-    await tester.pumpAndSettle();
-    await gesture.moveBy(const Offset(0, 10));
+    await gesture.moveBy(const Offset(0, -80));
     await tester.pumpAndSettle();
     await gesture.up();
     await tester.pumpAndSettle();

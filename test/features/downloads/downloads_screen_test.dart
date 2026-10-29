@@ -98,6 +98,10 @@ Future<ProviderContainer> _pump(
     ),
   );
   await tester.pump();
+  // Pre-warm the lazily-created service so the row actions' read
+  // (_withService) sees a ready AsyncValue instead of skipping on loading.
+  await container.read(downloadServiceProvider.future);
+  await tester.pump();
   return container;
 }
 
