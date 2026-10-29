@@ -173,7 +173,7 @@ void main() {
   });
 
   tearDown(() async {
-    await manager.dispose();
+    manager.dispose();
     await engine.dispose();
   });
 
@@ -552,7 +552,7 @@ void main() {
       expect(idsA.contains(4), isFalse, reason: 'metal is filtered out');
       expect(managerA.state.shuffleEnabled, isTrue);
 
-      await managerB.dispose();
+      managerB.dispose();
       await engineA.dispose();
       await engineB.dispose();
     });
@@ -729,7 +729,7 @@ void main() {
           _manager(engine, trackSource: sourceEmpty, store: store);
       await manager2.restore();
       expect(manager2.state.tracks, isEmpty);
-      await manager2.dispose();
+      manager2.dispose();
     });
 
     test('restore survives a failing track source', () async {

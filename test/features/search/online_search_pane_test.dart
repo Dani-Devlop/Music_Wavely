@@ -7,13 +7,18 @@
 // note and the error state. Sources are scripted; the download service
 // runs over an in-memory database + in-memory executor.
 
-import 'package:drift/native.dart';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/data/local/db/app_database.dart';
+import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/data/local/db/tables/downloads.dart';
 import 'package:wavely/domain/entities/entities.dart';
@@ -54,7 +59,7 @@ class _ScriptedSource implements SourceProvider {
       StreamUrl(url: 'https://cdn/${t.sourceTrackId}');
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,
@@ -208,7 +213,13 @@ void main() {
     final SearchService service = SearchService(
       sources: <SourceProvider>[
         _ScriptedSource('jamendo', <Track>[_hit('jamendo', 'j-1', 'Aurora')]),
-        _ScriptedSource('archive', <Track>[_hit('archive', 'a|f.flac', 'Aurora')]),
+        // A DIFFERENT work: the unified dedupe collapses identical
+        // title+artist across sources by design (same release found twice),
+        // so the two-row badge/download contract needs distinct titles.
+        _ScriptedSource(
+          'archive',
+          <Track>[_hit('archive', 'a|f.flac', 'Northern Lights')],
+        ),
       ],
     );
     await _pump(tester, db: db, searchService: service);
@@ -223,7 +234,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
 
-    expect(find.text('Aurora'), findsNWidgets(2));
+    expect(find.text('Aurora'), findsOneWidget);
+    expect(find.text('Northern Lights'), findsOneWidget);
     expect(find.textContaining('FLAC'), findsNWidgets(2));
     expect(find.byKey(const ValueKey<String>('download-online-j-1')),
         findsOneWidget);
@@ -335,7 +347,7 @@ class _ThrowingSource implements SourceProvider {
       StreamUrl(url: 'https://x');
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,

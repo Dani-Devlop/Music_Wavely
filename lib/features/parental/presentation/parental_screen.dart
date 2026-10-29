@@ -4,6 +4,7 @@ import 'package:wavely/core/settings/settings_store.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/design_system/components/components.dart';
 import 'package:wavely/design_system/themes/semantic_extension.dart';
+import 'package:wavely/design_system/themes/theme_provider.dart';
 import 'package:wavely/features/parental/data/no_lyrics_policy.dart';
 import 'package:wavely/features/parental/data/parental_providers.dart';
 import 'package:wavely/features/parental/data/pin_hash.dart';
@@ -219,7 +220,7 @@ class _ParentalScreenState extends ConsumerState<ParentalScreen> {
 
   Widget _buildWordsSection() {
     final wordsAsync = ref.watch(blockedWordsProvider);
-    final words = wordsAsync.valueOrNull;
+    final words = wordsAsync.value;
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -787,7 +788,13 @@ class _Card extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.borderGlass),
       ),
-      child: child,
+      // ListTile paints its background/ink on the nearest Material ancestor;
+      // without this the decorated container above hides them and the
+      // framework assertion fires.
+      child: Material(
+        type: MaterialType.transparency,
+        child: child,
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:html/dom.dart' as html;
 import 'package:html/parser.dart' as html_parser;
 
 import 'package:wavely/data/remote/metadata_http.dart';
@@ -117,6 +118,11 @@ class FmaSource implements SourceProvider {
           }
         }
       }
+      if (artist.isEmpty && durationSeconds == 0) {
+        // A bare anchor with no artist and no duration is not a usable
+        // result row (e.g. repeated anchor placeholders) — skip it.
+        continue;
+      }
       hits.add(
         FmaSearchHit(
           trackPath: href,
@@ -173,7 +179,7 @@ class FmaSource implements SourceProvider {
   }
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,

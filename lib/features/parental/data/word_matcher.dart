@@ -156,8 +156,12 @@ class WordMatcher {
           continue;
         }
         final lastOrig = origIndex[endPos - 1];
-        // Word boundary after the last letter.
-        if (lastOrig + 1 < lower.length && _isWordChar(lower[lastOrig + 1])) {
+        // Word boundary after the last letter: a following LEET-MAPPED char
+        // (e.g. `!` → i) extends the word and rejects the match — but a
+        // plain suffix letter does NOT (`fucking` still matches `fuck`, and
+        // the longer-word row collapses via overlap removal).
+        if (lastOrig + 1 < lower.length &&
+            _leetMap.containsKey(lower[lastOrig + 1])) {
           continue;
         }
         found.add(
@@ -221,5 +225,5 @@ class _Target {
   final String word;
   final String severity;
 
-  late final String normalized = letters.join();
+  String get normalized => letters.join();
 }

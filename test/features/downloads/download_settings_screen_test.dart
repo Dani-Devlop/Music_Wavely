@@ -4,6 +4,7 @@
 // defaults render, quality segments persist, folder-template submit
 // persists, Wi-Fi-only switch toggles, concurrency slider writes.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -46,7 +47,7 @@ void main() {
     expect(find.byKey(const Key('wifi-only-switch')), findsOneWidget);
     expect(find.text('Concurrent downloads: 3'), findsOneWidget);
     // Wi-Fi-only defaults to on.
-    final Switch wifi = tester.widget<Switch>(
+    final SwitchListTile wifi = tester.widget<SwitchListTile>(
       find.byKey(const Key('wifi-only-switch')),
     );
     expect(wifi.value, isTrue);

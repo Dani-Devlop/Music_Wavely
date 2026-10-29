@@ -102,6 +102,11 @@ class AppDatabase extends _$AppDatabase {
             await Migration0004.run(m, this);
           }
         },
+        // SQLite ships with foreign-key enforcement OFF per connection;
+        // turn it on so ON DELETE CASCADE declarations actually fire.
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA foreign_keys = ON');
+        },
       );
 
   /// (Re)creates the FTS5 virtual table and its three sync triggers.

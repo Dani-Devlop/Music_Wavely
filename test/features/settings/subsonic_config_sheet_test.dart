@@ -6,6 +6,7 @@
 // the honest failure, Save persists via SourceSettings (+ secure store),
 // and Remove clears config + secret.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -13,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/settings/presentation/widgets/subsonic_config_sheet.dart';
 import 'package:wavely/sources/source_providers.dart';
+import 'package:wavely/sources/source_registry.dart';
 import 'package:wavely/sources/subsonic/subsonic_config.dart';
 
 class _InMemoryStore implements SubsonicCredentialStore {

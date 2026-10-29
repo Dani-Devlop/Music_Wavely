@@ -21,9 +21,10 @@ class PlayRecorder {
   final PlaysDao _playsDao;
   final String? _deviceId;
 
-  /// Records the start of a listening session for [track]. Never throws into
-  /// the caller: QueueManager already guards the hook, but a failure here is
-  /// logged-and-dropped semantics (history is best-effort by design).
+  /// Records the start of a listening session for [track]. DAO failures
+  /// propagate: QueueManager already wraps the onTrackStarted hook in its
+  /// own guard (see queue_manager_test.dart), so a recorder crash can never
+  /// break playback — the single guard point is the caller, not this class.
   Future<void> record(Track track) async {
     final trackId = track.id;
     if (trackId == null) {

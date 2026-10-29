@@ -155,12 +155,16 @@ class DiscoveryService {
     };
     for (final seed in seeds) {
       final search = await _deezer.searchArtist(seed);
+      String? seedPicture;
       final deezerId = search.fold(
         onErr: (failure) {
           lastFailure = failure;
           return null;
         },
-        onSuccess: (artist) => artist?.id,
+        onSuccess: (artist) {
+          seedPicture = artist?.pictureUrl;
+          return artist?.id;
+        },
       );
       if (deezerId == null) {
         continue;
@@ -181,7 +185,18 @@ class DiscoveryService {
               continue;
             }
             seen.add(key);
-            collected.add(artist);
+            // Display fallback: a related artist with no picture of its own
+            // inherits the seed's picture so the discovery card is never
+            // rendered empty (the related endpoint may omit picture fields).
+            collected.add(
+              artist.pictureUrl == null && seedPicture != null
+                  ? DeezerArtist(
+                      id: artist.id,
+                      name: artist.name,
+                      pictureUrl: seedPicture,
+                    )
+                  : artist,
+            );
           }
         },
       );
@@ -298,16 +313,20 @@ class DiscoveryService {
     );
   }
 
-  /// Top artist names: play-history occurrence counts when [playsDao]
-  /// exists (top 10 tracks, one point per track), else the sum of
+  /// Top artist names: play-history play totals when [playsDao] exists
+  /// (top 10 tracks weighted by their exact play counts), else the sum of
   /// `playCount` over the first 200 tracks of the library.
   Future<List<String>> _topArtistNames() async {
     final counts = <String, int>{};
     final display = <String, String>{};
     final playsDao = this.playsDao;
     if (playsDao != null) {
-      for (final track in await playsDao.topTracks(limit: _topTracksPoolSize)) {
-        _bump(counts, display, track.artist, 1);
+      // Weight by real play totals: an artist with 19 plays must outrank
+      // one with 6 even when the former owns two tracks of the top pool.
+      for (final (track, plays) in await playsDao.topTracksWithCounts(
+        limit: _topTracksPoolSize,
+      )) {
+        _bump(counts, display, track.artist, plays);
       }
     } else {
       for (final track in await _tracksDao.getAll(

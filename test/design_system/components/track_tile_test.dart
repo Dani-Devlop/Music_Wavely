@@ -9,6 +9,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wavely/design_system/components/explicit_badge.dart';
 import 'package:wavely/design_system/components/track_tile.dart';
 import 'package:wavely/domain/entities/entities.dart';
 
@@ -29,6 +30,7 @@ Track _track({
       addedAt: DateTime(2024, 1, 1),
       updatedAt: DateTime(2024, 1, 1),
       playCount: 5,
+      explicit: explicit,
     );
 
 void main() {

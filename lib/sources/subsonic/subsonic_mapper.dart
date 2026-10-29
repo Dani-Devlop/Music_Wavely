@@ -27,7 +27,7 @@ class SubsonicChild {
 
   /// Parses a `Child` (or `song`) JSON object.
   factory SubsonicChild.fromJson(Map<String, dynamic> json) => SubsonicChild(
-        id: (json['id'] as String?) ?? (json['id']?.toString() ?? ''),
+        id: json['id']?.toString() ?? '',
         title: (json['title'] as String?) ?? (json['name'] as String?) ?? '',
         artist: (json['artist'] as String?) ?? '',
         album: (json['album'] as String?) ?? '',

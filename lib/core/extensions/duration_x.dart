@@ -22,7 +22,7 @@ extension DurationX on Duration {
   }
 
   /// [hm] for positive durations, an en dash for zero / negative ones.
-  String get hmOrDash => inSeconds <= 0 ? '–' : hm;
+  String get hmOrDash => this <= Duration.zero ? '–' : hm;
 
   /// Always zero padded `HH:MM:SS`, e.g. 3661s -> `01:01:01`.
   String get digitalClock {

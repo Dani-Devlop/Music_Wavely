@@ -122,7 +122,7 @@ class ArtistDetailScreen extends ConsumerWidget {
                           itemBuilder: (context, index) {
                             final track = tracks[index];
                             return TrackTile(
-                              key: ValueKey<int>(
+                              key: ValueKey<String>(
                                 'artist-track-${track.id}',
                               ),
                               track: track,

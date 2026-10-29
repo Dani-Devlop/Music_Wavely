@@ -20,6 +20,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/design_system/design_system.dart';
+import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/ai_chat/ai_chat_providers.dart';
 import 'package:wavely/features/ai_chat/data/ai_provider.dart';
 import 'package:wavely/features/ai_chat/data/ai_service.dart';
@@ -335,6 +336,9 @@ void main() {
     expect(find.text('Play all'), findsOneWidget);
     expect(find.text('Regenerate'), findsOneWidget);
     expect(provider.calls, 2); // tool turn + text turn, no re-run
-    expect(launcher.played, hasLength(1));
+    // Regenerate re-renders the bubble but NEVER launches playback —
+    // under the single-launch-point architecture the executor does not
+    // auto-launch and only the explicit 'Play all' tap does.
+    expect(launcher.played, isEmpty);
   });
 }

@@ -87,6 +87,10 @@ dependencies:
   # FMA search-page HTML parsing (search page is the only live endpoint).
   html: ^0.15.6
 
+  # RSS/Atom news-feed parsing (package:html cannot parse RSS: the HTML5
+  # tree builder treats <link> as a void element and drops its text).
+  xml: ^6.5.0
+
   # --- Stage 2.2 desktop packaging -------------------------------------
   # Windows auto-update surface (Sparkle/WinSparkle wrapper; the GitHub
   # Releases check in lib/features/settings/data/update_service.dart is

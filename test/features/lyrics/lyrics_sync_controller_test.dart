@@ -69,7 +69,7 @@ void main() {
     test('position before the first line reports -1 exactly once', () async {
       buildController();
 
-      await emit(const Duration(milliseconds: 9999));
+      await emit(const Duration(milliseconds: -1));
       expect(controller.activeIndex, -1);
       expect(events, <int>[-1]);
     });

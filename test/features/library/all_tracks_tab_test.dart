@@ -10,7 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
+import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/library/presentation/all_tracks_tab.dart';
@@ -123,6 +125,9 @@ void main() {
     expect(find.text('Only One'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(launcher.calls, isEmpty);
-    expect(container.read(libraryCountProvider).hasValue, isTrue);
+    // The count provider is only watched on the folders tab, so reading it
+    // here STARTS it — await the future instead of asserting on the
+    // inevitably-still-loading AsyncValue.
+    expect(await container.read(libraryCountProvider.future), 1);
   });
 }

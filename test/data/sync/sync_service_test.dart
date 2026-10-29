@@ -96,12 +96,12 @@ class _FakeSettingsBackend implements SyncBackend, SettingsPullable {
 SyncOutboxCompanion _outboxRow(
   String rowKey, {
   required DateTime createdAt,
-  String tableName = 'plays',
+  String outboxTableName = 'plays',
   String op = 'insert',
   String payload = '{"ok":true}',
 }) =>
     SyncOutboxCompanion.insert(
-      tableName: tableName,
+      outboxTable: outboxTableName,
       rowKey: rowKey,
       op: op,
       payload: payload,
@@ -360,7 +360,17 @@ void main() {
         'persisted stamp', () async {
       final db = _memoryDb();
       addTearDown(db.close);
-      final backend = _FakeBackend();
+      final local = await _seedTrack(db,
+          sourceTrackId: 'st-1', title: 'Song One', artist: 'Artist One');
+      // Stage 3 audit (BUG-6): the watermark is anchored to the newest
+      // pulled play's started_at — an EMPTY pull deliberately persists
+      // nothing (wall-clock stamping would skip offline plays uploaded
+      // later). The scripted backend must return a play for the stamp to
+      // advance, so the contract below exercises a real pull result.
+      final backend = _FakeBackend()
+        ..pullResult = Result<List<RemotePlay>>.success(<RemotePlay>[
+          _remotePlay(playFingerprint(local), DateTime(2021, 6, 1, 10)),
+        ]);
       final store = InMemorySettingsStore();
       final service = _service(db, store, backend);
       addTearDown(service.dispose);
@@ -369,11 +379,11 @@ void main() {
       expect(backend.pullSinces.single,
           DateTime.fromMillisecondsSinceEpoch(0));
       expect(await store.read<String>(SyncService.lastPulledAtKey),
-          isNotNull);
+          DateTime(2021, 6, 1, 10).toIso8601String());
 
       await service.pullChanges();
       expect(backend.pullCount, 2);
-      expect(backend.pullSinces.last.isAfter(DateTime(2020)), isTrue);
+      expect(backend.pullSinces.last, DateTime(2021, 6, 1, 10));
     });
 
     test('a failed pull does not advance the watermark', () async {

@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -36,6 +37,21 @@ Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
   );
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
+}
+
+/// Makes the path_provider plugin deterministically ABSENT for the test.
+///
+/// A widget test runs in a fake-async zone: the reply of an UNMOCKED
+/// platform channel is processed by the real event loop and never arrives,
+/// so the degrade path would hang in loading forever. Replying null is the
+/// in-zone equivalent of the plugin being absent (`invokeMethod` throws
+/// MissingPluginException), which is exactly the contract under test.
+void _mockPathProviderUnavailable() {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('plugins.flutter.io/path_provider'),
+    (MethodCall call) async => null,
+  );
 }
 
 Future<ProviderContainer> _pumpScreen(
@@ -69,6 +85,10 @@ void main() {
 
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('Playback'), findsOneWidget);
+    // The lazy ListView builds below-the-fold sections on demand — scroll
+    // to Storage before asserting (the group's existence is the contract,
+    // not its first-viewport position).
+    await _scrollTo(tester, find.text('Storage'));
     expect(find.text('Storage'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
 
@@ -86,6 +106,7 @@ void main() {
 
   testWidgets('cache-size row degrades to 0 MB without path_provider',
       (tester) async {
+    _mockPathProviderUnavailable();
     await _pumpScreen(tester);
 
     await _scrollTo(tester, find.text('Cache size'));
@@ -182,6 +203,7 @@ void main() {
 
   testWidgets('clear-cache flow degrades to the friendly SnackBar',
       (tester) async {
+    _mockPathProviderUnavailable();
     await _pumpScreen(tester);
 
     await _scrollTo(tester, find.text('Clear cache'));

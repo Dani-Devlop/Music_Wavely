@@ -24,6 +24,7 @@ import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/remote/metadata_clients/deezer_client.dart';
 import 'package:wavely/data/remote/metadata_clients/musicbrainz_client.dart';
 import 'package:wavely/data/remote/metadata_http.dart';
+import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/discovery/discovery_service.dart';
 
 Success<T> _ok<T>(Result<T> result) => result as Success<T>;
@@ -223,7 +224,7 @@ void main() {
         mbid: 'mbid-f',
         followedAt: DateTime(2026, 6, 15),
       );
-      final (service: service, _) = _build(db, remote);
+      final (service: service, log: _) = _build(db, remote);
 
       final releases = _ok(await service.getNewFromFollowedArtists()).value;
 
@@ -286,7 +287,7 @@ void main() {
         mbid: 'mbid-broken-2',
         followedAt: DateTime(2026, 6, 15),
       );
-      final (service: service, _) = _build(db, remote);
+      final (service: service, log: _) = _build(db, remote);
 
       final result = await service.getNewFromFollowedArtists();
 
@@ -317,7 +318,7 @@ void main() {
         mbid: 'mbid-ok',
         followedAt: DateTime(2026, 6, 15),
       );
-      final (service: service, _) = _build(db, remote);
+      final (service: service, log: _) = _build(db, remote);
 
       final releases = _ok(await service.getNewFromFollowedArtists()).value;
 
@@ -344,7 +345,7 @@ void main() {
         mbid: 'mbid-f',
         followedAt: DateTime(2026, 6, 15),
       );
-      final (service: service, _) = _build(db, remote);
+      final (service: service, log: _) = _build(db, remote);
 
       final releases = _ok(await service.getNewFromFollowedArtists()).value;
 
@@ -476,7 +477,7 @@ void main() {
         ..deezerSearch['Beta'] = '{"data":[{"id":201,"name":"Beta"}]}'
         ..deezerRelated['201'] =
             '{"data":[{"id":202,"name":"Beta Related"}]}';
-      final (service: service, _) = _build(db, remote);
+      final (service: service, log: _) = _build(db, remote);
 
       final artists = _ok(await service.getBecauseYouListenTo()).value;
 
@@ -493,7 +494,7 @@ void main() {
       await _seedPlay(db, tAlpha.id!, DateTime(2026, 6, 1, 8));
 
       final remote = _CannedRemote()..deezerSearchFails = true;
-      final (service: service, _) = _build(db, remote);
+      final (service: service, log: _) = _build(db, remote);
 
       final result = await service.getBecauseYouListenTo();
 

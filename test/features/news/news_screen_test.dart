@@ -9,6 +9,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/core/utils/link_launcher.dart';
@@ -17,13 +18,14 @@ import 'package:wavely/data/remote/metadata_http.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/news/data/news_article.dart';
 import 'package:wavely/features/news/data/news_category.dart';
+import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/news/data/news_prefs.dart';
 import 'package:wavely/features/news/data/news_providers.dart';
 import 'package:wavely/features/news/data/news_service.dart';
 import 'package:wavely/features/news/presentation/news_screen.dart';
 import 'package:wavely/features/news/presentation/news_settings_screen.dart';
 
-class _NoopClient implements http.Client {
+class _NoopClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     throw UnimplementedError('noop client must not be used');

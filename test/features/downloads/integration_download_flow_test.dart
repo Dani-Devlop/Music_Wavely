@@ -8,6 +8,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:drift/native.dart';
@@ -49,7 +50,7 @@ class _GeoSource implements SourceProvider {
       StreamUrl(url: 'https://cdn.example.com/aurora.flac');
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,
@@ -187,10 +188,11 @@ void main() {
         .timeout(const Duration(seconds: 5));
     expect(completed.rowId, rowId);
 
-    // Folder: template + geo resolver + genre + quality is NOT appended
-    // (template is the whole directory contract; the file name carries the
-    // title).
-    const String dir = '/storage/wavely/Music/Europe/Germany/Ambient';
+    // Folder: template + geo resolver + genre, plus the quality segment the
+    // SERVICE appends (kept out of user templates so they stay stable across
+    // quality changes); the file name carries the title.
+    const String dir =
+        '/storage/wavely/Music/Europe/Germany/Ambient/original';
     final String audioPath = '$dir/Aurora.flac';
     final String sidecarPath = '$dir/aur-99.wavely.json';
 

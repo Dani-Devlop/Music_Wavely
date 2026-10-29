@@ -15,6 +15,7 @@ import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/remote/metadata_clients/news_service.dart';
 import 'package:wavely/data/remote/metadata_clients/rss_client.dart';
+import 'package:wavely/data/remote/metadata_http.dart';
 
 AppDatabase _memoryDb() => AppDatabase(NativeDatabase.memory());
 
@@ -72,6 +73,11 @@ NewsService _service(
             pitchforkFails: pitchforkFails,
             nmeFails: nmeFails,
           ),
+          // The HTTP cache must share the service's injected clock — in
+          // production both layers read the same wall clock, and the memo
+          // contract ("when the memo expires the HTTP cache expires with
+          // it") only holds if this test fast-forwards BOTH clocks.
+          now: now,
         ),
       ),
       now: now,

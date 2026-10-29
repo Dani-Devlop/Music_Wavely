@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 /// Real web probe over `navigator.userAgent` + `navigator.standalone`.
 /// Selected by the conditional export in `ios_guidance_banner.dart`.

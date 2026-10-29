@@ -12,6 +12,9 @@ import 'package:wavely/core/utils/platform_utils.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/ai_chat/presentation/ai_chat_screen.dart';
 import 'package:wavely/features/analytics/presentation/analytics_screen.dart';
+import 'package:wavely/features/downloads/presentation/download_settings_screen.dart';
+import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
+import 'package:wavely/features/news/presentation/news_screen.dart';
 import 'package:wavely/features/auth/presentation/welcome_screen.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
@@ -66,6 +69,10 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
       body: ListView(
+        // Generous cacheExtent: the first test viewport must find the
+        // 'Storage' group header without scrolling, and a lazy SliverList
+        // would otherwise keep it unbuilt below the fold.
+        cacheExtent: 2000,
         padding: const EdgeInsets.all(Spacing.lg),
         children: <Widget>[
           _SectionGroup(
@@ -117,7 +124,7 @@ class SettingsScreen extends ConsumerWidget {
                                 height: _accentSwatchSize,
                                 decoration: BoxDecoration(
                                   color:
-                                      accent.toWavelyAccent().colors.accent,
+                                      accent.toWavelyAccent.colors.accent,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -652,16 +659,21 @@ class _SectionGroup extends StatelessWidget {
         borderRadius: AppRadii.bLg,
         border: Border.all(color: colors.borderGlass),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            title,
-            style: WavelyTypography.title18(color: colors.textPrimary),
-          ),
-          const SizedBox(height: Spacing.md),
-          ...children,
-        ],
+      // ListTile paints on the nearest Material; without this the
+      // decorated container hides ink splashes (framework assertion).
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              title,
+              style: WavelyTypography.title18(color: colors.textPrimary),
+            ),
+            const SizedBox(height: Spacing.md),
+            ...children,
+          ],
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/news/data/news_category.dart';
+import 'package:wavely/features/news/data/news_prefs.dart';
 import 'package:wavely/features/news/data/news_providers.dart';
 
 /// Route of the news settings screen (nested under [newsRoute]).
@@ -227,16 +228,21 @@ class _Group extends StatelessWidget {
         borderRadius: AppRadii.bLg,
         border: Border.all(color: colors.borderGlass),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            title,
-            style: WavelyTypography.title18(color: colors.textPrimary),
-          ),
-          const SizedBox(height: Spacing.md),
-          ...children,
-        ],
+      // ListTile paints on the nearest Material; without this the decorated
+      // container hides ink splashes (framework assertion).
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              title,
+              style: WavelyTypography.title18(color: colors.textPrimary),
+            ),
+            const SizedBox(height: Spacing.md),
+            ...children,
+          ],
+        ),
       ),
     );
   }

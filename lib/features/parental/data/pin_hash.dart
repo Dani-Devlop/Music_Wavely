@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 
@@ -41,9 +42,9 @@ String hashPin(String pin) {
 
 /// Iterated-sha256 chain used by the v3 format.
 String _iteratedHex(String seed) {
-  var digest = utf8.encode(seed);
+  var digest = Uint8List.fromList(utf8.encode(seed));
   for (var i = 0; i < _v3Rounds; i++) {
-    digest = sha256.convert(digest).bytes;
+    digest = Uint8List.fromList(sha256.convert(digest).bytes);
   }
   return digest.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 }

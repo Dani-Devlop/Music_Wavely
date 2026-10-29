@@ -133,7 +133,7 @@ class _AllTracksTabState extends ConsumerState<AllTracksTab> {
           }
           final track = _tracks[index];
           return TrackTile(
-            key: ValueKey<int>('all-track-${track.id}'),
+            key: ValueKey<String>('all-track-${track.id}'),
             track: track,
             showSourceBadge: true,
             onTap: () {

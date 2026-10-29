@@ -10,7 +10,7 @@
 /// of the drift-flutter default open.
 library;
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -25,8 +25,8 @@ void main() {
   });
   tearDown(() => db.close());
 
-  test('schemaVersion is 2 (Stage 1.2 schema)', () {
-    expect(db.schemaVersion, 2);
+  test('schemaVersion is 4 (Stage 1.2 + 2.1 + 2.2 schema)', () {
+    expect(db.schemaVersion, 4);
   });
 
   test('onCreate creates every base + Stage 1.2 table plus tracks_fts',

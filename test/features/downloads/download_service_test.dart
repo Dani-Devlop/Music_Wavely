@@ -14,6 +14,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -71,6 +72,11 @@ class InMemoryExecutor implements DownloadFileExecutor {
   }
 
   @override
+  Future<void> writeString(String path, String contents) async {
+    files[path] = contents.codeUnits;
+  }
+
+  @override
   Stream<List<int>> readStream(String path) async* {
     final List<int>? data = files[path];
     if (data != null) {
@@ -111,7 +117,7 @@ class FakeSource implements SourceProvider {
   Future<StreamUrl> resolveStream(Track t) async => StreamUrl(url: streamUrl);
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,
@@ -188,6 +194,12 @@ class ScriptedAdapter implements HttpClientAdapter {
       extra['content-range'] =
           'bytes $start-${body.length - 1}/${body.length}';
     }
+    // The gate only holds requests made BEFORE it was released: once
+    // completed, later fetches stream normally. (A completed Future wrapped
+    // in Stream.fromFuture emits before a late subscriber attaches, which
+    // silently dropped the body for follow-up jobs.)
+    final Completer<void>? gate =
+        (this.gate != null && !this.gate!.isCompleted) ? this.gate : null;
     final Stream<Uint8List> stream;
     if (gate == null) {
       stream = Stream<Uint8List>.value(Uint8List.fromList(slice));
@@ -195,7 +207,7 @@ class ScriptedAdapter implements HttpClientAdapter {
       // Broadcast: the accounting listener and dio's own subscription both
       // listen (a single-subscription stream would throw on the second).
       _openResponses++;
-      final Completer<void> g = gate!;
+      final Completer<void> g = gate;
       final Stream<Uint8List> single =
           Stream<Uint8List>.fromFuture(
         g.future.then((_) => Uint8List.fromList(slice)),
@@ -234,12 +246,12 @@ class ScriptedAdapter implements HttpClientAdapter {
 List<int> payload(int size) =>
     List<int>.generate(size, (int i) => (i * 31 + 7) % 251);
 
-Track kTrack() {
+Track kTrack({String sourceTrackId = 'tr-1', String title = 'Aurora'}) {
   final DateTime now = DateTime.utc(2024);
   return Track(
     sourceId: 'jamendo',
-    sourceTrackId: 'tr-1',
-    title: 'Aurora',
+    sourceTrackId: sourceTrackId,
+    title: title,
     artist: '',
     durationMs: 1000,
     format: 'mp3',
@@ -589,8 +601,13 @@ void main() {
     );
     await collect(s.events);
 
+    // Two DISTINCT tracks: enqueue dedupes identical source tracks
+    // (Stage 3 BUG-5 — a second enqueue of the same track returns the
+    // existing row), so the cap contract needs two different jobs.
     final int first = await s.enqueue(kTrack());
-    final int second = await s.enqueue(kTrack());
+    final int second = await s.enqueue(
+      kTrack(sourceTrackId: 'tr-2', title: 'Aurora II'),
+    );
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
     final List<DownloadRow> active = await db.downloadsDao

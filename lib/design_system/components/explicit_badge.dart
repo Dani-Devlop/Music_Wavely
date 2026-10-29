@@ -18,23 +18,26 @@ class ExplicitBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.wavelyColors;
-    return MergeSemantics(
+    return Semantics(
       key: const ValueKey<String>(_semanticsKey),
-      child: Semantics(
-        label: 'Explicit',
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: colors.textTertiary.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(_badgeCornerRadius),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'E',
-            style: WavelyTypography.micro10(color: colors.textPrimary)
-                .copyWith(fontWeight: FontWeight.w700),
-          ),
+      // container+exclude: one standalone node labelled 'Explicit' — the
+      // 'E' glyph itself is decorative and stays out of the semantics tree.
+      container: true,
+      excludeSemantics: true,
+      textDirection: TextDirection.ltr,
+      label: 'Explicit',
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: colors.textTertiary.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(_badgeCornerRadius),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          'E',
+          style: WavelyTypography.micro10(color: colors.textPrimary)
+              .copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );

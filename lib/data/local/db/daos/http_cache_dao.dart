@@ -32,19 +32,32 @@ class HttpCacheDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Stores (or overwrites) a response under [requestKey].
+  ///
+  /// The upsert must target the [HttpCache.requestKey] UNIQUE index — the
+  /// auto-generated `insertOnConflictUpdate` conflicts on the `id` primary
+  /// key instead, which re-inserts the same key and trips the constraint.
   Future<void> put({
     required String requestKey,
     required String body,
     required int statusCode,
     required DateTime expiresAt,
   }) =>
-      into(httpCache).insertOnConflictUpdate(
+      into(httpCache).insert(
         HttpCacheCompanion.insert(
           requestKey: requestKey,
           body: body,
           statusCode: statusCode,
           fetchedAt: DateTime.now(),
           expiresAt: expiresAt,
+        ),
+        onConflict: DoUpdate(
+          ($HttpCacheTable old) => HttpCacheCompanion(
+            body: Value(body),
+            statusCode: Value(statusCode),
+            fetchedAt: Value(DateTime.now()),
+            expiresAt: Value(expiresAt),
+          ),
+          target: [httpCache.requestKey],
         ),
       );
 

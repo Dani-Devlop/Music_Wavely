@@ -53,10 +53,12 @@ void main() {
       final LyricsResult result = LrcParser.parse(
         '[00:01:50]a\n[00:01,250]b\n[0:01.5]c\n[00:01.12]d\n',
       );
-      expect(result.lines[0].startTime, const Duration(milliseconds: 1500));
+      // Lines come back stably sorted by start time (see test 11):
+      // d(1120), b(1250), then a/c (1500 each, input order on ties).
+      expect(result.lines[0].startTime, const Duration(milliseconds: 1120));
       expect(result.lines[1].startTime, const Duration(milliseconds: 1250));
       expect(result.lines[2].startTime, const Duration(milliseconds: 1500));
-      expect(result.lines[3].startTime, const Duration(milliseconds: 1120));
+      expect(result.lines[3].startTime, const Duration(milliseconds: 1500));
     });
 
     test('5. offset tag shifts lyrics earlier for positive values', () {
@@ -64,7 +66,9 @@ void main() {
         '[offset:+500]\n[00:02.00]a\n',
       );
       expect(result.metadata['offset'], '+500');
-      expect(result.lines.single.startTime, const Duration(seconds: 1));
+      // 2000 ms stamp shifted 500 ms earlier (mirrors test 6's formula).
+      expect(result.lines.single.startTime,
+          const Duration(milliseconds: 1500));
     });
 
     test('6. negative offset shifts lyrics later', () {

@@ -5,6 +5,7 @@ import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/data/local/db/tables/downloads.dart';
 import 'package:wavely/design_system/design_system.dart';
+import 'package:wavely/features/downloads/data/download_service.dart';
 import 'package:wavely/features/downloads/data/downloads_providers.dart';
 
 /// Route for the downloads screen.

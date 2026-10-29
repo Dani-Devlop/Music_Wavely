@@ -61,14 +61,48 @@ class PlaysDao extends DatabaseAccessor<AppDatabase> with _$PlaysDaoMixin {
     ];
   }
 
+  /// [topTracks] with each track's exact play total attached, so callers
+  /// (discovery seeding) can weight artists by real play intensity instead
+  /// of counting rows once per track.
+  Future<List<(Track, int)>> topTracksWithCounts({
+    int limit = defaultTopLimit,
+  }) async {
+    final rows = await customSelect(
+      'SELECT track_id, COUNT(*) AS play_total '
+      'FROM plays '
+      'GROUP BY track_id '
+      'ORDER BY play_total DESC, track_id ASC '
+      'LIMIT ?',
+      variables: [Variable.withInt(limit)],
+    ).get();
+    final ids = <int>[for (final row in rows) row.read<int>('track_id')];
+    if (ids.isEmpty) {
+      return const <(Track, int)>[];
+    }
+    final totals = <int, int>{
+      for (final row in rows) row.read<int>('track_id'): row.read<int>(
+        'play_total',
+      ),
+    };
+    final trackRows =
+        await (select(tracks)..where((t) => t.id.isIn(ids))).get();
+    final byId = <int, TracksRow>{
+      for (final row in trackRows) row.id: row,
+    };
+    return <(Track, int)>[
+      for (final id in ids)
+        if (byId[id] case final row?) (TrackMapper.toDomain(row), totals[id] ?? 0),
+    ];
+  }
+
   /// Bumps the play statistics of [trackId]: `playCount + 1` and
   /// `lastPlayedAt = now` in a single SQL statement.
   Future<void> incrementTrackPlayStats(int trackId) {
-    return customStatement(
-      'UPDATE tracks '
-      'SET play_count = play_count + 1, last_played_at = ? '
-      'WHERE id = ?',
-      [Variable.withDateTime(DateTime.now()), Variable.withInt(trackId)],
+    return (update(attachedDatabase.tracks)..where((t) => t.id.equals(trackId))).write(
+      TracksCompanion.custom(
+        playCount: const CustomExpression<int>('play_count + 1'),
+        lastPlayedAt: Variable.withDateTime(DateTime.now()),
+      ),
     );
   }
 }

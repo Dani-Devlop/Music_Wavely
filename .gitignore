@@ -40,3 +40,6 @@ Thumbs.db
 
 # ── Golden baselines: committed intentionally, do NOT ignore ───
 !test/goldens/**/*.png
+artifacts.json
+failures_summary.txt
+logs.zip

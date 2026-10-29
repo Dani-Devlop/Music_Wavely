@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/core/extensions/extensions.dart';
@@ -12,6 +12,7 @@ import 'package:wavely/features/library/presentation/local_cover.dart';
 import 'package:wavely/features/lyrics/presentation/lyrics_view.dart';
 import 'package:wavely/features/player/presentation/queue_sheet.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
+import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
 /// Full-screen now-playing view: blurred cover backdrop, seek slider,
@@ -445,26 +446,32 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   Future<void> _showSleepSheet(QueueManager manager) async {
     await showModalBottomSheet<void>(
       context: context,
+      // Full-height sheet: seven presets + Off overflow the default M3
+      // 9/16 sheet height, which used to clip 'Off' out of the hit-test
+      // area entirely.
+      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            for (final minutes in AppConstants.sleepTimerPresetsMinutes)
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              for (final minutes in AppConstants.sleepTimerPresetsMinutes)
+                ListTile(
+                  title: Text('$minutes min'),
+                  onTap: () {
+                    manager.startSleepTimer(Duration(minutes: minutes));
+                    Navigator.of(sheetContext).pop();
+                  },
+                ),
               ListTile(
-                title: Text('$minutes min'),
+                title: const Text('Off'),
                 onTap: () {
-                  manager.startSleepTimer(Duration(minutes: minutes));
+                  manager.cancelSleepTimer();
                   Navigator.of(sheetContext).pop();
                 },
               ),
-            ListTile(
-              title: const Text('Off'),
-              onTap: () {
-                manager.cancelSleepTimer();
-                Navigator.of(sheetContext).pop();
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

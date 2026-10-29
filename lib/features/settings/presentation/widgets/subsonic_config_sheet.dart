@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/sources/source_providers.dart';
+import 'package:wavely/sources/source_registry.dart';
 import 'package:wavely/sources/subsonic/subsonic_config.dart';
 import 'package:wavely/sources/subsonic/subsonic_source.dart';
 

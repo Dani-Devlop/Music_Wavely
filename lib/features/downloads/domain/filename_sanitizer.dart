@@ -37,9 +37,12 @@ String sanitizeFilename(String name, {int maxLength = 200}) {
     return 'untitled';
   }
   // Reserved device names: CON, CON.mp3, con.MP3 ...
-  final String stem = out.contains('.') ? out.split('.')[0] : out;
+  // The `_` suffix goes on the STEM only (COM9.txt -> COM9_.txt), so the
+  // extension stays intact while the reserved base name is escaped.
+  final int firstDot = out.indexOf('.');
+  final String stem = firstDot == -1 ? out : out.substring(0, firstDot);
   if (_reserved.contains(stem.toUpperCase())) {
-    out = '${out}_';
+    out = firstDot == -1 ? '${out}_' : '${stem}_${out.substring(firstDot)}';
   }
   if (out.length > maxLength) {
     // Preserve the extension when the cut would eat it.
@@ -57,7 +60,12 @@ String sanitizeFilename(String name, {int maxLength = 200}) {
 
 /// Builds a safe two-part file name `"<title>.<ext>"` from a track title
 /// and a (possibly dotless) format/extension hint.
+///
+/// The extension is sanitized (illegal characters escaped) but its full
+/// spelling is preserved — truncating an extension would corrupt the
+/// format association — so the default 200-char bound applies instead of
+/// a short clamp.
 String buildTrackFilename(String title, String format) {
-  final String ext = format.isEmpty ? 'mp3' : sanitizeFilename(format, maxLength: 8);
+  final String ext = format.isEmpty ? 'mp3' : sanitizeFilename(format);
   return '${sanitizeFilename(title)}.$ext';
 }

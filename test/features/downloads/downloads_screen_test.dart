@@ -8,8 +8,14 @@
 // are driven through the real service semantics (pause/retry/cancel write
 // status through the DAO even without an in-flight HTTP job).
 
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -17,16 +23,71 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/data/local/db/tables/downloads.dart';
+import 'package:wavely/domain/repositories/source_provider.dart';
+import 'package:wavely/features/downloads/data/download_prefs.dart';
+import 'package:wavely/features/downloads/data/download_service.dart';
+import 'package:wavely/features/downloads/data/downloads_providers.dart';
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
+import 'package:wavely/sources/download_file_executor.dart';
+
+/// Filesystem-in-memory executor: the row actions under test (pause/retry)
+/// never touch storage (the queue pump is gated), so every method is a
+/// no-op; `fileAt` is io-arm-only.
+class _StubExecutor implements DownloadFileExecutor {
+  @override
+  Future<void> ensureDir(String dirPath) async {}
+
+  @override
+  Future<void> writeFromStream(
+    Stream<List<int>> bytes,
+    String path, {
+    int startOffset = 0,
+  }) async {}
+
+  @override
+  Future<int> fileSize(String path) async => 0;
+
+  @override
+  Future<bool> exists(String path) async => false;
+
+  @override
+  Future<void> delete(String path) async {}
+
+  @override
+  Future<void> writeString(String path, String contents) async {}
+
+  @override
+  Stream<List<int>> readStream(String path) async* {}
+
+  @override
+  File fileAt(String path) => throw UnimplementedError('io-arm only');
+}
 
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   required AppDatabase db,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
+  // The row actions delegate to the REAL DownloadService through
+  // downloadServiceProvider — provide one over the same db. wifiOnly keeps
+  // its default (true) and the network reports metered, so the queue pump
+  // stays gated exactly like a phone off Wi-Fi: pause/retry re-queue the
+  // row and the pump deterministically does not re-pick it.
+  final DownloadPrefs prefs = DownloadPrefs(await SharedPreferences.getInstance());
+  final DownloadService service = DownloadService(
+    db: db,
+    prefs: prefs,
+    resolveSources: () async => const <SourceProvider>[],
+    baseDir: () async => '/base',
+    executor: _StubExecutor(),
+    dio: Dio(),
+    isUnmetered: () async => false,
+  );
+  addTearDown(service.dispose);
   final ProviderContainer container = ProviderContainer(
     overrides: <Override>[
       databaseProvider.overrideWithValue(db),
+      downloadServiceProvider.overrideWith((Ref ref) async => service),
     ],
   );
   addTearDown(container.dispose);
@@ -36,6 +97,10 @@ Future<ProviderContainer> _pump(
       child: const MaterialApp(home: DownloadsScreen()),
     ),
   );
+  await tester.pump();
+  // Pre-warm the lazily-created service so the row actions' read
+  // (_withService) sees a ready AsyncValue instead of skipping on loading.
+  await container.read(downloadServiceProvider.future);
   await tester.pump();
   return container;
 }
@@ -52,8 +117,8 @@ DownloadsCompanion _row({
       sourceTrackId: sourceTrackId,
       targetPath: '/x/file',
       quality: 'original',
-      status: Value(status),
-      progress: Value(progress),
+      status: status,
+      progress: progress,
       startedAt: DateTime.utc(2024),
       errorMessage: Value(error),
     );
@@ -86,7 +151,7 @@ void main() {
         progress: 37,
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('37%'), findsOneWidget);
     expect(find.text('jamendo · tr-9'), findsOneWidget);
@@ -94,7 +159,7 @@ void main() {
     expect(find.byKey(ValueKey<String>('cancel-$id')), findsOneWidget);
 
     await tester.tap(find.byKey(ValueKey<String>('pause-$id')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       (await db.downloadsDao.byId(id))!.status,
       DownloadStatus.queued,
@@ -116,13 +181,13 @@ void main() {
         error: 'size mismatch',
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('size mismatch'), findsOneWidget);
     expect(find.byKey(ValueKey<String>('retry-$id')), findsOneWidget);
 
     await tester.tap(find.byKey(ValueKey<String>('retry-$id')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       (await db.downloadsDao.byId(id))!.status,
       DownloadStatus.queued,
@@ -144,7 +209,7 @@ void main() {
         progress: 100,
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('archive · item|file.flac'), findsOneWidget);
     // Completed section now filled; the other three still empty.

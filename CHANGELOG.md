@@ -3,8 +3,33 @@
 All notable changes to Wavely. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.1-dev] - Unreleased
 
+## [0.1.2-dev] - Unreleased
+
+### Compile debt resolution (Iteration 2 — Cloud CI driven)
+
+- Analyzer errors reduced from 425 to **0** (`flutter analyze` clean of
+  errors; remaining 2 055 entries are lint infos from very_good_analysis).
+- Test suites unblocked: previously 104 suites failed to load (compile
+  errors); CI now reports **1 082 passing / 91 failing / 6 skipped**.
+- Highlights:
+  - Restored conditional-export `File` seam (`SourceProvider.download`
+    returns the platform file; `fileAt` declared `dynamic` because the
+    analyzer cannot unify the io arm with the web stub).
+  - FTS5: removed the invalid table alias in `searchFts` MATCH queries and
+    fixed `ftsPrefixQuery` quote escaping per the documented contract.
+  - DAOs: `customStatement` calls replaced with typed builder upserts
+    (`lyrics_dao.upsert`, `plays_dao.incrementTrackPlayStats`) — raw
+    sqlite3 binding rejected drift `Variable` objects.
+  - LRC parser: a trailing newline no longer emits an empty gap line.
+  - Theme: `context.wavelyColors` falls back to the default token set
+    instead of crashing when the Wavely theme extension is absent.
+  - Test infrastructure: missing imports (material, metadata_http,
+    http/testing, entities, drift `Value`), Riverpod 3 `valueOrNull` ->
+    `value`, go_router 18 `initialLocation`, package_info_plus 10
+    `buildSignature`, cached_network_image 4 `errorWidget`, drift 2.35
+    `NativeDatabase.createInBackground`, dart:js_interop_unsafe imports.
+### Stage 3 — Comprehensive audit (authored, awaiting local run)
 ### Stage 3 — Comprehensive audit (authored, awaiting local run)
 
 #### Security fixes

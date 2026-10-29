@@ -30,7 +30,7 @@ class PlaylistRef {
 
 /// What the merger should do with one remote playlist.
 sealed class PlaylistMergeAction {
-  const PlaylistMergeAction._({required this.remote});
+  const PlaylistMergeAction({required this.remote});
 
   /// The remote playlist the action applies to.
   final PlaylistRef remote;
@@ -94,9 +94,10 @@ abstract final class ConflictResolver {
   /// - otherwise -> import under its own name.
   ///
   /// Name uniqueness is checked against the local names AND names already
-  /// planned for earlier remote entries; if even `'<name> (synced)'` is
-  /// taken the rename step gives up and imports under `'<name> (synced)'`
-  /// anyway (remote ids still disambiguate the rows downstream).
+  /// planned for earlier remote entries. At most one ` (synced)` suffix is
+  /// ever appended: a remote whose (taken) name already carries the suffix
+  /// imports under its own name (remote ids still disambiguate the rows
+  /// downstream).
   static List<PlaylistMergeAction> resolvePlaylists({
     required List<PlaylistRef> local,
     required List<PlaylistRef> remote,
@@ -118,7 +119,13 @@ abstract final class ConflictResolver {
       }
       var targetName = playlist.name;
       final baseName = playlist.name.trim().toLowerCase();
-      if (takenNames.contains(baseName)) {
+      // At most ONE '(synced)' suffix is ever appended: when the name is
+      // taken AND already carries the suffix (a planned rename of an
+      // earlier remote, or a local playlist), the rename step gives up and
+      // imports under the remote's own name — remote ids still
+      // disambiguate the rows downstream.
+      final alreadySynced = baseName.endsWith(' (synced)');
+      if (takenNames.contains(baseName) && !alreadySynced) {
         targetName = '${playlist.name} (synced)';
       }
       takenNames.add(targetName.trim().toLowerCase());

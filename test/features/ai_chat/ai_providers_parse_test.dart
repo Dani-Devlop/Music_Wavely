@@ -130,7 +130,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final result = await provider.complete(
         AiConversation(
@@ -176,7 +176,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final reply = (await provider.complete(
         AiConversation(systemPrompt: 'S'),
@@ -197,17 +197,19 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       await provider.complete(_conversationWithToolResult());
       final request = transport.requests.single;
+      // Stage 3 audit (SEC-10): the API key moved OUT of the URL (it leaked
+      // into proxy logs / exception messages) onto the x-goog-api-key
+      // header — assert the secure wire contract.
       expect(
         request.url.toString(),
-        contains(
-          'https://generativelanguage.googleapis.com/v1beta/models/'
-          'gemini-2.0-flash:generateContent?key=gm-key',
-        ),
+        'https://generativelanguage.googleapis.com/v1beta/models/'
+        'gemini-2.0-flash:generateContent',
       );
+      expect(request.headers['x-goog-api-key'], 'gm-key');
       final body = jsonDecode(request.body) as Map<String, Object?>;
       final systemInstruction = body['systemInstruction'] as Map;
       final systemPart = (systemInstruction['parts'] as List).single as Map;
@@ -247,7 +249,7 @@ void main() {
         );
         final provider = GeminiProvider(
           apiKey: 'gm-key',
-          httpClient: http.MockClient(transport.handler),
+          httpClient: MockClient(transport.handler),
         );
         final result = await provider.complete(
           AiConversation(systemPrompt: 'S'),
@@ -293,7 +295,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final reply = (await provider.complete(
         AiConversation(systemPrompt: 'SYSTEM PROMPT'),
@@ -339,7 +341,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final reply = (await provider.complete(
         AiConversation(systemPrompt: 'S'),
@@ -360,7 +362,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       await provider.complete(_conversationWithToolResult());
       final request = transport.requests.single;
@@ -372,27 +374,40 @@ void main() {
       final body = jsonDecode(request.body) as Map<String, Object?>;
       expect(body['model'], 'gpt-4o-mini');
       final messages = body['messages'] as List<Object?>;
-      expect(messages, hasLength(3));
+      // The conversation is [user 'hi', assistant(tool_call), tool result]:
+      // a faithful OpenAI replay keeps ALL turns — dropping the user message
+      // would lose the question the tool call was answering.
+      expect(messages, hasLength(4));
       expect((messages[0] as Map)['role'], 'system');
       expect((messages[0] as Map)['content'], 'SYSTEM PROMPT');
+      expect((messages[1] as Map)['role'], 'user');
+      expect((messages[1] as Map)['content'], 'hi');
       // Assistant turns replay the tool_calls; executor results go back as
       // role:'tool' with the originating id.
-      final assistant = messages[1] as Map<String, Object?>;
+      final assistant = messages[2] as Map<String, Object?>;
       expect(assistant['role'], 'assistant');
       final replayed = (assistant['tool_calls'] as List).single as Map;
       expect(replayed['id'], 'call_1');
       expect((replayed['function'] as Map)['name'], 'search_library');
-      final tool = messages[2] as Map<String, Object?>;
+      final tool = messages[3] as Map<String, Object?>;
       expect(tool['role'], 'tool');
       expect(tool['tool_call_id'], 'call_1');
       expect(tool['content'], '{"matches":[]}');
       // Same schemas, converted to the OpenAI shape with lowercased types.
       final tools = body['tools'] as List<Object?>;
       expect(tools, hasLength(4));
-      final first = tools[0] as Map<String, Object?>;
-      expect(first['type'], 'function');
+      // Assert build_queue's schema specifically: it is the declaration
+      // with the ARRAY-of-INTEGER track_ids parameter (search_library —
+      // tools[0] — only has the STRING query).
+      final buildQueue = tools
+          .map((Object? t) => t as Map<String, Object?>)
+          .firstWhere(
+        (Map<String, Object?> t) =>
+            ((t['function'] as Map<String, Object?>)['name']) == 'build_queue',
+      );
+      expect(buildQueue['type'], 'function');
       final parameters =
-          (first['function'] as Map<String, Object?>)['parameters']
+          (buildQueue['function'] as Map<String, Object?>)['parameters']
               as Map<String, Object?>;
       expect(parameters['type'], 'object');
       final trackIds =
@@ -411,7 +426,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
       );
       final result = await provider.complete(
         AiConversation(systemPrompt: 'S'),
@@ -433,7 +448,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -452,7 +467,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -478,7 +493,7 @@ void main() {
       );
       final provider = OpenAiProvider(
         apiKey: 'sk-test',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -496,7 +511,7 @@ void main() {
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -514,12 +529,12 @@ void main() {
       final transport = _ScriptedTransport(
         responses: <http.Response>[],
         errors: <http.ClientException>[
-          const http.ClientException('socket closed'),
+          http.ClientException('socket closed'),
         ],
       );
       final provider = GeminiProvider(
         apiKey: 'gm-key',
-        httpClient: http.MockClient(transport.handler),
+        httpClient: MockClient(transport.handler),
         delay: transport.recordDelay,
       );
       final result =
@@ -544,7 +559,7 @@ void main() {
       final provider = AiProviderFactory.create(
         geminiKey: 'gm',
         openAiKey: 'sk',
-        httpClient: http.MockClient(_noRequests),
+        httpClient: MockClient(_noRequests),
       );
       expect(provider!.id, 'gemini');
     });
@@ -552,7 +567,7 @@ void main() {
     test('falls back to OpenAI when only that key is present', () {
       final provider = AiProviderFactory.create(
         openAiKey: 'sk',
-        httpClient: http.MockClient(_noRequests),
+        httpClient: MockClient(_noRequests),
       );
       expect(provider!.id, 'openai');
     });
@@ -565,7 +580,7 @@ void main() {
         AiProviderFactory.create(
           geminiKey: ' ',
           openAiKey: 'sk',
-          httpClient: http.MockClient(_noRequests),
+          httpClient: MockClient(_noRequests),
         )!
             .id,
         'openai',

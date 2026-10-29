@@ -30,6 +30,10 @@ import 'package:wavely/features/auth/presentation/telegram_login_screen.dart';
 import 'package:wavely/features/auth/presentation/welcome_screen.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
 import 'package:wavely/features/library/presentation/library_screen.dart';
+import 'package:wavely/features/downloads/presentation/download_settings_screen.dart';
+import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
+import 'package:wavely/features/news/presentation/news_screen.dart';
+import 'package:wavely/features/news/presentation/news_settings_screen.dart';
 import 'package:wavely/features/onboarding/data/onboarding_state.dart';
 import 'package:wavely/features/onboarding/presentation/onboarding_flow.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
@@ -75,7 +79,12 @@ void main() {
       final container = await configContainer();
       addTearDown(container.dispose);
       final router = container.read(routerProvider);
-      expect(router.initialLocation, LibraryScreen.libraryRoute);
+      // go_router 18 removed the `initialLocation` getter; the seed
+      // location is observable through the route information provider.
+      expect(
+        router.routeInformationProvider.value.location,
+        LibraryScreen.libraryRoute,
+      );
     });
 
     test('route table contains exactly the registered paths', () async {
@@ -102,6 +111,11 @@ void main() {
         DiscoveryScreen.route,
         AiChatScreen.route,
         ParentalScreen.route,
+        // Stage 2.1/2.2 additions: downloads + news.
+        downloadsRoute,
+        downloadSettingsRoute,
+        newsRoute,
+        newsSettingsRoute,
       };
 
       final actual =

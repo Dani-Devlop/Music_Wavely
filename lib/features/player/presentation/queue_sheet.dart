@@ -85,8 +85,11 @@ class QueueSheet extends ConsumerWidget {
   ) {
     final track = queue.tracks[index];
     final isCurrent = index == queue.currentIndex;
+    // STABLE per-track key: ReorderableListView tracks the dragged item by
+    // key across rebuilds — embedding the index here (`id#$index`) made the
+    // key change the moment the item moved, corrupting the drop target.
     final rowKey = ValueKey<String>(
-      '${track.id ?? track.sourceTrackId}#$index',
+      '${track.id ?? track.sourceTrackId}',
     );
     return Material(
       key: rowKey,

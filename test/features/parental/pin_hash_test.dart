@@ -8,6 +8,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,9 +19,9 @@ import 'package:wavely/features/parental/data/pin_hash.dart';
 const int _kV3Rounds = 10000;
 
 String _iteratedHash(String seed) {
-  var digest = utf8.encode(seed);
+  var digest = Uint8List.fromList(utf8.encode(seed));
   for (var i = 0; i < _kV3Rounds; i++) {
-    digest = sha256.convert(digest).bytes;
+    digest = Uint8List.fromList(sha256.convert(digest).bytes);
   }
   return digest.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 }

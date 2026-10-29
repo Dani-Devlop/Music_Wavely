@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wavely/design_system/tokens/colors.dart';
+import 'package:wavely/design_system/themes/app_theme.dart';
 
 /// Semantic color contract of the Wavely design system.
 ///
@@ -167,6 +168,11 @@ class WavelySemanticColors extends ThemeExtension<WavelySemanticColors> {
 
 /// Exposes [WavelySemanticColors] from any context below a Wavely theme.
 extension WavelySemanticColorsContextX on BuildContext {
+  /// Falls back to the default (purple, light) token set when the ambient
+  /// theme does not carry the extension — e.g. screens pumped directly under
+  /// a bare `MaterialApp` in widget tests — so a missing theme degrades to
+  /// sensible defaults instead of crashing the build.
   WavelySemanticColors get wavelyColors =>
-      Theme.of(this).extension<WavelySemanticColors>()!;
+      Theme.of(this).extension<WavelySemanticColors>() ??
+      WavelyThemes.light(WavelyAccent.purple).extension<WavelySemanticColors>()!;
 }

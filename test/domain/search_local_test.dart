@@ -139,9 +139,12 @@ void main() {
       expect(TracksDao.ftsPrefixQuery(''), isNull);
       expect(TracksDao.ftsPrefixQuery('   '), isNull);
       expect(TracksDao.ftsPrefixQuery('paper boa'), '"paper" "boa"*');
+      // FTS5 escaping: a double-quote inside a phrase doubles. The token
+      // "hi" carries two quote chars → doubled ""hi"" → wrapped in the
+      // outer phrase quotes → """hi""" (three quotes on each side).
       expect(
         TracksDao.ftsPrefixQuery('say "hi"'),
-        '"say" ""hi""*',
+        '"say" """hi"""*',
       );
     });
   });

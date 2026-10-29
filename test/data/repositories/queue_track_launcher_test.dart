@@ -112,7 +112,7 @@ void main() {
   });
 
   tearDown(() async {
-    await manager.dispose();
+    manager.dispose();
     await engine.dispose();
   });
 

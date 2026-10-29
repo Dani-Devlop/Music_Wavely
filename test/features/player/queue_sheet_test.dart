@@ -16,6 +16,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/player/presentation/queue_sheet.dart';
+import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
@@ -109,15 +110,40 @@ void main() {
     final (ProviderContainer container, FakePlaybackEngine engine) =
         await _pumpSeeded(tester, onClose: null);
 
-    // Current track is Alpha (index 0). Drag it one row down.
+    // Measure the REAL row pitch from the rendered rows instead of assuming
+    // a Material default: WavelyTypography's title/subtitle metrics size the
+    // ListTile independently, and the drag window must be computed from the
+    // actual geometry. Alpha and Beta are equivalent rows, so the distance
+    // between their title centres IS the row pitch H.
+    //
+    // Flutter 3.47.8's ReorderableListState._dragUpdateItems compares the
+    // proxy's START/END EDGES against each row's halves (not centres):
+    // dragging up, the gap opens above Alpha only while Alpha's extent
+    // satisfies `itemStart <= proxyStart <= itemMiddle` — i.e. the proxy's
+    // TOP edge must sit inside Alpha's UPPER half. Overshooting above
+    // Alpha's top edge (proxyStart < itemStart) matches NO condition and
+    // freezes the insert index at the original slot — the drop fires
+    // onReorder(1, 1) and the queue is unchanged. That is exactly why both
+    // a fixed -80 px and a 1.25x-pitch move silently no-oped on CI.
+    //
+    // So the working window is 0.5·H < d <= H; 0.75·H puts the proxy top
+    // edge at 0.25·H from the list top — the midpoint of Alpha's upper
+    // half — the widest safety margin inside the window, and the
+    // post-gap-shift re-evaluation keeps insert index 0 there. (Dragging
+    // the current row downward instead hit the framework's shifted-gap
+    // hysteresis.) The current track is Alpha: dragging the NON-current
+    // row still asserts the follow logic — Alpha slides to index 1 and
+    // must not reload.
+    final double rowPitch = tester.getCenter(find.text('Beta')).dy -
+        tester.getCenter(find.text('Alpha')).dy;
     final TestGesture gesture = await tester.startGesture(
-      tester.getCenter(find.text('Alpha')),
+      tester.getCenter(find.text('Beta')),
     );
     await tester.pump(kLongPressTimeout);
-    await gesture.moveBy(const Offset(0, 90));
-    await tester.pump();
-    await gesture.moveBy(const Offset(0, 40));
-    await tester.pump();
+    // Let the drag actually lift before moving.
+    await tester.pumpAndSettle();
+    await gesture.moveBy(Offset(0, -rowPitch * 0.75));
+    await tester.pumpAndSettle();
     await gesture.up();
     await tester.pumpAndSettle();
 

@@ -17,6 +17,7 @@ import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/player/presentation/mini_player_host.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
+import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 

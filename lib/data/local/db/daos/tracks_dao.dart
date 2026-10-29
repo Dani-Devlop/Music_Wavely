@@ -154,9 +154,9 @@ class TracksDao extends DatabaseAccessor<AppDatabase> with _$TracksDaoMixin {
     }
     final rows = await customSelect(
       'SELECT t.id AS track_id FROM tracks t '
-      'JOIN tracks_fts f ON t.id = f.rowid '
-      'WHERE f MATCH ? '
-      'ORDER BY f.rank '
+      'JOIN tracks_fts ON t.id = tracks_fts.rowid '
+      'WHERE tracks_fts MATCH ? '
+      'ORDER BY tracks_fts.rank '
       'LIMIT ?',
       variables: [
         Variable.withString(match),
@@ -355,7 +355,11 @@ class TracksDao extends DatabaseAccessor<AppDatabase> with _$TracksDaoMixin {
       if (i > 0) {
         buffer.write(' ');
       }
-      buffer.write('"${tokens[i].replaceAll('"', '""')}"');
+      final token = tokens[i];
+      final escaped = token.replaceAll('"', '""');
+      // Every token is wrapped in a phrase and its inner quotes doubled:
+      // `a"b` -> `"a""b"`, `"hi"` -> `"""hi"""` — FTS5 phrase syntax.
+      buffer.write('"$escaped"');
       if (i == tokens.length - 1) {
         buffer.write('*');
       }

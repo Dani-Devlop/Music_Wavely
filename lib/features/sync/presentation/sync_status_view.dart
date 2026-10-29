@@ -29,7 +29,7 @@ class SyncStatusBadge extends ConsumerWidget {
     final colors = context.wavelyColors;
     final async = ref.watch(syncStatusStreamProvider);
     final view =
-        async.valueOrNull ?? const SyncStatusView(status: SyncStatus.idle);
+        async.value ?? const SyncStatusView(status: SyncStatus.idle);
     final (icon, label) = switch (view.status) {
       SyncStatus.disabled => (Icons.cloud_off_outlined, 'Sync off'),
       SyncStatus.idle => (Icons.cloud_done_outlined, 'Synced'),

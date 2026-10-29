@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/data/remote/supabase_client_provider.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/auth/data/auth_repository.dart';
@@ -98,7 +99,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       body: authEnabled
           ? _buildForm(context, colors)
-          : AuthDisabledView(onBack: AuthDisabledView.backToSettings),
+          : AuthDisabledView(
+            onBack: () => AuthDisabledView.backToSettings(context),
+          ),
     );
   }
 

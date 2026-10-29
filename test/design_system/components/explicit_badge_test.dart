@@ -16,7 +16,6 @@ void main() {
     testWidgets('renders the E mark with semantics '
         '(${dark ? 'dark' : 'light'} theme)', (tester) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       await pumpThemed(
         tester,
         dark: dark,
@@ -27,6 +26,9 @@ void main() {
       expect(box.width, 20);
       expect(box.height, 20);
       expect(find.bySemanticsLabel('Explicit'), findsOneWidget);
+      // Dispose inline: the end-of-test semantics-handle verification runs
+      // BEFORE addTearDown callbacks, so a teardown dispose still trips it.
+      semantics.dispose();
     });
   }
 }

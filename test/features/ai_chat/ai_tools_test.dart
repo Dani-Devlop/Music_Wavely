@@ -91,9 +91,11 @@ void main() {
         );
         final parameters = declaration['parameters'] as Map<String, Object>;
         expect(parameters['type'], 'OBJECT');
-        expect(parameters['properties'], isA<Map<String, Object>>);
+        // NOTE: isA<T>() is a factory — the parens are mandatory; passing
+        // the bare closure would compare against the closure itself.
+        expect(parameters['properties'], isA<Map<String, Object>>());
         expect((parameters['properties'] as Map).isNotEmpty, isTrue);
-        expect(parameters['required'], isA<List<String>>);
+        expect(parameters['required'], isA<List<String>>());
       }
     });
 
@@ -179,8 +181,8 @@ void main() {
       expect(outcome.summary, contains('Found 0 matches'));
     });
 
-    test('build_queue queues validated ids and calls the launcher',
-        () async {
+    test('build_queue validates ids and returns the queue summary without '
+        'launching', () async {
       final (db, executor, launcher) = await _makeExecutor();
       addTearDown(db.close);
       final result = await executor.execute(
@@ -202,11 +204,10 @@ void main() {
       );
       expect(outcome.resultJson,
           '{"queued":2,"reason":"rainy mix"}');
-      expect(launcher.played, hasLength(1));
-      expect(
-        [for (final t in launcher.played.single) t.id],
-        <int?>[1, 2],
-      );
+      // ARCHITECTURE: tool execution NEVER launches playback — the chat
+      // bubble's 'Play all' button is the single user-initiated launch
+      // point. Auto-launching here made every AI mix play twice.
+      expect(launcher.played, isEmpty);
     });
 
     test('build_queue REJECTS fabricated ids with no launcher call',
@@ -293,7 +294,12 @@ void main() {
         onErr: (f) => throw StateError('expected success: ${f.message}'),
         onSuccess: (o) => o,
       );
-      expect(calls, <(String, List<int>)>[('Mix', <int>[2, 1])]);
+      // Records use == on their FIELDS, and Dart List == is identity —
+      // comparing whole records against a fresh literal can never pass.
+      // Assert the fields instead.
+      expect(calls, hasLength(1));
+      expect(calls.single.$1, 'Mix');
+      expect(calls.single.$2, <int>[2, 1]);
       final decoded = jsonDecode(outcome.resultJson) as Map<String, Object?>;
       expect(decoded['created'], 'Mix');
       expect(decoded['trackCount'], 2);

@@ -225,7 +225,7 @@ class JamendoSource implements SourceProvider {
   }
 
   @override
-  Future<File> download(
+  Future<dynamic> download(
     Track t, {
     required String targetPath,
     required AudioQuality quality,
@@ -239,7 +239,10 @@ class JamendoSource implements SourceProvider {
         'jamendo: no download url for ${t.sourceTrackId}',
       );
     }
-    await _executor.ensureDir(SubsonicSource.parentDirOf(targetPath));
+    final int slash = targetPath.lastIndexOf('/');
+    await _executor.ensureDir(
+      slash <= 0 ? '/' : targetPath.substring(0, slash),
+    );
     await _dio.download(url, targetPath);
     return _executor.fileAt(targetPath);
   }

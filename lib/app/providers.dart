@@ -16,6 +16,7 @@ import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 import 'package:wavely/features/lyrics/domain/lrc_parser.dart';
+import 'package:wavely/features/parental/data/censor_executor.dart';
 import 'package:wavely/features/parental/data/censor_planner.dart';
 import 'package:wavely/features/parental/data/censor_service.dart';
 import 'package:wavely/features/parental/data/no_lyrics_policy.dart';
@@ -74,8 +75,17 @@ List<Override> buildOverrides({
           engine: ref.watch(playbackEngineProvider),
           store: ref.watch(settingsStoreProvider),
           trackSource: ref.watch(queueTrackSourceProvider),
-          onTrackStarted: (track) =>
-              unawaited(ref.read(playRecorderProvider).record(track)),
+          onTrackStarted: (track) => unawaited(
+            // record() propagates DAO failures BY CONTRACT
+            // (play_recorder_test.dart); QueueManager's guard only sees
+            // synchronous throws, so the composition root is the async
+            // containment boundary (e.g. an online-only track violating the
+            // plays FK, a closed db, a full disk — never break playback).
+            ref
+                .read(playRecorderProvider)
+                .record(track)
+                .catchError((Object e, StackTrace st) {}),
+          ),
           advancedShuffleConfig: ref.watch(advancedShuffleConfigProvider),
           trackPreloadHook: (track) => _parentalPreload(ref, track),
         ),

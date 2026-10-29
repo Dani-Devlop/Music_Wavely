@@ -217,22 +217,27 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   Widget _buildMoodChips(WavelySemanticColors colors) => SizedBox(
         height: 48,
-        child: ListView(
+        // A fixed 8-item strip: SingleChildScrollView + Row keeps every chip
+        // in the tree (a lazy ListView only builds on-screen items, which
+        // hides half the moods from finders/semantics on narrow surfaces).
+        child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          children: <Widget>[
-            for (final mood in Mood.values)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(mood.label),
-                  selected: _selectedMood == mood,
-                  selectedColor: colors.accentColors.accent,
-                  onSelected: (selected) =>
-                      setState(() => _selectedMood = selected ? mood : null),
+          child: Row(
+            children: <Widget>[
+              for (final mood in Mood.values)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(mood.label),
+                    selected: _selectedMood == mood,
+                    selectedColor: colors.accentColors.accent,
+                    onSelected: (selected) =>
+                        setState(() => _selectedMood = selected ? mood : null),
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       );
 

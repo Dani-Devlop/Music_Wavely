@@ -47,11 +47,15 @@ class RssClient {
   final CachingHttpClient _http;
 
   /// Fetches and parses the feed at [url] into headline items.
+  ///
+  /// [forceRefresh] bypasses the HTTP cache read (pull-to-refresh) while
+  /// still refreshing the stored entry.
   Future<Result<List<RssItem>>> fetch(
     Uri url, {
     Duration ttl = defaultTtl,
+    bool forceRefresh = false,
   }) async {
-    final response = await _http.getJson(url, ttl: ttl);
+    final response = await _http.getJson(url, ttl: ttl, forceRefresh: forceRefresh);
     return response.fold(
       onErr: (failure) => Result<List<RssItem>>.err(failure),
       onSuccess: parse,
@@ -98,7 +102,7 @@ class RssClient {
   };
 
   static RssItem? _parseBlock(String block) {
-    final title = _clean(_firstTag(block, 'title'));
+    final title = _clean(_firstTag(block, 'title') ?? '');
     if (title.isEmpty) {
       return null;
     }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
+import 'package:wavely/domain/usecases/search_local.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/search/presentation/online_search_pane.dart';
 import 'package:wavely/features/search/presentation/search_providers.dart';
@@ -225,7 +226,7 @@ class _ResultsList extends ConsumerWidget {
             final trackIndex = index - cursor;
             final track = results.tracks[trackIndex];
             return TrackTile(
-              key: ValueKey<int>('search-track-${track.id}'),
+              key: ValueKey<String>('search-track-${track.id}'),
               track: track,
               showSourceBadge: true,
               onTap: () {

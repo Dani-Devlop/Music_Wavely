@@ -5,6 +5,7 @@
 // fallback, created-timestamp parsing, list mapping).
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/sources/subsonic/subsonic_mapper.dart';
 
 SubsonicMapper mapperWithFixedNow() => SubsonicMapper(

@@ -58,15 +58,17 @@ class RateLimiter {
     final now = _now();
     final remaining =
         last == null ? Duration.zero : minInterval - now.difference(last);
-    if (remaining <= Duration.zero) {
-      _lastTurnAt = now;
-      completer.complete();
-      return;
+    if (remaining > Duration.zero) {
+      // Await INSIDE the queued step: the next caller's _acquire must not
+      // run before this turn has stamped _lastTurnAt, or two concurrent
+      // callers would both schedule the same short delay and complete
+      // together, violating the interval contract.
+      await Future<void>.delayed(remaining);
     }
-    Timer(remaining, () {
-      _lastTurnAt = _now();
+    _lastTurnAt = _now();
+    if (!completer.isCompleted) {
       completer.complete();
-    });
+    }
   }
 }
 
@@ -119,15 +121,19 @@ class CachingHttpClient {
 
   /// GETs [url] as text (JSON bodies stay strings; parsing is the
   /// client's job) with read-through caching. Never throws.
+  ///
+  /// [forceRefresh] skips the cache READ (pull-to-refresh semantics) but
+  /// still stores the fresh response under the same key.
   Future<Result<String>> getJson(
     Uri url, {
     required Duration ttl,
     Map<String, String>? extraHeaders,
+    bool forceRefresh = false,
   }) async {
     final effectiveTtl = _ttlFor?.call(url) ?? ttl;
     final requestKey = HttpCacheDao.requestKey('GET', url.toString());
     try {
-      final cached = await _readRow(requestKey);
+      final cached = forceRefresh ? null : await _readRow(requestKey);
       if (cached != null && !cached.expiresAt.isBefore(_now())) {
         return Result<String>.success(cached.body);
       }
@@ -141,7 +147,7 @@ class CachingHttpClient {
               ...?extraHeaders,
             },
           )
-          .timeout(kMetadataHttpTimeout);
+          .timeout(MetadataHttp.kMetadataHttpTimeout);
       if (response.statusCode != 200) {
         return Result<String>.err(
           Failure.network(

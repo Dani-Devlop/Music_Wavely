@@ -167,7 +167,7 @@ class TelegramAuthService {
     final completer = Completer<Result<Session?>>();
     final deadline = _now().add(timeout);
     var pollInFlight = false;
-    final timer = Timer.periodic(pollInterval, (_) async {
+    Future<void> pollTick() async {
       if (pollInFlight || completer.isCompleted) return;
       pollInFlight = true;
       try {
@@ -204,7 +204,15 @@ class TelegramAuthService {
       } finally {
         pollInFlight = false;
       }
+    }
+
+    final timer = Timer.periodic(pollInterval, (_) {
+      unawaited(pollTick());
     });
+    // Immediate first tick: Timer.periodic only fires AFTER the first
+    // interval, but the bot chat may already have redeemed the token by
+    // the time start() returns — poll right away.
+    unawaited(pollTick());
     _pending = _PendingPoll(timer, completer);
     return completer.future;
   }

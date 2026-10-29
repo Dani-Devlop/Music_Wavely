@@ -106,7 +106,9 @@ void main() {
     final (ProviderContainer container, FakeLibraryScanner used) =
         await _pumpTab(tester, db: db, scanner: scanner, store: store);
 
-    await tester.tap(find.text('Add folder'));
+    // Two 'Add folder' texts are legitimate UI (toolbar button + the
+    // empty-state CTA); target the toolbar FilledButton specifically.
+    await tester.tap(find.widgetWithText(FilledButton, 'Add folder').first);
     await tester.pumpAndSettle();
 
     expect(find.text('/music/picked'), findsOneWidget);
@@ -137,7 +139,9 @@ void main() {
       store: store,
     );
 
-    await tester.tap(find.text('Add folder'));
+    // Two 'Add folder' texts are legitimate UI (toolbar button + the
+    // empty-state CTA); target the toolbar FilledButton specifically.
+    await tester.tap(find.widgetWithText(FilledButton, 'Add folder').first);
     await tester.pumpAndSettle();
 
     expect(find.text('/music/a'), findsOneWidget);

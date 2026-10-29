@@ -1,3 +1,4 @@
+import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/features/parental/data/censor_service.dart';
 
 /// Web (and any non-`dart:io`) arm of the censor executor.

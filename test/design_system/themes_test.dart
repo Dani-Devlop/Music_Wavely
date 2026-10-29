@@ -83,6 +83,11 @@ void main() {
           theme: dark
               ? WavelyThemes.dark(accent)
               : WavelyThemes.light(accent),
+          // MaterialApp animates theme CHANGES over 200 ms by default and
+          // the builder would then probe a lerp of the previous
+          // iteration's theme (isDark still false at t≈0). The probe must
+          // see the final theme, so switch instantly.
+          themeAnimationDuration: Duration.zero,
           home: Builder(
             builder: (BuildContext context) {
               probed = Theme.of(context).extension<WavelySemanticColors>();

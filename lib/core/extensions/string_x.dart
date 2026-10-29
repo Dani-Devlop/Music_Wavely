@@ -15,6 +15,9 @@ extension StringX on String {
   /// True when the string is empty or only whitespace.
   bool get isBlank => trim().isEmpty;
 
+  /// True when the string contains at least one non-whitespace character.
+  bool get isNotBlank => !isBlank;
+
   /// Strips control characters and file-name illegal characters, collapses
   /// whitespace runs into single spaces, trims, caps the result at 120
   /// characters and falls back to `untitled` when nothing remains.
