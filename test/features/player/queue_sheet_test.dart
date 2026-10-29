@@ -110,22 +110,30 @@ void main() {
     final (ProviderContainer container, FakePlaybackEngine engine) =
         await _pumpSeeded(tester, onClose: null);
 
-    // Drag Beta one row UP. 72 px rows → item centres at 36 / 108 / 180;
-    // an 80 px upward move puts Beta's proxy centre at 28 — past Alpha's
-    // centre (36) for centre-crossing drop math and past Alpha's top edge
-    // for edge-crossing math, so the gap opens above Alpha under every
-    // ReorderableListView drop-bucket model. (Dragging the current row
+    // Measure the REAL row pitch from the rendered rows instead of assuming
+    // 72 px: WavelyTypography's title/subtitle metrics make the ListTile
+    // taller than the Material default, so a hand-picked -80 px landed the
+    // dragged proxy's centre INSIDE Alpha's drop bucket — the reorder never
+    // fired at all. Alpha and Beta are equivalent rows, so the distance
+    // between their title centres IS the row pitch H. Moving up by 1.25·H
+    // puts the proxy centre at 0.25·H from the list top — above Alpha's
+    // centre (0.5·H) for centre-crossing drop math AND above Alpha's top
+    // edge (0) for edge-crossing math, with 0.25·H margin under every
+    // ReorderableListView drop-bucket model. Upward overshoot is safe
+    // because the insert index clamps at 0. (Dragging the current row
     // downward instead hit the framework's shifted-gap hysteresis: at
     // 120 px the drop bucket landed two slots down.) The current track is
     // Alpha: dragging the NON-current row still asserts the follow logic —
     // Alpha slides to index 1 and must not reload.
+    final double rowPitch = tester.getCenter(find.text('Beta')).dy -
+        tester.getCenter(find.text('Alpha')).dy;
     final TestGesture gesture = await tester.startGesture(
       tester.getCenter(find.text('Beta')),
     );
     await tester.pump(kLongPressTimeout);
     // Let the drag actually lift before moving.
     await tester.pumpAndSettle();
-    await gesture.moveBy(const Offset(0, -80));
+    await gesture.moveBy(Offset(0, -rowPitch * 1.25));
     await tester.pumpAndSettle();
     await gesture.up();
     await tester.pumpAndSettle();

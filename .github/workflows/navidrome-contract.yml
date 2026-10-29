@@ -15,8 +15,20 @@ on:
 jobs:
   navidrome-contract:
     runs-on: ubuntu-latest
+    # Job-level so the `Tear down` step (if: always()) can interpolate
+    # NAVIDROME_ADMIN_PASSWORD in `docker compose down -v` even when an
+    # earlier step failed and the Start step's step-level env never ran.
+    env:
+      # Stage 3 audit (SEC-12): the compose file no longer hardcodes the
+      # boot password; CI injects it here (and the tests reuse it below).
+      NAVIDROME_ADMIN_PASSWORD: wavely-ci-password
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install ffmpeg (dropped from the ubuntu-24.04 runner image)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
 
       - name: Seed Navidrome music volume with a sine-wave mp3
         run: |
@@ -28,10 +40,6 @@ jobs:
           ls -la docker/navidrome/music
 
       - name: Start Navidrome
-        env:
-          # Stage 3 audit (SEC-12): the compose file no longer hardcodes the
-          # boot password; CI injects it here (and the tests reuse it below).
-          NAVIDROME_ADMIN_PASSWORD: wavely-ci-password
         run: |
           docker compose -f docker-compose.navidrome.yml up -d
           for i in $(seq 1 30); do
