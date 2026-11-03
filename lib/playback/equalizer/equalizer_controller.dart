@@ -43,8 +43,15 @@ class EqualizerController {
 
   /// The engine's EQ capability, or `null` when the engine is absent or
   /// does not implement [EqualizerControl].
-  EqualizerControl? get engineEq =>
-      _engine is EqualizerControl ? _engine : null;
+  EqualizerControl? get engineEq {
+    // Local variable (not a direct field test): type promotion of fields
+    // cannot promote to a type unrelated to the declared type.
+    final PlaybackEngine? engine = _engine;
+    if (engine is EqualizerControl) {
+      return engine;
+    }
+    return null;
+  }
 
   /// Whether gains can actually be applied to audio right now.
   Future<bool> get canApplyGains async {
