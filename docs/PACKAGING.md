@@ -122,3 +122,48 @@ git push origin v0.1.0
 - [ ] Verify the update checker sees the new release (Settings row)
 - [ ] Confirm `docs/PRIVACY.md` claims match the shipped build (crash-only
       Sentry opt-in, no analytics)
+
+## 8. Stage 4 — conditional CI signing (secrets-based)
+
+The release workflow now signs installers **when the corresponding GitHub
+secrets are configured**; with no secrets present it emits honest
+"unsigned" artifacts and the build NEVER fails because of signing.
+
+### MSIX (Windows)
+
+| Secret | Content |
+| --- | --- |
+| `MSIX_CERTIFICATE` | The PFX certificate, **base64-encoded** |
+| `MSIX_CERTIFICATE_PASSWORD` | The PFX password (may be empty) |
+
+Encoding an existing PFX (Linux/macOS):
+`base64 -w0 mycert.pfx` (macOS: `base64 -i mycert.pfx`).
+
+With the secret present the workflow decodes it to `signing.pfx` and runs
+`dart run msix:create --certificate-path signing.pfx
+--certificate-password <secret> --install-certificate false`
+(the certificate is never installed on the runner). Without the secret
+the step logs `building an UNSIGNED MSIX` and runs the plain
+`dart run msix:create` from `msix_config.yaml` (`sign: false`).
+
+### AppImage (Linux)
+
+| Secret | Content |
+| --- | --- |
+| `APPIMAGE_SIGNING_KEY` | Armored GPG private key (`-----BEGIN PGP PRIVATE KEY BLOCK-----`) |
+
+With the secret present the workflow imports the key and produces a
+**detached signature** next to the bundle (`wavely-<tag>-linux-x64.AppImage.sig`)
+via `gpg --detach-sign`. Verify after download:
+
+```bash
+gpg --import owner-public.asc
+gpg --verify wavely-<tag>-linux-x64.AppImage.sig wavely-<tag>-linux-x64.AppImage
+```
+
+Without the secret the step logs `AppImage stays UNSIGNED` and exits 0.
+
+### Integrity baseline (always)
+
+Every release ships `SHA256SUMS.txt` covering all assets regardless of
+signing state.

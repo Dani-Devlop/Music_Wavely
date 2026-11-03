@@ -41,6 +41,12 @@ abstract final class PlatformUtils {
   /// The web app is not a native mobile target.
   static bool get isMobile => false;
 
+  /// The web app is not native Android.
+  static bool get isAndroid => false;
+
+  /// The web app is not native iOS.
+  static bool get isIOS => false;
+
   /// The web app is not a native desktop target.
   static bool get isDesktop => false;
 
