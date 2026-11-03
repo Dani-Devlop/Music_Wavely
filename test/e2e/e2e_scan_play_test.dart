@@ -11,8 +11,11 @@
 /// without the filesystem walker.
 library;
 
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
@@ -20,7 +23,8 @@ import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
 import '../app/pump_app.dart';
-import '../features/library/fakes.dart' show FakeLibraryScanner;
+import '../features/library/fakes.dart'
+    show FakeLibraryScanner, seedCompanion;
 import '../support/track_factory.dart';
 
 /// Scanner fake that seeds the SAME database the app runs on (what the

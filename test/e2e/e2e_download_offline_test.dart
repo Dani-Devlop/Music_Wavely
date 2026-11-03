@@ -17,12 +17,16 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show Value;
+import 'package:drift/native.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/app/router.dart';
 import 'package:wavely/data/local/db/app_database.dart';
+import 'package:wavely/data/local/db/tables/downloads.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/domain/repositories/source_provider.dart';
 import 'package:wavely/features/downloads/data/download_events.dart';

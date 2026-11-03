@@ -26,6 +26,9 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:wavely/core/errors/failures.dart';
+import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/design_system/design_system.dart';
@@ -37,8 +40,6 @@ import 'package:wavely/features/parental/data/pin_hash.dart';
 import 'package:wavely/features/parental/data/track_filter.dart';
 import 'package:wavely/features/parental/data/word_matcher.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
-import 'package:wavely/core/errors/result.dart';
-import 'package:wavely/core/errors/failures.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layer 1 — the parental screen PIN gate.

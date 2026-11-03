@@ -68,6 +68,16 @@ jobs:
         with:
           channel: 'stable'
 
+      # The repo does not commit platform runner folders (same as
+      # release.yml): scaffold the Android runner, then apply the
+      # core-library-desugaring patch the local_notifications dep needs.
+      - name: Scaffold Android runner
+        run: flutter create . --platforms=android --org app.wavely --project-name wavely
+      - name: Patch Android desugaring
+        run: python3 tools/patch_android_desugaring.py
+      - name: Install dependencies
+        run: flutter pub get
+
       - name: Build debug APK (cloud)
         run: flutter build apk --debug
 

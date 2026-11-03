@@ -13,6 +13,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
@@ -21,6 +22,8 @@ import 'package:wavely/features/ai_chat/data/ai_provider.dart';
 import 'package:wavely/features/ai_chat/data/ai_service.dart';
 import 'package:wavely/features/ai_chat/data/ai_tools.dart';
 import 'package:wavely/features/ai_chat/presentation/ai_chat_screen.dart';
+import 'package:wavely/features/library/data/track_launcher.dart'
+    show trackLauncherProvider;
 import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
@@ -29,6 +32,7 @@ import 'package:wavely/playback/queue/queue_manager.dart';
 
 import '../features/lyrics/fakes.dart' show FakeLyricsCache, makeTrack;
 import '../support/ai_chat_fakes.dart';
+import '../support/fake_playback_engine.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Flow 1 — synced lyrics highlight while the song plays.
@@ -160,7 +164,7 @@ void main() {
         ),
       );
     }
-    launcher = _RecordingLauncher();
+    launcher = RecordingTrackLauncher();
   });
 
   tearDown(() async {
@@ -217,7 +221,7 @@ void main() {
     await tester.tap(find.text('Play all'));
     await tester.pumpAndSettle();
     expect(launcher.played, hasLength(1));
-    expect(launcher.played.single.tracks, hasLength(4));
+    expect(launcher.played.single, hasLength(4));
   });
 }
 
