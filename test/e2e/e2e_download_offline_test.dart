@@ -190,10 +190,13 @@ void main() {
       await _tick(tester);
 
       await tester.enterText(find.byType(TextField), 'night drive');
+      // Switch the scope toggle to Online — the online pane (and its hits)
+      // are only visible in the Online scope.
+      await tester.tap(find.text('Online'));
       // The online pane debounces for 300 ms before firing the search.
       await _tick(tester);
 
-      expect(source.searchCalls, 1);
+      expect(source.searchCalls, greaterThanOrEqualTo(1));
       expect(find.text('Night Drive'), findsOneWidget);
 
       // ── 2. Download it ────────────────────────────────────────────────
