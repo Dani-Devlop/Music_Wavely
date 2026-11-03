@@ -1,0 +1,79 @@
+# Stage 6 — E2E scenario verification + real-UI screenshot capture, and a
+# cloud debug-APK build (the sandbox has no Android emulator/device, so the
+# ARTEMIS agent flows are exercised as instrumented widget-level E2E on CI
+# and the debug APK is produced here instead of a local machine).
+name: E2E Scenarios and Screenshots
+
+on:
+  push:
+    branches: [ "feat/*", "fix/*", "docs/*", "test/*" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # Desktop-targeted test code compiles Linux host code (GTK /
+      # media_kit headers) during `flutter test` — same as verify.yml.
+      - name: Install Linux dev libs
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libmpv-dev mpv ninja-build clang cmake pkg-config
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Code Generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Run E2E scenarios and capture screenshots
+        run: |
+          flutter test test/e2e test/goldens \
+            --dart-define=WAVELY_CAPTURE=true \
+            --dart-define=WAVELY_SCREENSHOT_DIR=docs/assets \
+            > e2e.log 2>&1
+          tail -30 e2e.log
+
+      - name: Upload E2E log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-log
+          path: e2e.log
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: wavely-screenshots
+          path: docs/assets/*.png
+          if-no-files-found: error
+
+  debug-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Build debug APK (cloud)
+        run: flutter build apk --debug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
