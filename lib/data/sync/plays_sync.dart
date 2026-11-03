@@ -59,24 +59,48 @@ class PlaysSync {
   /// same track on other devices).
   Future<void> enqueuePlay(PlayRow row, Track track) async {
     final fingerprint = playFingerprint(track);
-    final payload = SupabaseSyncBackend.playToPayload(
-      fingerprint: fingerprint,
-      title: track.title,
-      artist: track.artist,
-      album: track.album,
-      source: row.source,
-      deviceId: row.deviceId,
-      startedAt: row.startedAt,
-      listenedMs: row.listenedMs,
-      completed: row.completed,
-    );
     await _outboxDao.enqueue(
       tableName: playsTable,
       rowKey: '$fingerprint:${row.startedAt.toIso8601String()}',
       op: 'insert',
-      payload: jsonEncode(payload),
+      payload: jsonEncode(_payloadFor(fingerprint: fingerprint, row: row, track: track)),
     );
   }
+
+  /// Stage 5 regression fix (sync ↔ analytics cross-feature audit):
+  /// refreshes the STILL-PENDING outbox row of a finalized play session.
+  ///
+  /// [enqueuePlay] snapshots the `plays` row at track start
+  /// (`listenedMs: 0`) — when the playback engine later finalizes the
+  /// session (skip / completion), the queued payload would push a permanent
+  /// zero to the remote side. This method re-encodes the UPDATED [row] and
+  /// overwrites the pending payload in place (same `(table, rowKey)`
+  /// identity). Pushed rows are left alone (history already uploaded).
+  Future<void> refreshPendingPlay(PlayRow row, Track track) async {
+    final fingerprint = playFingerprint(track);
+    await _outboxDao.updatePayloadByRowKey(
+      tableName: playsTable,
+      rowKey: '$fingerprint:${row.startedAt.toIso8601String()}',
+      payload: jsonEncode(_payloadFor(fingerprint: fingerprint, row: row, track: track)),
+    );
+  }
+
+  static Map<String, Object?> _payloadFor({
+    required String fingerprint,
+    required PlayRow row,
+    required Track track,
+  }) =>
+      SupabaseSyncBackend.playToPayload(
+        fingerprint: fingerprint,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        source: row.source,
+        deviceId: row.deviceId,
+        startedAt: row.startedAt,
+        listenedMs: row.listenedMs,
+        completed: row.completed,
+      );
 }
 
 /// Wraps [PlayRecorder] so that every recorded play also lands in the sync
@@ -116,6 +140,46 @@ class PlaysSyncOutboxHook {
       await _playsSync.enqueuePlay(plays.first, track);
     } on Object {
       // Sync is best-effort; local history was already written above.
+    }
+  }
+
+  /// Stage 5 regression fix (sync ↔ analytics cross-feature audit):
+  /// finalizes the listening session [record] started for [track].
+  ///
+  /// `PlayRecorder.record` snapshots `listenedMs: 0` at track start and the
+  /// queued outbox payload therefore carried a permanent zero — the remote
+  /// `plays` table and the analytics aggregates never saw real listening
+  /// time. The playback engine calls this when the session ends (skip /
+  /// completion) with the FINAL numbers; both the local `plays` row and the
+  /// still-pending outbox payload are refreshed in one step.
+  ///
+  /// Best-effort like [record]: failures are swallowed so a sync problem can
+  /// never break playback. Returns `true` when the local session was
+  /// updated.
+  Future<bool> finalizeSession({
+    required Track track,
+    required int listenedMs,
+    required bool completed,
+  }) async {
+    final trackId = track.id;
+    if (trackId == null) {
+      return false;
+    }
+    try {
+      final PlayRow? finalized = await _playsDao.finalizeLatestSession(
+        trackId: trackId,
+        listenedMs: listenedMs,
+        completed: completed,
+      );
+      if (finalized == null) {
+        return false;
+      }
+      await _playsSync.refreshPendingPlay(finalized, track);
+      return true;
+    } on Object {
+      // Sync is best-effort; the local update already succeeded above or
+      // failed atomically — either way playback is unaffected.
+      return false;
     }
   }
 }

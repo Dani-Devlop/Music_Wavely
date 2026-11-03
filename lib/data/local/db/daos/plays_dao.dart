@@ -27,6 +27,46 @@ class PlaysDao extends DatabaseAccessor<AppDatabase> with _$PlaysDaoMixin {
             ..orderBy([(p) => OrderingTerm.desc(p.startedAt)]))
           .get();
 
+  /// Stage 5 regression fix (sync ↔ analytics cross-feature audit):
+  /// finalizes the newest listening session of [trackId] — the row
+  /// [PlayRecorder] inserted at track start carries `listenedMs: 0` and
+  /// nothing ever updated it, so the sync engine pushed (and the analytics
+  /// aggregated) a permanent zero.
+  ///
+  /// The playback engine calls this when a session ends (skip / completion)
+  /// through `PlaysSyncOutboxHook.finalizeSession`. Returns the updated row
+  /// (newest session, `startedAt` unchanged) or `null` when the track has
+  /// no recorded session.
+  Future<PlayRow?> finalizeLatestSession({
+    required int trackId,
+    required int listenedMs,
+    required bool completed,
+  }) async {
+    final PlayRow? latest = await (select(plays)
+          ..where((p) => p.trackId.equals(trackId))
+          ..orderBy([
+            (p) => OrderingTerm.desc(p.startedAt),
+            (p) => OrderingTerm.desc(p.id),
+          ])
+          ..limit(1))
+        .getSingleOrNull();
+    if (latest == null) {
+      return null;
+    }
+    final int updated = await (update(plays)
+          ..where((p) => p.id.equals(latest.id)))
+        .write(
+      PlaysCompanion(
+        listenedMs: Value(listenedMs),
+        completed: Value(completed),
+      ),
+    );
+    if (updated == 0) {
+      return null;
+    }
+    return latest.copyWith(listenedMs: listenedMs, completed: completed);
+  }
+
   /// Sum of all listened milliseconds across the whole history.
   Future<int> totalListenedMs() async {
     final sum = plays.listenedMs.sum();
