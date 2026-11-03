@@ -209,18 +209,24 @@ void main() {
           find.byKey(const ValueKey('download-online-night-01'));
       await tester.ensureVisible(downloadAction);
       await _tick(tester);
+
+      // Subscribe BEFORE tapping: the event stream is broadcast and the
+      // whole scripted download (bytes adapter + file write) completes in
+      // microtasks inside the tap's frame — an event fired before the
+      // subscription would be lost.
+      final Future<DownloadEvent> completedFuture = service.events
+          .firstWhere(
+            (DownloadEvent e) => e.status == DownloadStatus.completed,
+          )
+          .timeout(const Duration(seconds: 10));
+
       await tester.tap(downloadAction, warnIfMissed: true);
       await tester.pump();
 
-      // The download pump runs real file IO: complete it on the real event
-      // loop (runAsync), then verify the row + the file on disk.
+      // Verify the row + the file on disk on the real event loop.
       String downloadedPath = '';
       await tester.binding.runAsync(() async {
-        await service.events
-            .firstWhere(
-              (DownloadEvent e) => e.status == DownloadStatus.completed,
-            )
-            .timeout(const Duration(seconds: 10));
+        await completedFuture;
         final List<DownloadRow> completed = await db.downloadsDao
             .watchByStatuses(<DownloadStatus>[DownloadStatus.completed])
             .first;
