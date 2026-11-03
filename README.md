@@ -10,7 +10,7 @@ your local files, your own Subsonic/Navidrome server, and free catalogs
 tracking.
 
 [![CI — Full Verification](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml/badge.svg)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
-[![Tests](https://img.shields.io/badge/tests-1173%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
+[![Tests](https://img.shields.io/badge/tests-1252%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
 [![Platforms](https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-informational)](#getting-started)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/Dani-Devlop/Music_Wavely)](https://github.com/Dani-Devlop/Music_Wavely/releases)
@@ -188,11 +188,24 @@ see [`docs/PACKAGING.md`](docs/PACKAGING.md) for local signing.
 
 Wavely is growing into a **DAP-class player** (Digital Audio Player):
 
-- [ ] **Hi-Res audio output** (24-bit / 192 kHz paths)
-- [ ] **USB bit-perfect / exclusive-mode audio** (DAP-grade output)
-- [ ] **Equalizer** (per-device presets)
-- [ ] **Plugin support** for third-party sources and DSP
-- [ ] Signed installers (MSIX / AppImage) for the official release channel
+- [x] **Hi-Res audio output** (24-bit / 192 kHz paths — no forced
+      resampling anywhere in the chain; see
+      [`docs/HIRES_AUDIO.md`](docs/HIRES_AUDIO.md))
+- [x] **USB bit-perfect / exclusive-mode audio** (desktop: mpv
+      `audio-exclusive`; Android: AAudio exclusive on 14+ via the
+      documented platform channel — see
+      [`docs/HIRES_AUDIO.md`](docs/HIRES_AUDIO.md))
+- [x] **Equalizer** (just_audio `AudioPipeline` on Android, 10-band
+      `lavfi` EQ on desktop, per-device presets in SQLite — see
+      [`docs/DAP_FEATURES.md`](docs/DAP_FEATURES.md))
+- [x] **Plugin support** (sandboxed, compile-time plugin host + the
+      "Local Folders" reference plugin — see
+      [`docs/DAP_FEATURES.md`](docs/DAP_FEATURES.md))
+- [x] Signed installers (MSIX / AppImage) for the official release
+      channel — conditional CI signing driven by GitHub Secrets (see
+      [`docs/PACKAGING.md`](docs/PACKAGING.md) §8)
+- [ ] Plugin UI surface (management screen + declarative REST plugins)
+- [ ] DSP extension surface (crossfeed, loudness normalization)
 
 ## 🤝 Contributing
 

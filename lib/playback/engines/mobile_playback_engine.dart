@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart' as asv;
 import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart' as ja;
+import 'package:wavely/core/utils/platform_utils.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
+import 'package:wavely/playback/equalizer/eq_presets.dart';
+import 'package:wavely/playback/equalizer/equalizer_control.dart';
 
 /// audio_service handler owned by [MobilePlaybackEngine] so the Android
 /// notification / lock screen / iOS now-playing info reflect queue state.
@@ -44,9 +47,30 @@ class WavelyAudioHandler extends asv.BaseAudioHandler {
 /// within the queue is orchestrated by QueueManager which calls
 /// [setQueue] again (or [skipTo] on the concrete class). The playback
 /// contract therefore stays transport-agnostic.
-class MobilePlaybackEngine implements PlaybackEngine {
+class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
+  /// Creates the engine. On Android the just_audio player is constructed
+  /// with an [ja.AudioPipeline] holding one [ja.AndroidEqualizer] (Stage 4
+  /// DAP feature 2.2); every other platform keeps the previous no-pipeline
+  /// construction so behaviour is byte-for-byte unchanged.
   MobilePlaybackEngine({WavelyAudioHandler? notificationHandler})
-      : _player = ja.AudioPlayer() {
+      : this._withEqualizer(
+          notificationHandler: notificationHandler,
+          equalizer: _AndroidEqualizerBundle.createForPlatform(),
+        );
+
+  MobilePlaybackEngine._withEqualizer({
+    required WavelyAudioHandler? notificationHandler,
+    required _AndroidEqualizerBundle? equalizer,
+  })  : _eq = equalizer,
+        _player = ja.AudioPlayer(
+          audioPipeline: equalizer == null
+              ? null
+              : ja.AudioPipeline(
+                  androidAudioEffects: <ja.AndroidAudioEffect>[
+                    equalizer.effect,
+                  ],
+                ),
+        ) {
     _handler = notificationHandler ??
         WavelyAudioHandler(onPlay: play, onPause: pause, onSeek: seek);
     _stateSub = _player.playerStateStream.listen(
@@ -73,6 +97,7 @@ class MobilePlaybackEngine implements PlaybackEngine {
   static Future<void>? _audioServiceInitFuture;
 
   final ja.AudioPlayer _player;
+  final _AndroidEqualizerBundle? _eq;
   late final WavelyAudioHandler _handler;
   StreamSubscription<ja.PlayerState>? _stateSub;
   StreamSubscription<ja.PlaybackEvent>? _eventSub;
@@ -123,6 +148,79 @@ class MobilePlaybackEngine implements PlaybackEngine {
 
   /// Handler instance to pass into `AudioService.init` (see class doc).
   WavelyAudioHandler get audioHandler => _handler;
+
+  // --- Stage 4: equalizer capability (EqualizerControl) ---------------------
+
+  /// Generous cap on the AndroidEqualizer handshake: on a platform where
+  /// the pipeline was never activated the `parameters` future never
+  /// completes, and a controller probing the engine must not hang forever.
+  static const Duration _eqHandshakeTimeout = Duration(milliseconds: 1500);
+
+  @override
+  bool get equalizerAvailable => _eq != null;
+
+  @override
+  Future<EqualizerInfo?> queryEqualizer() async {
+    final _AndroidEqualizerBundle? bundle = _eq;
+    if (bundle == null) {
+      return null;
+    }
+    try {
+      final ja.AndroidEqualizerParameters params = await bundle.effect
+          .parameters
+          .timeout(
+            _eqHandshakeTimeout,
+            onTimeout: () => throw TimeoutException('equalizer handshake'),
+          );
+      return EqualizerInfo(
+        bandCount: params.bands.length,
+        bandFrequencies: params.bands
+            .map((ja.AndroidEqualizerBand band) => band.centerFrequency)
+            .toList(growable: false),
+        minGainDb: params.minDecibels,
+        maxGainDb: params.maxDecibels,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
+  Future<bool> setEqualizerEnabled({required bool enabled}) async {
+    final _AndroidEqualizerBundle? bundle = _eq;
+    if (bundle == null) {
+      return false;
+    }
+    try {
+      await bundle.effect.setEnabled(enabled);
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> setEqualizerBandGain(int bandIndex, double gainDb) async {
+    final _AndroidEqualizerBundle? bundle = _eq;
+    if (bundle == null) {
+      return false;
+    }
+    try {
+      final ja.AndroidEqualizerParameters params = await bundle.effect
+          .parameters
+          .timeout(
+            _eqHandshakeTimeout,
+            onTimeout: () => throw TimeoutException('equalizer handshake'),
+          );
+      if (bandIndex < 0 || bandIndex >= params.bands.length) {
+        return false;
+      }
+      await params.bands[bandIndex].setGain(EqualizerGains.clamp(gainDb));
+      return true;
+    } on Object {
+      return false;
+    }
+  }
 
   @override
   Stream<Duration> get positionStream => _positionController.stream;
@@ -285,5 +383,26 @@ class MobilePlaybackEngine implements PlaybackEngine {
       systemActions: const <asv.MediaAction>{asv.MediaAction.seek},
       updatePosition: _position,
     ));
+  }
+}
+
+/// Just_audio Android equalizer holder (Stage 4).
+///
+/// Exists so the redirecting constructor can build the player pipeline and
+/// keep the [ja.AndroidEqualizer] reference in one value; `null` means "no
+/// EQ on this platform" (desktop / iOS / tests).
+class _AndroidEqualizerBundle {
+  _AndroidEqualizerBundle(this.effect);
+
+  /// The single equalizer effect owned by this engine instance.
+  final ja.AndroidEqualizer effect;
+
+  /// Creates the bundle only on native Android — the just_audio Android
+  /// audio effects are no-ops everywhere else.
+  static _AndroidEqualizerBundle? createForPlatform() {
+    if (!PlatformUtils.isAndroid) {
+      return null;
+    }
+    return _AndroidEqualizerBundle(ja.AndroidEqualizer());
   }
 }

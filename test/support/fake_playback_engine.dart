@@ -39,6 +39,7 @@ import 'dart:async';
 
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
+import 'package:wavely/playback/equalizer/equalizer_control.dart';
 
 /// Hook signature for [FakePlaybackEngine.onLoad].
 typedef FakeLoadHook = void Function(Track track, Duration? startAt);
@@ -47,7 +48,7 @@ typedef FakeLoadHook = void Function(Track track, Duration? startAt);
 typedef FakeSetQueueHook = void Function(List<Track> tracks, int startIndex);
 
 /// Scriptable [PlaybackEngine] fake (no mocktail/mockito).
-class FakePlaybackEngine implements PlaybackEngine {
+class FakePlaybackEngine implements PlaybackEngine, EqualizerControl {
   /// Creates the fake. All hooks are optional; throwing from a hook
   /// simulates the corresponding engine failure.
   FakePlaybackEngine({
@@ -198,6 +199,65 @@ class FakePlaybackEngine implements PlaybackEngine {
   Future<void> setVolume(double volume) async {
     setVolumeCalls += 1;
     lastVolume = volume;
+  }
+
+  // -- Stage 4: scriptable equalizer (EqualizerControl) ----------------------
+
+  /// Whether the fake should report a working EQ (flip to `false` to
+  /// simulate an engine without the capability).
+  bool eqAvailable = true;
+
+  /// Band count reported by [queryEqualizer].
+  int eqBandCount = 5;
+
+  /// Number of [queryEqualizer] calls.
+  int queryEqualizerCalls = 0;
+
+  /// Number of [setEqualizerEnabled] calls.
+  int setEqualizerEnabledCalls = 0;
+
+  /// Number of [setEqualizerBandGain] calls.
+  int setEqualizerBandGainCalls = 0;
+
+  /// Value passed to the last [setEqualizerEnabled].
+  bool lastEqualizerEnabled = true;
+
+  /// Gains recorded by [setEqualizerBandGain] (per band index).
+  final List<double> eqGains = <double>[0, 0, 0, 0, 0];
+
+  @override
+  bool get equalizerAvailable => eqAvailable;
+
+  @override
+  Future<EqualizerInfo?> queryEqualizer() async {
+    queryEqualizerCalls += 1;
+    if (!eqAvailable) {
+      return null;
+    }
+    return EqualizerInfo(
+      bandCount: eqBandCount,
+      bandFrequencies:
+          List<double>.filled(eqBandCount, 100),
+      minGainDb: -12,
+      maxGainDb: 12,
+    );
+  }
+
+  @override
+  Future<bool> setEqualizerEnabled({required bool enabled}) async {
+    setEqualizerEnabledCalls += 1;
+    lastEqualizerEnabled = enabled;
+    return eqAvailable;
+  }
+
+  @override
+  Future<bool> setEqualizerBandGain(int bandIndex, double gainDb) async {
+    setEqualizerBandGainCalls += 1;
+    if (!eqAvailable || bandIndex < 0 || bandIndex >= eqGains.length) {
+      return false;
+    }
+    eqGains[bandIndex] = gainDb;
+    return true;
   }
 
   @override

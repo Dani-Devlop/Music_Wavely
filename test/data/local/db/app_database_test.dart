@@ -25,8 +25,8 @@ void main() {
   });
   tearDown(() => db.close());
 
-  test('schemaVersion is 4 (Stage 1.2 + 2.1 + 2.2 schema)', () {
-    expect(db.schemaVersion, 4);
+  test('schemaVersion is 5 (Stage 1.2 + 2.1 + 2.2 + 4 schema)', () {
+    expect(db.schemaVersion, 5);
   });
 
   test('onCreate creates every base + Stage 1.2 table plus tracks_fts',
@@ -58,6 +58,10 @@ void main() {
         'profiles_local',
         'parental_audit',
         'artist_follows',
+        // Stage 2.2 (migration 0004).
+        'news_articles',
+        // Stage 4 (migration 0005).
+        'eq_presets',
         // FTS5 virtual table (migration 0001).
         'tracks_fts',
       ]),

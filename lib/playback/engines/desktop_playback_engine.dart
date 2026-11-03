@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:wavely/domain/entities/entities.dart' hide Playlist;
 import 'package:wavely/playback/engines/playback_engine.dart';
+import 'package:wavely/playback/equalizer/eq_filter.dart';
+import 'package:wavely/playback/equalizer/eq_presets.dart';
+import 'package:wavely/playback/equalizer/equalizer_control.dart';
 
 /// Desktop (Windows / macOS / Linux) engine backed by media_kit.
 ///
@@ -17,7 +20,7 @@ import 'package:wavely/playback/engines/playback_engine.dart';
 ///   caller drive play/pause.
 /// - Events via `player.stream` (singular; `streams` is deprecated):
 ///   `.position/.duration/.playing/.completed/.buffering/.error/.rate`.
-class DesktopPlaybackEngine implements PlaybackEngine {
+class DesktopPlaybackEngine implements PlaybackEngine, EqualizerControl {
   DesktopPlaybackEngine() {
     if (!_nativeInitialized) {
       MediaKit.ensureInitialized();
@@ -45,6 +48,16 @@ class DesktopPlaybackEngine implements PlaybackEngine {
   List<Track> _queueTracks = const <Track>[];
   PlaybackState _lastState = PlaybackState.stopped;
   bool _disposed = false;
+
+  // --- Stage 4: equalizer / bit-perfect state ------------------------------
+
+  /// Current per-band gains (dB) over [kStandardEqFrequencies].
+  final List<double> _eqGains =
+      List<double>.filled(kStandardEqFrequencies.length, 0.0);
+
+  /// Whether the EQ chain is enabled (disabled clears the mpv `af`
+  /// property).
+  bool _eqEnabled = true;
 
   @override
   Stream<Duration> get positionStream => _positionController.stream;
@@ -130,6 +143,88 @@ class DesktopPlaybackEngine implements PlaybackEngine {
     // media_kit scales volume 0..100 (Dart API takes 0..1 in some wrappers;
     // the raw Player.setVolume contract is percent-based).
     await _player.setVolume(volume.clamp(0.0, 1.0).toDouble() * 100);
+  }
+
+  /// Requests exclusive (bit-perfect) audio output from libmpv
+  /// (`audio-exclusive=yes`: WASAPI/CoreAudio/ALSA exclusive mode — the
+  /// mixer is bypassed and samples go to the device unresampled). Returns
+  /// `true` when mpv accepted the property.
+  ///
+  /// Hi-Res contract (docs/HIRES_AUDIO.md): Wavely never forces
+  /// `audio-samplerate` / `audio-format`, so mpv's default passthrough
+  /// behaviour ("output exactly what the decoder produces when the device
+  /// supports it") is preserved.
+  Future<bool> setExclusiveMode(bool enabled) async {
+    if (_disposed) {
+      return false;
+    }
+    final PlatformPlayer? platform = _player.platform;
+    if (platform is! NativePlayer) {
+      return false;
+    }
+    try {
+      await platform.setProperty('audio-exclusive', enabled ? 'yes' : 'no');
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  // --- Stage 4: equalizer capability (EqualizerControl) ---------------------
+
+  @override
+  bool get equalizerAvailable => true;
+
+  @override
+  Future<EqualizerInfo?> queryEqualizer() async {
+    if (_disposed) {
+      return null;
+    }
+    return EqualizerInfo(
+      bandCount: kStandardEqFrequencies.length,
+      bandFrequencies: List<double>.of(kStandardEqFrequencies),
+      minGainDb: kEqMinGainDb,
+      maxGainDb: kEqMaxGainDb,
+    );
+  }
+
+  @override
+  Future<bool> setEqualizerEnabled({required bool enabled}) async {
+    if (_disposed) {
+      return false;
+    }
+    _eqEnabled = enabled;
+    return _pushEqualizerFilter();
+  }
+
+  @override
+  Future<bool> setEqualizerBandGain(int bandIndex, double gainDb) async {
+    if (_disposed) {
+      return false;
+    }
+    if (bandIndex < 0 || bandIndex >= _eqGains.length) {
+      return false;
+    }
+    _eqGains[bandIndex] = EqualizerGains.clamp(gainDb);
+    return _pushEqualizerFilter();
+  }
+
+  /// Ships the current gain vector to libmpv as one `af` property write
+  /// (`lavfi=[equalizer=...]`, or the empty string when disabled/flat).
+  Future<bool> _pushEqualizerFilter() async {
+    final PlatformPlayer? platform = _player.platform;
+    if (platform is! NativePlayer) {
+      return false;
+    }
+    try {
+      final String filter = _eqEnabled
+          ? buildLavfiEqualizer(kStandardEqFrequencies, _eqGains)
+          : '';
+      await platform.setProperty('af', filter);
+      return true;
+    } on Object {
+      return false;
+    }
   }
 
   @override

@@ -1,11 +1,22 @@
-# Wavely release workflow (Stage 2.2).
+# Wavely release workflow (Stage 2.2, extended in Stage 4).
 #
-# Trigger: pushing a tag `v*.*.*` (e.g. v0.1.0).
+# Trigger: pushing a tag `v*.*.*` (e.g. v0.2.0).
 #
 # Builds release artifacts per platform and creates a GitHub Release.
-# NO SIGNING SECRETS ARE USED — MSIX/AppImage packaging is unsigned
-# placeholders; the owner signs locally before distributing real builds
-# (docs/PACKAGING.md §signing).
+#
+# Stage 4 (multi-architecture release assets):
+# - Android: universal (fat) APK + 4 split APKs
+#   (armeabi-v7a / arm64-v8a / x86 / x86_64) via --split-per-abi.
+# - Windows: x64 only — ZIP + MSIX.
+# - Linux:   x64 only — tar.gz + AppImage + Flatpak.
+#
+# Signing (Stage 4, DAP feature 2.4 — docs/PACKAGING.md §signing):
+# - MSIX_CERTIFICATE (base64 PFX, optional secret + MSIX_CERTIFICATE_PASSWORD)
+#   → signed MSIX; when the secret is absent the build outputs an
+#   UNSIGNED MSIX and still succeeds.
+# - APPIMAGE_SIGNING_KEY (armored GPG private key, optional secret)
+#   → detached .sig signature next to the AppImage; when absent the
+#   AppImage stays unsigned and the build still succeeds.
 name: release
 
 on:
@@ -19,7 +30,7 @@ permissions:
 
 jobs:
   build-android:
-    name: Android (arm64 APK)
+    name: Android (universal + 4 ABI splits)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,20 +47,42 @@ jobs:
       - run: python3 tools/patch_android_desugaring.py
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
-      - run: flutter build apk --release --target-platform android-arm64
-      - name: Stage artifact
+      # Universal (fat) APK across all four release ABIs (x86 included —
+      # the flutter default target list omits it, hence --target-platform).
+      - name: Build universal APK
+        run: >-
+          flutter build apk --release
+          --target-platform android-arm,android-arm64,android-x86,android-x64
+      # Split APKs, one per ABI (Stage 4 §1.1).
+      - name: Build per-ABI split APKs
+        run: >-
+          flutter build apk --release --split-per-abi
+          --target-platform android-arm,android-arm64,android-x86,android-x64
+      - name: Stage artifacts
         run: |
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-arm64.apk
+            dist/wavely-${GITHUB_REF_NAME}-android-universal.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+            dist/wavely-${GITHUB_REF_NAME}-android-armeabi-v7a.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+            dist/wavely-${GITHUB_REF_NAME}-android-arm64-v8a.apk
+          cp build/app/outputs/flutter-apk/app-x86-release.apk \
+            dist/wavely-${GITHUB_REF_NAME}-android-x86.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
+            dist/wavely-${GITHUB_REF_NAME}-android-x86_64.apk
+          ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: dist/
 
   build-windows:
-    name: Windows (release zip + MSIX)
+    name: Windows x64 (zip + MSIX)
     runs-on: windows-latest
+    env:
+      MSIX_CERTIFICATE: ${{ secrets.MSIX_CERTIFICATE }}
+      MSIX_CERTIFICATE_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -60,6 +93,9 @@ jobs:
       - run: flutter create . --platforms=windows --org app.wavely --project-name wavely
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
+      # Stage 4 §1.2: Windows targets x64 only (flutter's Windows runner is
+      # x64 by default; there is no 32-bit build step to drop, and none is
+      # added).
       - run: flutter build windows --release
       - name: Zip release bundle
         shell: pwsh
@@ -67,14 +103,25 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           Compress-Archive -Path build/windows/x64/runner/Release/* `
             -DestinationPath dist/wavely-${env:GITHUB_REF_NAME}-windows-x64.zip
-      # MSIX via msix_config.yaml (sign: false). Placeholder step: if the
-      # msix tooling version drifts, this fails soft and the zip remains.
-      - name: Package MSIX (unsigned)
+      # MSIX via msix_config.yaml. Signed when the MSIX_CERTIFICATE secret
+      # (base64-encoded PFX) is present; otherwise unsigned. Fails soft —
+      # the zip remains.
+      - name: Package MSIX (signed when MSIX_CERTIFICATE is present)
         continue-on-error: true
+        shell: pwsh
         run: |
           flutter pub add --dev msix
-          dart run msix:create
-        shell: pwsh
+          if ($env:MSIX_CERTIFICATE) {
+            Write-Host "MSIX_CERTIFICATE present — building a SIGNED MSIX."
+            $certPath = Join-Path $env:GITHUB_WORKSPACE "signing.pfx"
+            [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:MSIX_CERTIFICATE))
+            dart run msix:create --certificate-path $certPath `
+              --certificate-password "$env:MSIX_CERTIFICATE_PASSWORD" `
+              --install-certificate false
+          } else {
+            Write-Host "MSIX_CERTIFICATE not set — building an UNSIGNED MSIX (see docs/PACKAGING.md)."
+            dart run msix:create
+          }
       - name: Stage MSIX
         shell: pwsh
         run: |
@@ -87,8 +134,10 @@ jobs:
           path: dist/
 
   build-linux:
-    name: Linux (tarball + AppImage)
+    name: Linux x64 (tar.gz + AppImage + Flatpak)
     runs-on: ubuntu-latest
+    env:
+      APPIMAGE_SIGNING_KEY: ${{ secrets.APPIMAGE_SIGNING_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -108,6 +157,7 @@ jobs:
       - run: flutter create . --platforms=linux --org app.wavely --project-name wavely
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
+      # Stage 4 §1.2: Linux targets x64 only.
       - run: flutter build linux --release
       - name: Tar release bundle
         run: |
@@ -115,18 +165,53 @@ jobs:
           tar -czf dist/wavely-${GITHUB_REF_NAME}-linux-x64.tar.gz \
             -C build/linux/x64/release .
       # AppImage via flutter_distributor (needs linuxdeploy/appimagetool,
-      # which the distributor downloads). Placeholder step: fails soft.
+      # which the distributor downloads). Fails soft.
       - name: Package AppImage
         continue-on-error: true
         run: |
           dart pub global activate flutter_distributor 0.6.10
           flutter_distributor package --platform=linux --targets=appimage \
             --skip-tests
-      - name: Stage AppImage
+      # Stage 4 §2.4: detached GPG signature when APPIMAGE_SIGNING_KEY is
+      # present; otherwise the AppImage stays unsigned. Fails soft.
+      - name: Sign AppImage (when APPIMAGE_SIGNING_KEY is present)
+        continue-on-error: true
         run: |
-          if compgen -G "dist/*.AppImage" > /dev/null; then :; else
-            find . -maxdepth 3 -name '*.AppImage' -exec cp {} dist/ \; || true
+          mkdir -p dist
+          if [ -z "$APPIMAGE_SIGNING_KEY" ]; then
+            echo "APPIMAGE_SIGNING_KEY not set — AppImage stays UNSIGNED (see docs/PACKAGING.md)."
+            exit 0
           fi
+          echo "$APPIMAGE_SIGNING_KEY" | gpg --batch --import
+          APPIMAGE=$(find . -maxdepth 3 -name '*.AppImage' -type f | head -n 1)
+          if [ -n "$APPIMAGE" ]; then
+            gpg --batch --yes --detach-sign --output "${APPIMAGE}.sig" "$APPIMAGE"
+            cp "$APPIMAGE" dist/
+            cp "${APPIMAGE}.sig" dist/
+          else
+            echo "No AppImage produced — skipping signature."
+          fi
+      # Stage 4 §1.2: Flatpak bundle from the pre-built Linux binaries
+      # (flatpak/app.wavely.music.yml installs the CI bundle into the
+      # freedesktop 23.08 runtime). Fails soft — the tar.gz/AppImage remain.
+      - name: Package Flatpak
+        continue-on-error: true
+        run: |
+          sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
+          flatpak-builder --force-clean --user --repo=flatpak-repo flatpak-build flatpak/app.wavely.music.yml
+          flatpak build-bundle flatpak-repo \
+            dist/wavely-${GITHUB_REF_NAME}-linux-x64.flatpak app.wavely.music
+      - name: Stage Linux artifacts
+        run: |
+          mkdir -p dist
+          # Pick up whatever the optional steps produced (AppImage, .sig,
+          # .flatpak) in addition to the tar.gz staged above.
+          find . -maxdepth 3 \( -name '*.AppImage' -o -name '*.AppImage.sig' -o -name '*.flatpak' \) \
+            -not -path './flatpak-repo/*' -not -path './flatpak-build/*' \
+            -exec cp {} dist/ \; || true
+          ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
           name: linux-bundle
@@ -160,5 +245,5 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             --title "Wavely ${GITHUB_REF_NAME}" \
-            --notes "Automated release build. Artifacts are UNSIGNED placeholders — verify against SHA256SUMS.txt; see docs/PACKAGING.md." \
+            --notes "Automated multi-arch release build (5 Android APKs, Windows x64, Linux x64). MSIX/AppImage are UNSIGNED unless the owner configured signing secrets — verify against SHA256SUMS.txt; see docs/PACKAGING.md." \
             dist/*
