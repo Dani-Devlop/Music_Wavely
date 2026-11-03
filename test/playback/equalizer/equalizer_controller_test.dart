@@ -67,7 +67,11 @@ void main() {
         List<double>.generate(10, (int i) => i.toDouble()),
       );
       expect(ok, isTrue);
-      expect(engine.eqGains, hasLength(3));
+      // The engine reports 3 bands — exactly 3 gain pushes on indices 0..2
+      // (positions 0, 4.5, 9 of the standard axis → gains 0, 5, 9 dB).
+      // The fake's recording list itself always keeps 5 slots.
+      expect(engine.setEqualizerBandGainCalls, 3);
+      expect(engine.eqGains.take(3), <double>[0, 5, 9]);
     });
 
     test('applyGains is false when the engine refuses', () async {
