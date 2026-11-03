@@ -210,33 +210,36 @@ void main() {
       await tester.ensureVisible(downloadAction);
       await _tick(tester);
 
-      // Subscribe BEFORE tapping: the event stream is broadcast and the
-      // whole scripted download (bytes adapter + file write) completes in
-      // microtasks inside the tap's frame — an event fired before the
-      // subscription would be lost.
-      final Future<DownloadEvent> completedFuture = service.events
-          .firstWhere(
-            (DownloadEvent e) => e.status == DownloadStatus.completed,
-          )
-          .timeout(const Duration(seconds: 10));
+      // Subscribe BEFORE tapping: the event stream is broadcast, so events
+      // fired before a subscription would be lost. A plain listener (not
+      // firstWhere/timeout) — a pending Future.timeout created in the
+      // fake-async zone never fires during runAsync and deadlocks the test.
+      DownloadEvent? completedEvent;
+      service.events.listen(
+        (DownloadEvent e) {
+          if (e.status == DownloadStatus.completed) {
+            completedEvent = e;
+          }
+        },
+      );
 
       await tester.tap(downloadAction, warnIfMissed: true);
+      // The scripted download (bytes adapter + sync file write) completes
+      // in microtasks inside these frames.
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
-      // Verify the row + the file on disk on the real event loop.
-      String downloadedPath = '';
-      await tester.binding.runAsync(() async {
-        await completedFuture;
-        final List<DownloadRow> completed = await db.downloadsDao
-            .watchByStatuses(<DownloadStatus>[DownloadStatus.completed])
-            .first;
-        expect(completed, hasLength(1));
-        downloadedPath = completed.single.targetPath;
-        final File downloaded = File(downloadedPath);
-        expect(downloaded.existsSync(), isTrue);
-        expect(await downloaded.length(), 4096);
-      });
-      await _tick(tester);
+      // Verify the row state + the file on disk (all synchronous reads —
+      // no real-IO awaits in the fake-async zone).
+      final List<DownloadRow> completed = await db.downloadsDao
+          .watchByStatuses(<DownloadStatus>[DownloadStatus.completed])
+          .first;
+      expect(completed, hasLength(1));
+      expect(completedEvent, isNotNull);
+      final String downloadedPath = completed.single.targetPath;
+      final File downloaded = File(downloadedPath);
+      expect(downloaded.existsSync(), isTrue);
+      expect(downloaded.lengthSync(), 4096);
 
       // The completed download is addressable through the downloads route.
       harness.container.read(routerProvider).go(downloadsRoute);
