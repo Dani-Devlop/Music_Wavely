@@ -10,7 +10,7 @@ your local files, your own Subsonic/Navidrome server, and free catalogs
 tracking.
 
 [![CI — Full Verification](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml/badge.svg)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
-[![Tests](https://img.shields.io/badge/tests-1173%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
+[![Tests](https://img.shields.io/badge/tests-1252%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
 [![Platforms](https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-informational)](#getting-started)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/Dani-Devlop/Music_Wavely)](https://github.com/Dani-Devlop/Music_Wavely/releases)
