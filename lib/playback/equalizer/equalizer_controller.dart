@@ -44,13 +44,11 @@ class EqualizerController {
   /// The engine's EQ capability, or `null` when the engine is absent or
   /// does not implement [EqualizerControl].
   EqualizerControl? get engineEq {
-    // Local variable (not a direct field test): type promotion of fields
-    // cannot promote to a type unrelated to the declared type.
-    final PlaybackEngine? engine = _engine;
-    if (engine is EqualizerControl) {
-      return engine;
-    }
-    return null;
+    // Promote through Object?: `is`-promotion requires the tested type to
+    // be a subtype of the variable's current type, and EqualizerControl is
+    // deliberately unrelated to PlaybackEngine (capability interface).
+    final Object? engine = _engine;
+    return engine is EqualizerControl ? engine : null;
   }
 
   /// Whether gains can actually be applied to audio right now.
