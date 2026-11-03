@@ -17,6 +17,7 @@ import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wavely/core/errors/failures.dart';
 import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/core/settings/settings_store.dart';
 import 'package:wavely/data/local/db/app_database.dart';
@@ -48,7 +49,7 @@ class _ScriptedBackend implements SyncBackend {
       pushedPayloads.add(row.payload);
     }
     if (!pushSucceeds) {
-      return const Result<void>.err(
+      return Result<void>.err(
         Failure.network(message: 'offline (scripted)'),
       );
     }

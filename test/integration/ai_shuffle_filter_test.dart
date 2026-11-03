@@ -328,7 +328,8 @@ void main() {
       expect(engine.lastSetQueue.map((Track t) => t.id).toSet(), <int>{1, 2});
       expect(engine.playCalls, 1);
       expect(engine.state, PlaybackState.playing);
-      expect(engine.position, const Duration(seconds: 4));
+      // The fake's seek() lands the simulated position at the seek target.
+      expect(engine.position, const Duration(seconds: 10));
       expect(engine.seeks.single, const Duration(seconds: 10));
     });
   });

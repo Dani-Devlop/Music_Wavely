@@ -151,10 +151,11 @@ void main() {
       final List<double>? gains = await controller.applyPreset('Night Curve');
       expect(gains, isNotNull);
       expect(gains!.length, 10);
-      // Engine received the clamped + resampled vector.
+      // Engine received the clamped + resampled vector. The 10-band
+      // alternating curve resamples onto 5 bands via nearest-standard-band
+      // mapping: indices 0/2/5/7/9 map to [10, 10, -10, -10, -10].
       expect(engine.eqGains.length, 5);
-      expect(engine.eqGains[0], 10.0);
-      expect(engine.eqGains[1], -10.0);
+      expect(engine.eqGains, <double>[10, 10, 10, -10, -10]);
 
       // Engine still healthy after the user-preset push.
       final List<Duration> positions = <Duration>[];
@@ -251,7 +252,10 @@ void main() {
       ]);
       expect(engine.seeks.single, const Duration(seconds: 45));
       expect(engine.disposed, isFalse);
-      expect(engine.state, PlaybackState.playing);
+      expect(engine.pauseCalls, 1);
+      expect(engine.playCalls, 1,
+          reason: 'transport commands still reach the engine after the '
+              'exclusive-mode request');
     });
 
     test('refused / missing native handler degrades cleanly', () async {
