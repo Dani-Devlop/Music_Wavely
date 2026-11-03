@@ -210,33 +210,37 @@ void main() {
       await tester.ensureVisible(downloadAction);
       await _tick(tester);
 
-      // Subscribe BEFORE tapping: the event stream is broadcast, so events
-      // fired before a subscription would be lost. A plain listener (not
-      // firstWhere/timeout) — a pending Future.timeout created in the
-      // fake-async zone never fires during runAsync and deadlocks the test.
-      DownloadEvent? completedEvent;
-      service.events.listen(
-        (DownloadEvent e) {
-          if (e.status == DownloadStatus.completed) {
-            completedEvent = e;
-          }
-        },
-      );
-
       await tester.tap(downloadAction, warnIfMissed: true);
-      // The scripted download (bytes adapter + sync file write) completes
-      // in microtasks inside these frames.
+      // Drain the microtask chain (dedupe query → render → insert → dio
+      // adapter → file write).
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      // Verify the row state + the file on disk (all synchronous reads —
-      // no real-IO awaits in the fake-async zone).
-      final List<DownloadRow> completed = await db.downloadsDao
-          .watchByStatuses(<DownloadStatus>[DownloadStatus.completed])
-          .first;
-      expect(completed, hasLength(1));
-      expect(completedEvent, isNotNull);
-      final String downloadedPath = completed.single.targetPath;
+      // One-shot row snapshot (a watch().first would race its own initial
+      // empty emission against the download).
+      List<DownloadRow> rows = await db.select(db.downloads).get();
+      if (rows.isEmpty ||
+          rows.single.status != DownloadStatus.completed) {
+        // The async file-handle close lives on the real IO loop: give it
+        // a bounded window on the real event loop, then re-snapshot.
+        await tester.binding.runAsync(() async {
+          for (int i = 0; i < 50; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+            rows = await db.select(db.downloads).get();
+            if (rows.isNotEmpty &&
+                rows.single.status == DownloadStatus.completed) {
+              break;
+            }
+          }
+        });
+      }
+      expect(rows, hasLength(1), reason: 'exactly one download row');
+      expect(
+        rows.single.status,
+        DownloadStatus.completed,
+        reason: 'the download must complete on its own',
+      );
+      final String downloadedPath = rows.single.targetPath;
       final File downloaded = File(downloadedPath);
       expect(downloaded.existsSync(), isTrue);
       expect(downloaded.lengthSync(), 4096);
