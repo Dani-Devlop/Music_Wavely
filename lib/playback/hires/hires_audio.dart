@@ -74,7 +74,13 @@ class HiResAudioController {
   /// Runs the full Android policy: gate on API level, then request the
   /// channel. Failures degrade to `granted: false` with a reason.
   Future<HiResRequestResult> enableAndroidExclusiveMode() async {
-    final int? sdk = await _sdkIntProvider();
+    int? sdk;
+    try {
+      sdk = await _sdkIntProvider();
+    } on Object {
+      // An unavailable device-info layer is treated as "unknown platform".
+      sdk = null;
+    }
     if (!HiResAudioPolicy.androidExclusiveSupported(sdk)) {
       return HiResRequestResult(
         granted: false,

@@ -36,7 +36,7 @@ class LocalFolderPlugin implements WavelyPlugin {
   /// injectable for tests ([MemoryFileSystem]).
   LocalFolderPlugin({required List<String> folders, FileSystem? fs})
       : _folders = List<String>.of(folders),
-        _fs = fs ?? LocalFileSystem();
+        _fs = fs ?? const LocalFileSystem();
 
   final List<String> _folders;
   final FileSystem _fs;
@@ -76,7 +76,7 @@ class LocalFolderSource implements SourceProvider {
   /// for tests.
   LocalFolderSource({required List<String> folders, FileSystem? fs})
       : _folders = List<String>.of(folders),
-        _fs = fs ?? LocalFileSystem();
+        _fs = fs ?? const LocalFileSystem();
 
   final List<String> _folders;
   final FileSystem _fs;

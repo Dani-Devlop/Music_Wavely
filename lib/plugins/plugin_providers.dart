@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/plugins/bundled/local_folder_plugin.dart';
 import 'package:wavely/plugins/plugin_host.dart';

@@ -32,7 +32,7 @@ class DeviceIdentity {
   String? _cached;
 
   /// Returns the persisted device id, creating + persisting a fresh UUIDv4
-  /// when none exists yet. A persistence failure falls back to a
+  /// when none exists yet. Store failures (read or write) degrade to a
   /// session-only id (stable for this process run) so callers never see a
   /// crash from a broken store.
   Future<String> resolve() async {
@@ -40,13 +40,18 @@ class DeviceIdentity {
     if (cached != null) {
       return cached;
     }
-    final String? stored = await _store.read<String>(kDeviceIdSettingsKey);
-    if (stored != null && stored.isNotEmpty) {
-      _cached = stored;
-      return stored;
+    String? stored;
+    try {
+      stored = await _store.read<String>(kDeviceIdSettingsKey);
+    } on Object {
+      stored = null;
     }
-    final String generated =
-        _idGenerator != null ? _idGenerator!() : _uuid.v4();
+    final String? trimmed = stored?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      _cached = trimmed;
+      return trimmed;
+    }
+    final String generated = _idGenerator?.call() ?? _uuid.v4();
     try {
       await _store.write(kDeviceIdSettingsKey, generated);
     } on Object {

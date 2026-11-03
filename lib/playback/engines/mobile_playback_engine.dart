@@ -186,7 +186,7 @@ class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
   }
 
   @override
-  Future<bool> setEqualizerEnabled(bool enabled) async {
+  Future<bool> setEqualizerEnabled({required bool enabled}) async {
     final _AndroidEqualizerBundle? bundle = _eq;
     if (bundle == null) {
       return false;

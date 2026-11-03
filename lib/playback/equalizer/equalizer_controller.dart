@@ -17,6 +17,7 @@ import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/data/local/db/tables/eq_presets.dart';
 import 'package:wavely/design_system/themes/theme_provider.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
+import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/equalizer/eq_presets.dart';
 import 'package:wavely/playback/equalizer/equalizer_control.dart';
 
@@ -42,13 +43,8 @@ class EqualizerController {
 
   /// The engine's EQ capability, or `null` when the engine is absent or
   /// does not implement [EqualizerControl].
-  EqualizerControl? get engineEq {
-    final PlaybackEngine? engine = _engine;
-    if (engine is EqualizerControl) {
-      return engine;
-    }
-    return null;
-  }
+  EqualizerControl? get engineEq =>
+      _engine is EqualizerControl ? _engine : null;
 
   /// Whether gains can actually be applied to audio right now.
   Future<bool> get canApplyGains async {
@@ -60,16 +56,17 @@ class EqualizerController {
   }
 
   /// Platform EQ facts (band count / range) or `null` when unavailable.
-  Future<EqualizerInfo?> queryEngine() => engineEq?.queryEqualizer();
+  Future<EqualizerInfo?> queryEngine() =>
+      engineEq?.queryEqualizer() ?? Future<EqualizerInfo?>.value();
 
   /// Enables/disables the engine equalizer. `false` when no capable
   /// engine exists.
-  Future<bool> setEnabled(bool enabled) async {
+  Future<bool> setEnabled({required bool enabled}) {
     final EqualizerControl? eq = engineEq;
     if (eq == null) {
-      return false;
+      return Future<bool>.value(false);
     }
-    return eq.setEqualizerEnabled(enabled);
+    return eq.setEqualizerEnabled(enabled: enabled);
   }
 
   /// Clamps and applies [gainsDb] to the engine (resampling the standard
@@ -169,6 +166,6 @@ final equalizerControllerProvider = FutureProvider<EqualizerController>(
 
 /// Stable per-install device id over the app settings store (see
 /// `DeviceIdentity`).
-final deviceIdProvider = FutureProvider<String>((ref) async {
+final deviceIdProvider = FutureProvider<String>((ref) {
   return DeviceIdentity(store: ref.watch(settingsStoreProvider)).resolve();
 });

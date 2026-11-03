@@ -78,7 +78,7 @@ void main() {
 
     test('setEnabled forwards to the engine', () async {
       final EqualizerController controller = buildController();
-      expect(await controller.setEnabled(false), isTrue);
+      expect(await controller.setEnabled(enabled: false), isTrue);
       expect(engine.lastEqualizerEnabled, isFalse);
     });
   });
@@ -131,7 +131,7 @@ void main() {
       await controller.savePreset('B', const <double>[1]);
       await controller.savePreset('A', const <double>[2]);
       final List<String> names =
-          (await controller.userPresets()).map((row) => row.name);
+          (await controller.userPresets()).map((row) => row.name).toList();
       expect(names, <String>['A', 'B']);
     });
 

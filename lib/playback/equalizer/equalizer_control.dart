@@ -60,7 +60,7 @@ abstract class EqualizerControl {
   Future<EqualizerInfo?> queryEqualizer();
 
   /// Enables or disables the whole equalizer. Returns `true` on success.
-  Future<bool> setEqualizerEnabled(bool enabled);
+  Future<bool> setEqualizerEnabled({required bool enabled});
 
   /// Sets the gain (dB) of the band at [bandIndex]. Out-of-range indices
   /// return `false` without throwing.

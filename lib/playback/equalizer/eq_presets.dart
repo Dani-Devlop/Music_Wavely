@@ -58,8 +58,15 @@ const List<BuiltinEqPreset> kBuiltinEqPresets = <BuiltinEqPreset>[
 /// `eq_presets.bands_json` codec.
 abstract final class EqualizerGains {
   /// Clamps [gain] into [kEqMinGainDb, kEqMaxGainDb].
-  static double clamp(double gain) =>
-      gain.clamp(kEqMinGainDb, kEqMaxGainDb).toDouble();
+  static double clamp(double gain) {
+    if (gain < kEqMinGainDb) {
+      return kEqMinGainDb;
+    }
+    if (gain > kEqMaxGainDb) {
+      return kEqMaxGainDb;
+    }
+    return gain;
+  }
 
   /// Clamps every entry of [gains].
   static List<double> clampAll(List<double> gains) => gains.map(clamp).toList();
@@ -91,20 +98,26 @@ abstract final class EqualizerGains {
     final List<double> out = <double>[];
     for (var i = 0; i < bandCount; i++) {
       // Position of this engine band inside the standard layout's
-      // normalized [0, 1] frequency axis, then the nearest standard band.
-      final double pos = bandCount <= 1
-          ? 0
-          : i * (gains.length - 1) / (bandCount - 1);
+      // normalized frequency axis. A degenerate single-band engine maps to
+      // the CENTER of the standard axis; otherwise bands spread evenly.
+      final double pos;
+      if (bandCount <= 1) {
+        pos = (gains.length - 1) / 2;
+      } else {
+        pos = i * (gains.length - 1) / (bandCount - 1);
+      }
+      final int rounded = pos.round();
+      final int last = gains.length - 1;
       final int nearest =
-          (pos.round()).clamp(0, gains.length - 1).toInt();
+          rounded < 0 ? 0 : (rounded > last ? last : rounded);
       out.add(gains[nearest]);
     }
     return out;
   }
 
-  /// Encodes a gain vector for the `bands_json` column (JSON array).
-  static String encode(List<double> gains) =>
-      jsonEncode(gains.map((double g) => g.toStringAsFixed(2)).toList());
+  /// Encodes a gain vector for the `bands_json` column (JSON array of
+  /// numbers).
+  static String encode(List<double> gains) => jsonEncode(gains);
 
   /// Decodes a `bands_json` column value. Malformed values degrade to an
   /// empty list (same fault-tolerance as `NewsCategoryCodec`).

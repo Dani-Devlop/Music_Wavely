@@ -64,7 +64,7 @@ void main() {
       );
     }
     final List<String> names =
-        (await db.eqPresetsDao.forDevice('dev-1')).map((r) => r.name);
+        (await db.eqPresetsDao.forDevice('dev-1')).map((r) => r.name).toList();
     expect(names, <String>['alpha', 'mid', 'zeta']);
   });
 

@@ -237,14 +237,14 @@ class FakePlaybackEngine implements PlaybackEngine, EqualizerControl {
     return EqualizerInfo(
       bandCount: eqBandCount,
       bandFrequencies:
-          List<double>.filled(eqBandCount, 100.0, growable: false),
+          List<double>.filled(eqBandCount, 100),
       minGainDb: -12,
       maxGainDb: 12,
     );
   }
 
   @override
-  Future<bool> setEqualizerEnabled(bool enabled) async {
+  Future<bool> setEqualizerEnabled({required bool enabled}) async {
     setEqualizerEnabledCalls += 1;
     lastEqualizerEnabled = enabled;
     return eqAvailable;

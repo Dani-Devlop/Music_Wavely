@@ -10,6 +10,7 @@ import 'package:wavely/domain/repositories/source_provider.dart';
 import 'package:wavely/plugins/bundled/local_folder_plugin.dart';
 import 'package:wavely/plugins/plugin_api.dart';
 import 'package:wavely/plugins/plugin_host.dart';
+import 'package:wavely/sources/source_exception.dart';
 
 import '../sources/source_contract.dart';
 
@@ -82,7 +83,7 @@ void main() {
       final PluginHost host = PluginHost(
         factories: <WavelyPluginFactory>[
           () => LocalFolderPlugin(folders: const <String>['/music']),
-          _ExplodingPlugin(),
+          () => _ExplodingPlugin(),
         ],
       );
       final List<PluginLoadResult> results = await host.loadAll();

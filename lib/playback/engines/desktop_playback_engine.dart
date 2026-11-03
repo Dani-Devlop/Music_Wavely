@@ -189,7 +189,7 @@ class DesktopPlaybackEngine implements PlaybackEngine, EqualizerControl {
   }
 
   @override
-  Future<bool> setEqualizerEnabled(bool enabled) async {
+  Future<bool> setEqualizerEnabled({required bool enabled}) async {
     if (_disposed) {
       return false;
     }
