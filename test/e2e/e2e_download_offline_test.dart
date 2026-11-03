@@ -142,13 +142,18 @@ void main() {
   testWidgets(
     'search → download → the downloaded file plays with zero network traffic',
     (WidgetTester tester) async {
-      final Directory tmp =
-          await Directory.systemTemp.createTemp('wavely_stage6_s4');
-      addTearDown(() {
-        if (tmp.existsSync()) {
-          tmp.delete(recursive: true);
-        }
-      });
+    // Deterministic temp dir created SYNCHRONOUSLY — awaiting real IO
+    // (Directory.systemTemp.createTemp) inside the fake-async testWidgets
+    // zone would hang the test forever.
+    final Directory tmp = Directory(
+      '${Directory.systemTemp.path}/wavely_stage6_s4_'
+      '${DateTime.now().microsecondsSinceEpoch}',
+    )..createSync(recursive: true);
+    addTearDown(() {
+      if (tmp.existsSync()) {
+        tmp.deleteSync(recursive: true);
+      }
+    });
 
       final _CatalogSource source = _CatalogSource();
       final _CountingCdnAdapter cdn = _CountingCdnAdapter();
