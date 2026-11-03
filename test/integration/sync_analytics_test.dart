@@ -167,9 +167,11 @@ void main() {
     expect(sync.status.status, SyncStatus.idle);
     expect(await db.syncOutboxDao.count(), 0);
 
-    expect(backend.pushes, hasLength(1));
+    // Two rounds were attempted: the offline failure and the successful
+    // retry — both hit the transport, only the second succeeded.
+    expect(backend.pushes, hasLength(2));
     final Map<String, dynamic> pushed =
-        jsonDecode(backend.pushedPayloads.single) as Map<String, dynamic>;
+        jsonDecode(backend.pushedPayloads.last) as Map<String, dynamic>;
     expect(pushed['listened_ms'], halfway,
         reason: 'Supabase must receive the REAL listened time, not the '
             'start-of-session zero');
@@ -178,7 +180,9 @@ void main() {
     expect(pushed['device_id'], 'test-device');
 
     // ── Local analytics aggregate the same session ───────────────────────
-    final DateTime now = DateTime.utc(2024, 5, 1, 12);
+    // Sessions are stamped with DateTime.now(), so the aggregate window
+    // must be anchored to the real clock too.
+    final DateTime now = DateTime.now();
     expect(
       await analytics.getTotalListeningTime(AnalyticsPeriod.lifetime, now: now),
       halfway,
@@ -223,7 +227,7 @@ void main() {
       completed: true,
     );
 
-    final DateTime now = DateTime.utc(2024, 5, 1, 12);
+    final DateTime now = DateTime.now();
     expect(
       await analytics.getTotalListeningTime(AnalyticsPeriod.lifetime, now: now),
       _kDuration.inMilliseconds ~/ 2 + _kDuration.inMilliseconds,
