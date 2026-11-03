@@ -53,6 +53,22 @@ class SyncOutboxDao extends DatabaseAccessor<AppDatabase>
       (update(syncOutbox)..where((r) => r.id.equals(id)))
           .write(SyncOutboxCompanion(attempts: Value(attempts)));
 
+  /// Stage 5 regression fix (sync ↔ analytics cross-feature audit):
+  /// refreshes the payload of the pending outbox row identified by
+  /// `(tableName, rowKey)` — used by the play-session finalizer so the
+  /// pushed `plays` payload carries the final `listened_ms`/`completed`
+  /// values instead of the start-of-session snapshot. Returns the number of
+  /// rows updated (0 when the row was already pushed or never enqueued —
+  /// both are safe: nothing stale is left behind).
+  Future<int> updatePayloadByRowKey({
+    required String tableName,
+    required String rowKey,
+    required String payload,
+  }) =>
+      (update(syncOutbox)..where((r) =>
+              r.outboxTable.equals(tableName) & r.rowKey.equals(rowKey)))
+          .write(SyncOutboxCompanion(payload: Value(payload)));
+
   /// Entries that exceeded [SyncOutboxDao.maxAttempts] (parked for the UI).
   Future<List<SyncOutboxRow>> failed() => (select(syncOutbox)
         ..where((r) => r.attempts.isBiggerOrEqualValue(maxAttempts)))
