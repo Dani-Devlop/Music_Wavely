@@ -95,9 +95,11 @@ void main() {
     addTearDown(harness.tearDown);
 
     // ── 1. Add a music folder from the Folders tab ───────────────────────
-    // LibraryScreen opens on the Folders tab.
-    expect(find.text('Add folder'), findsOneWidget);
-    await tester.tap(find.text('Add folder'));
+    // LibraryScreen opens on the Folders tab. (The empty-state hint below
+    // the button repeats the same copy, so target the button itself.)
+    final Finder addFolder = find.widgetWithText(FilledButton, 'Add folder');
+    expect(addFolder, findsOneWidget);
+    await tester.tap(addFolder);
     await tester.pumpAndSettle();
 
     // The scanner was asked to scan the merged folder list.

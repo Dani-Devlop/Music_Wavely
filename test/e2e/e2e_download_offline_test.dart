@@ -11,6 +11,11 @@
 /// track. "Offline" is proven by transport accounting: the scripted CDN
 /// adapter serves exactly ONE request (the download) — playback consumes
 /// the local file and never touches the network.
+///
+/// Frame pumping is deliberately BOUNDED (`pump(duration)`, never
+/// `pumpAndSettle`): the download flow carries progress indicators that
+/// animate continuously, which would make an unbounded settle loop spin
+/// forever under fake async.
 library;
 
 import 'dart:io';
@@ -124,120 +129,142 @@ class _CountingCdnAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// Two bounded frame pumps — covers navigation transitions, the 300 ms
+/// online-search debounce and microtask chains without ever spinning on a
+/// continuous animation.
+Future<void> _tick(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
 void main() {
-  testWidgets('search → download → the downloaded file plays with zero '
-      'network traffic', (tester) async {
-    final Directory tmp =
-        await Directory.systemTemp.createTemp('wavely_stage6_s4');
-    addTearDown(() {
-      if (tmp.existsSync()) {
-        tmp.delete(recursive: true);
-      }
-    });
+  testWidgets(
+    'search → download → the downloaded file plays with zero network traffic',
+    (WidgetTester tester) async {
+      final Directory tmp =
+          await Directory.systemTemp.createTemp('wavely_stage6_s4');
+      addTearDown(() {
+        if (tmp.existsSync()) {
+          tmp.delete(recursive: true);
+        }
+      });
 
-    final _CatalogSource source = _CatalogSource();
-    final _CountingCdnAdapter cdn = _CountingCdnAdapter();
-    final AppDatabase db = AppDatabase(NativeDatabase.memory());
+      final _CatalogSource source = _CatalogSource();
+      final _CountingCdnAdapter cdn = _CountingCdnAdapter();
+      final AppDatabase db = AppDatabase(NativeDatabase.memory());
 
-    SharedPreferences.setMockInitialValues(<String, Object>{});
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    final DownloadService service = DownloadService(
-      db: db,
-      prefs: DownloadPrefs(prefs),
-      resolveSources: () async => <SourceProvider>[source],
-      baseDir: () async => tmp.path,
-      executor: IoDownloadFileExecutor(),
-      dio: Dio()..httpClientAdapter = cdn,
-      isUnmetered: () async => true,
-    );
+      final DownloadService service = DownloadService(
+        db: db,
+        prefs: DownloadPrefs(prefs),
+        resolveSources: () async => <SourceProvider>[source],
+        baseDir: () async => tmp.path,
+        executor: IoDownloadFileExecutor(),
+        dio: Dio()..httpClientAdapter = cdn,
+        isUnmetered: () async => true,
+      );
 
-    final WavelyTestHarness harness = await pumpWavelyApp(
-      tester,
-      onboardingCompleted: true,
-      db: db,
-      extraOverrides: <Override>[
-        downloadServiceProvider.overrideWith((ref) async => service),
-        enabledSourcesProvider.overrideWith(
-          (ref) async => <SourceProvider>[source],
+      final WavelyTestHarness harness = await pumpWavelyApp(
+        tester,
+        onboardingCompleted: true,
+        db: db,
+        extraOverrides: <Override>[
+          downloadServiceProvider.overrideWith((ref) async => service),
+          enabledSourcesProvider.overrideWith(
+            (ref) async => <SourceProvider>[source],
+          ),
+        ],
+      );
+      addTearDown(harness.tearDown);
+
+      // ── 1. Search online: the unified pane lists the Jamendo hit ──────
+      harness.container.read(routerProvider).go(SearchScreen.route);
+      await _tick(tester);
+
+      await tester.enterText(find.byType(TextField), 'night drive');
+      // The online pane debounces for 300 ms before firing the search.
+      await _tick(tester);
+
+      expect(source.searchCalls, 1);
+      expect(find.text('Night Drive'), findsOneWidget);
+
+      // ── 2. Download it ────────────────────────────────────────────────
+      // Warm the (async) service provider so the tap reads AsyncData, and
+      // make sure the row action is on screen before tapping it.
+      await tester.binding.runAsync(
+        () => harness.container.read(downloadServiceProvider.future),
+      );
+      final Finder downloadAction =
+          find.byKey(const ValueKey('download-online-night-01'));
+      await tester.ensureVisible(downloadAction);
+      await _tick(tester);
+      await tester.tap(downloadAction, warnIfMissed: true);
+      await tester.pump();
+
+      // The download pump runs real file IO: complete it on the real event
+      // loop (runAsync), then verify the row + the file on disk.
+      String downloadedPath = '';
+      await tester.binding.runAsync(() async {
+        await service.events
+            .firstWhere(
+              (DownloadEvent e) => e.status == DownloadStatus.completed,
+            )
+            .timeout(const Duration(seconds: 10));
+        final List<DownloadRow> completed = await db.downloadsDao
+            .watchByStatuses(<DownloadStatus>[DownloadStatus.completed])
+            .first;
+        expect(completed, hasLength(1));
+        downloadedPath = completed.single.targetPath;
+        final File downloaded = File(downloadedPath);
+        expect(downloaded.existsSync(), isTrue);
+        expect(await downloaded.length(), 4096);
+      });
+      await _tick(tester);
+
+      // The completed download is addressable through the downloads route.
+      harness.container.read(routerProvider).go(downloadsRoute);
+      await _tick(tester);
+
+      // ── 3. Offline playback: the downloaded file IS the local track ──
+      // (this is the provenance link-up the app performs for downloaded
+      // tracks: the library row points at the downloaded file).
+      await db.tracksDao.insertTrack(
+        TracksCompanion.insert(
+          sourceId: 'jamendo',
+          sourceTrackId: 'night-01',
+          title: 'Night Drive',
+          artist: 'Nova',
+          durationMs: 180000,
+          format: 'mp3',
+          filePath: Value<String>(downloadedPath),
+          addedAt: DateTime(2024, 3, 1),
+          updatedAt: DateTime(2024, 3, 1),
         ),
-      ],
-    );
-    addTearDown(harness.tearDown);
+      );
 
-    // ── 1. Search online: the unified pane lists the Jamendo hit ────────
-    harness.container.read(routerProvider).go(SearchScreen.route);
-    await tester.pumpAndSettle();
+      harness.container.read(routerProvider).go('/library');
+      await _tick(tester);
+      await tester.tap(find.text('All Tracks'));
+      await _tick(tester);
+      await tester.tap(find.text('Night Drive'));
+      await _tick(tester);
 
-    await tester.enterText(find.byType(TextField), 'night drive');
-    // The online pane debounces for 300 ms before firing the search.
-    await tester.pumpAndSettle();
+      expect(harness.engine.playCalls, 1);
+      expect(harness.engine.loadedTrack?.filePath, downloadedPath);
+      expect(
+        harness.container.read(queueManagerProvider).playbackState,
+        PlaybackState.playing,
+      );
 
-    expect(source.searchCalls, 1);
-    expect(find.text('Night Drive'), findsOneWidget);
-
-    // ── 2. Download it ──────────────────────────────────────────────────
-    await tester.tap(find.byKey(const ValueKey('download-online-night-01')));
-    await tester.pump();
-
-    // The download pump runs real file IO: complete it on the real event
-    // loop (runAsync), then verify the row + the file on disk.
-    String downloadedPath = '';
-    await tester.binding.runAsync(() async {
-      await service.events
-          .firstWhere(
-            (DownloadEvent e) => e.status == DownloadStatus.completed,
-          )
-          .timeout(const Duration(seconds: 10));
-      final List<DownloadRow> completed = await db.downloadsDao
-          .watchByStatuses(<DownloadStatus>[DownloadStatus.completed])
-          .first;
-      expect(completed, hasLength(1));
-      downloadedPath = completed.single.targetPath;
-      final File downloaded = File(downloadedPath);
-      expect(downloaded.existsSync(), isTrue);
-      expect(await downloaded.length(), 4096);
-    });
-    await tester.pumpAndSettle();
-
-    // The completed download is addressable through the downloads route.
-    harness.container.read(routerProvider).go(downloadsRoute);
-    await tester.pumpAndSettle();
-
-    // ── 3. Offline playback: the downloaded file IS the local track ─────
-    // (this is the provenance link-up the app performs for downloaded
-    // tracks: the library row points at the downloaded file).
-    await db.tracksDao.insertTrack(
-      TracksCompanion.insert(
-        sourceId: 'jamendo',
-        sourceTrackId: 'night-01',
-        title: 'Night Drive',
-        artist: 'Nova',
-        durationMs: 180000,
-        format: 'mp3',
-        filePath: Value<String>(downloadedPath),
-        addedAt: DateTime(2024, 3, 1),
-        updatedAt: DateTime(2024, 3, 1),
-      ),
-    );
-
-    harness.container.read(routerProvider).go('/library');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('All Tracks'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Night Drive'));
-    await tester.pumpAndSettle();
-
-    expect(harness.engine.playCalls, 1);
-    expect(harness.engine.loadedTrack?.filePath, downloadedPath);
-    expect(
-      harness.container.read(queueManagerProvider).playbackState,
-      PlaybackState.playing,
-    );
-
-    // ── 4. Offline proof: exactly ONE network request ever happened ─────
-    // (the download itself). Search, enqueue and playback all ran over the
-    // scripted catalog / local file — the player never fetched a stream.
-    expect(cdn.fetchCount, 1);
-  });
+      // ── 4. Offline proof: exactly ONE network request ever happened ──
+      // (the download itself). Search, enqueue and playback all ran over
+      // the scripted catalog / local file — the player never fetched a
+      // stream.
+      expect(cdn.fetchCount, 1);
+    },
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
 }

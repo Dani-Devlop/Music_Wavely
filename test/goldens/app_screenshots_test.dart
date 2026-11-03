@@ -48,14 +48,12 @@ import 'package:wavely/features/ai_chat/data/ai_tools.dart';
 import 'package:wavely/features/ai_chat/presentation/ai_chat_screen.dart';
 import 'package:wavely/features/library/data/track_launcher.dart'
     show trackLauncherProvider;
-import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 import 'package:wavely/features/onboarding/data/onboarding_state.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
 import '../features/library/fakes.dart' show seedCompanion;
-import '../features/lyrics/fakes.dart' show FakeLyricsCache;
 import '../support/ai_chat_fakes.dart';
 import '../support/fake_playback_engine.dart';
 
@@ -278,28 +276,20 @@ void main() {
   testWidgets('synced_lyrics — overlay highlighting the active line',
       (WidgetTester tester) async {
     final AppDatabase db = AppDatabase(NativeDatabase.memory());
-    final FakeLyricsCache lyrics = FakeLyricsCache();
-    lyrics.seed(
-      CachedLyrics(
-        trackId: 1,
-        provider: 'lrclib',
-        syncedLrc: '[00:01.00]City lights are breathing slow\n'
-            '[00:04.00]Every window a stage of gold\n'
-            '[00:07.00]And the boulevard hums below\n'
-            '[00:10.00]We let the quiet take control\n'
-            '[00:13.00]Midnight is a lullaby\n'
-            '[00:16.00]Skyline drawn in neon dye\n',
-        offsetMs: 0,
-        fetchedAt: DateTime(2024, 1, 1),
-      ),
+    await _seedLibrary(db);
+    // Seed the REAL DriftLyricsCache (wired by buildOverrides) through the
+    // lyrics DAO — the overlay reads it via lyricsFutureProvider.
+    await db.lyricsDao.upsert(
+      trackId: 1,
+      provider: 'lrclib',
+      syncedLrc: '[00:01.00]City lights are breathing slow\n'
+          '[00:04.00]Every window a stage of gold\n'
+          '[00:07.00]And the boulevard hums below\n'
+          '[00:10.00]We let the quiet take control\n'
+          '[00:13.00]Midnight is a lullaby\n'
+          '[00:16.00]Skyline drawn in neon dye\n',
     );
-    final _Harness harness = await _pumpApp(
-      tester,
-      db: db,
-      extraOverrides: <Override>[
-        lyricsCacheProvider.overrideWithValue(lyrics),
-      ],
-    );
+    final _Harness harness = await _pumpApp(tester, db: db);
     addTearDown(() => _dispose(harness));
 
     await harness.container.read(queueManagerProvider.notifier).setQueue(
@@ -377,8 +367,6 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'chill'));
-    await tester.pump();
     await tester.enterText(find.byType(TextField), 'make me a chill mix');
     await tester.tap(find.byIcon(Icons.send));
     await tester.pumpAndSettle();

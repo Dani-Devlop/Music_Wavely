@@ -78,6 +78,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Run Code Generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
       - name: Build debug APK (cloud)
         run: flutter build apk --debug
 
