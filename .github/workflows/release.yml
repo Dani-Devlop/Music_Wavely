@@ -6,7 +6,9 @@
 #
 # Stage 4 (multi-architecture release assets):
 # - Android: universal (fat) APK + 4 split APKs
-#   (armeabi-v7a / arm64-v8a / x86 / x86_64) via --split-per-abi.
+#   (armeabi-v7a / arm64-v8a / x86_64) via --split-per-abi. 32-bit x86
+#   is NOT buildable — modern Flutter engines ship android-arm,
+#   android-arm64 and android-x64 only.
 # - Windows: x64 only — ZIP + MSIX.
 # - Linux:   x64 only — tar.gz + AppImage + Flatpak.
 #
@@ -30,7 +32,7 @@ permissions:
 
 jobs:
   build-android:
-    name: Android (universal + 4 ABI splits)
+    name: Android (universal + 3 ABI splits)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,17 +49,18 @@ jobs:
       - run: python3 tools/patch_android_desugaring.py
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
-      # Universal (fat) APK across all four release ABIs (x86 included —
-      # the flutter default target list omits it, hence --target-platform).
+      # Universal (fat) APK. Target set = every ABI modern Flutter engines
+      # ship (arm / arm64 / x64) — the CLI rejects `android-x86` (32-bit
+      # Intel engine artifacts were dropped upstream).
       - name: Build universal APK
         run: >-
           flutter build apk --release
-          --target-platform android-arm,android-arm64,android-x86,android-x64
+          --target-platform android-arm,android-arm64,android-x64
       # Split APKs, one per ABI (Stage 4 §1.1).
       - name: Build per-ABI split APKs
         run: >-
           flutter build apk --release --split-per-abi
-          --target-platform android-arm,android-arm64,android-x86,android-x64
+          --target-platform android-arm,android-arm64,android-x64
       - name: Stage artifacts
         run: |
           mkdir -p dist
@@ -67,8 +70,6 @@ jobs:
             dist/wavely-${GITHUB_REF_NAME}-android-armeabi-v7a.apk
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
             dist/wavely-${GITHUB_REF_NAME}-android-arm64-v8a.apk
-          cp build/app/outputs/flutter-apk/app-x86-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-x86.apk
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
             dist/wavely-${GITHUB_REF_NAME}-android-x86_64.apk
           ls -la dist/
@@ -245,5 +246,5 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             --title "Wavely ${GITHUB_REF_NAME}" \
-            --notes "Automated multi-arch release build (5 Android APKs, Windows x64, Linux x64). MSIX/AppImage are UNSIGNED unless the owner configured signing secrets — verify against SHA256SUMS.txt; see docs/PACKAGING.md." \
+            --notes "Automated multi-arch release build (4 Android APKs: universal + armeabi-v7a/arm64-v8a/x86_64 splits — modern Flutter engines no longer ship 32-bit x86; Windows x64; Linux x64). MSIX/AppImage are UNSIGNED unless the owner configured signing secrets — verify against SHA256SUMS.txt; see docs/PACKAGING.md." \
             dist/*
