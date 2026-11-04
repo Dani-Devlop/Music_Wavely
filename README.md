@@ -10,11 +10,11 @@ your local files, your own Subsonic/Navidrome server, and free catalogs
 tracking.
 
 [![CI — Full Verification](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml/badge.svg)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
-[![Tests](https://img.shields.io/badge/tests-1252%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
+[![Release — v1.0.0](https://img.shields.io/badge/version-1.0.0-8b5cf6)](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.0)
+[![Tests](https://img.shields.io/badge/tests-1289%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
+[![E2E](https://img.shields.io/badge/E2E-verified-10b981)](.github/workflows/e2e.yml)
 [![Platforms](https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-informational)](#getting-started)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/Dani-Devlop/Music_Wavely)](https://github.com/Dani-Devlop/Music_Wavely/releases)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg)](docs/CONTRIBUTING.md)
 
 </div>
 
@@ -27,59 +27,83 @@ Telegram/Email to sync across devices via Supabase. Spotify/Deezer/Apple are
 **metadata-only** through official APIs — Wavely never touches paid-catalog
 audio.
 
+Every release is **E2E-verified on CI**: instrumented end-to-end scenarios
+drive the real app — library scan → playback, synced lyrics, AI queue
+building, parental censoring, download → offline playback — and the
+screenshots below are rendered live from those runs.
+
 ## 📸 Screenshots
 
-<!-- OWNER: Add real screenshots here.
-     Drop the files into docs/assets/ with these exact names, and the
-     images below will render automatically. Suggested captures:
-     library home, now playing, synced lyrics, queue sheet, discovery, desktop. -->
-
-| Home | Now Playing |
-| :---: | :---: |
-| ![Home UI](docs/assets/home.png) | ![Now Playing](docs/assets/now_playing.png) |
-| **Synced Lyrics** | **Queue Sheet** |
-| ![Synced Lyrics](docs/assets/synced_lyrics.png) | ![Queue Sheet](docs/assets/queue_sheet.png) |
-| **Discovery** | **Desktop** |
-| ![Discovery](docs/assets/discovery.png) | ![Desktop](docs/assets/desktop.png) |
+<p align="center">
+  <img src="docs/assets/home.png" width="200" alt="Library home with live mini-player" />
+  <img src="docs/assets/now_playing.png" width="200" alt="Now playing screen" />
+  <img src="docs/assets/synced_lyrics.png" width="200" alt="Synced lyrics overlay with active-line highlight" />
+  <img src="docs/assets/ai_chat.png" width="200" alt="AI chat building a queue" />
+  <img src="docs/assets/settings.png" width="200" alt="Settings — appearance and playback" />
+</p>
+<p align="center">
+  <sub>Library · Now Playing · Synced Lyrics (LRCLIB) · AI DJ Chat · Settings — rendered from the E2E suite on CI</sub>
+</p>
 
 ## ✨ Features
 
 ### 🎧 Playback
 - **Gapless** and **crossfade** transitions between tracks.
-- **Background playback** on every platform.
-- **Sleep timer** with fade-out.
+- **Background playback** on every platform, with a live mini-player and
+  drag-to-reorder queue.
+- **Sleep timer** with fade-out and playback-speed control.
 - Three platform engines behind one contract: `just_audio` (Android),
   `media_kit` (Windows/Linux desktop), JS interop (Web).
 
-### 📚 Library
-- **FLAC / MP3 / WAV** support with metadata and embedded artwork.
+### 🎛️ DAP features (v0.2.0)
+- **Hi-Res audio output** — 24-bit / 192 kHz paths, no forced resampling
+  anywhere in the chain ([docs/HIRES_AUDIO.md](docs/HIRES_AUDIO.md)).
+- **USB / exclusive-mode bit-perfect output** — mpv `audio-exclusive` on
+  desktop, AAudio exclusive on Android 14+
+  ([docs/HIRES_AUDIO.md](docs/HIRES_AUDIO.md)).
+- **10-band equalizer** — `just_audio` `AudioPipeline` on Android, `lavfi`
+  EQ on desktop, per-device presets stored in SQLite
+  ([docs/DAP_FEATURES.md](docs/DAP_FEATURES.md)).
+- **Plugin support** — sandboxed, compile-time plugin host with the
+  "Local Folders" reference plugin
+  ([docs/DAP_FEATURES.md](docs/DAP_FEATURES.md)).
+
+### 📚 Library & Sources
+- **FLAC / MP3 / WAV / M4A / OGG** support with metadata and embedded artwork.
 - **Folder scanning** with an FTS5-backed index for instant search.
+- **Legal online sources only**: your own **Subsonic / Navidrome**,
+  **Jamendo**, **Free Music Archive**, **archive.org**.
 - Unified **local + online search** across all configured sources.
+- Built-in **download manager** — folder templates, filename sanitizing,
+  per-file provenance, Wi-Fi-only gate, and **true offline playback** of
+  downloaded files.
+
+### 🧠 Intelligence
+- **AI DJ chat** — mood-based conversation that builds and reshapes the
+  queue ("make me a chill mix" → a validated queue you can play or
+  regenerate).
+- **Synced lyrics** — embedded LRC first, then **LRCLIB** fallback, with
+  auto-scroll, active-line highlighting, tap-to-seek and manual offset.
+
+### 🛡️ Parental Controls
+- **PIN-gated** management screen with an audit trail.
+- **Blocked words** drive automatic **audio beeping (censoring)** through
+  the offline ffmpeg pipeline — the original file is never modified.
+- Artist / album / genre blocklists and a no-lyrics fail-safe policy
+  (block · mute · allow).
 
 ### 🎨 UI/UX
 - **Glassmorphism** design system with 13 reusable glass components.
-- **Light/Dark themes** with Material You and **Spotify Green / purple**
-  accent pairs.
-- Responsive shell: mini player, now-playing screen, drag-to-reorder queue.
-
-### 🧠 Intelligence
-- **AI DJ chat** — mood-based conversation that builds and reshapes the queue.
-- **Synced lyrics** — embedded LRC first, then **LRCLIB** fallback.
-
-### 🛡️ Safety
-- **Parental controls** with automatic **audio beeping (censoring)** on
-  flagged tracks — playback never skips, it masks.
-
-### 🌐 Discovery
-- **Legal online sources only**: your own **Subsonic / Navidrome**, **Jamendo**,
-  **Free Music Archive**, **archive.org**.
-- **News feeds** and artist **discovery / follow** features.
-- Built-in **download manager** with folder templates, filename sanitizing,
-  and per-file provenance.
+- **Light/Dark themes** with purple/green accent pairs and reduce-
+  transparency support.
+- Responsive shell: mini player, now-playing screen, bottom navigation.
+- Typography: **Sora** (headings) + **Inter** (body), bundled under the
+  SIL Open Font License.
 
 ### ☁️ Auth & Sync
 - **Telegram / Email login** (Telegram Mini App + PWA aware).
-- **Supabase sync** of plays, follows, and settings across devices.
+- **Supabase sync** of plays, follows, and settings across devices —
+  offline-first with an outbox queue.
 - Crash-only reporting — paths and PII are stripped from release logs.
 
 ## 🏗️ Architecture
@@ -120,12 +144,19 @@ flowchart TB
         eng["just_audio (Android) · media_kit (desktop) · js_interop (web)"]
     end
 
+    subgraph plugins["Plugins — lib/plugins"]
+        phost["sandboxed plugin host"]
+        lfp["Local Folders reference plugin"]
+    end
+
     ui --> state --> domain
     uc --> repo --> daos --> drift
     domain --> remote
     ui --> playback
     qm --> ef --> eng
     state --> qm
+    phost --> lfp
+    state --> phost
 ```
 
 ## 🚀 Getting Started
@@ -157,11 +188,21 @@ cp .env.example .env   # add JAMENDO_CLIENT_ID / Subsonic / Supabase if you want
 flutter run -d linux            # or -d windows, or an Android device id
 ```
 
+| Platform | Build |
+| --- | --- |
+| **Android** | `flutter build apk --release` (or `--split-per-abi`) |
+| **Windows** | `flutter build windows --release` |
+| **Linux** | `flutter build linux --release` |
+| **Web** | `flutter build web` |
+
 ## ✅ Verify (what CI does on every push)
 
 ```bash
 flutter analyze                                            # 0 errors required
-flutter test --coverage                                    # 1173 tests passing
+flutter test --coverage                                    # 1289 tests passing
+
+# E2E scenarios + real-UI screenshots (the ARTEMIS-mirror suite):
+flutter test test/e2e test/goldens
 
 # Subsonic contract suite against a live Navidrome server:
 docker compose -f docker-compose.navidrome.yml up -d
@@ -170,40 +211,33 @@ docker compose -f docker-compose.navidrome.yml down -v
 ```
 
 Every feature ships with tests; nothing is considered "done" unverified.
+The [`e2e.yml`](.github/workflows/e2e.yml) workflow additionally builds a
+debug APK in the cloud on every push.
 
 ## 📦 Releases
 
 Pushing a `v*.*.*` tag triggers the release workflow, which builds:
 
-| Platform | Artifact |
+| Platform | Artifacts |
 | --- | --- |
-| Android | `wavely-<tag>-android-arm64.apk` |
-| Windows | `wavely-<tag>-windows-x64.zip` (+ unsigned MSIX) |
-| Linux | `wavely-<tag>-linux-x64.tar.gz` (+ AppImage; Flatpak config in `flatpak/`) |
+| Android | `wavely-<tag>-android-universal.apk` + `armeabi-v7a` / `arm64-v8a` / `x86_64` ABI splits |
+| Windows | `wavely-<tag>-windows-x64.zip` (+ signed MSIX when signing secrets are set) |
+| Linux | `wavely-<tag>-linux-x64.tar.gz` (+ AppImage, + Flatpak when configured) |
 
-Artifacts are **unsigned placeholders** published with a `SHA256SUMS.txt` —
-see [`docs/PACKAGING.md`](docs/PACKAGING.md) for local signing.
+Every asset ships with a `SHA256SUMS.txt` — see
+[`docs/PACKAGING.md`](docs/PACKAGING.md) for local signing.
 
 ## 🗺️ Roadmap
 
-Wavely is growing into a **DAP-class player** (Digital Audio Player):
-
-- [x] **Hi-Res audio output** (24-bit / 192 kHz paths — no forced
-      resampling anywhere in the chain; see
-      [`docs/HIRES_AUDIO.md`](docs/HIRES_AUDIO.md))
-- [x] **USB bit-perfect / exclusive-mode audio** (desktop: mpv
-      `audio-exclusive`; Android: AAudio exclusive on 14+ via the
-      documented platform channel — see
-      [`docs/HIRES_AUDIO.md`](docs/HIRES_AUDIO.md))
-- [x] **Equalizer** (just_audio `AudioPipeline` on Android, 10-band
-      `lavfi` EQ on desktop, per-device presets in SQLite — see
-      [`docs/DAP_FEATURES.md`](docs/DAP_FEATURES.md))
-- [x] **Plugin support** (sandboxed, compile-time plugin host + the
-      "Local Folders" reference plugin — see
-      [`docs/DAP_FEATURES.md`](docs/DAP_FEATURES.md))
-- [x] Signed installers (MSIX / AppImage) for the official release
-      channel — conditional CI signing driven by GitHub Secrets (see
-      [`docs/PACKAGING.md`](docs/PACKAGING.md) §8)
+- [x] **v0.1.0** — core player: library, playback engines, synced lyrics,
+      online sources, downloads, auth & sync
+- [x] **v0.2.0** — DAP stage: Hi-Res output, equalizer, plugin host,
+      multi-arch release pipeline; Stage 5 cross-feature regression suite
+- [x] **v1.0.0** — **stable**: instrumented E2E verification of the four
+      critical user flows (library scan → playback, synced lyrics + AI
+      queue, parental censoring, download → offline play), real-UI
+      screenshot capture on CI, bundled Sora/Inter typography, cloud
+      debug-APK pipeline
 - [ ] Plugin UI surface (management screen + declarative REST plugins)
 - [ ] DSP extension surface (crossfeed, loudness normalization)
 
@@ -220,12 +254,15 @@ without review.
 - [Final Verification Guide](docs/FINAL_VERIFICATION.md) — copy-paste local verify flow
 - [Changelog](CHANGELOG.md) — keep-a-changelog style history
 - [Privacy](docs/PRIVACY.md) · [Security Audit](docs/SECURITY_AUDIT.md) · [Packaging](docs/PACKAGING.md)
+- [DAP Features](docs/DAP_FEATURES.md) · [Hi-Res Audio](docs/HIRES_AUDIO.md)
 - Stage ledgers: [1.1](docs/STAGE_1_1_REPORT.md) · [1.2](docs/STAGE_1_2_REPORT.md) · [2.1](docs/STAGE_2_1_REPORT.md) · [2.2](docs/STAGE_2_2_REPORT.md) · [3](docs/STAGE_3_REPORT.md)
 
 ## 📄 License
 
 Released under the [MIT License](LICENSE) — Copyright (c) 2026 Dani-Devlop.
+The bundled **Sora** and **Inter** typefaces are distributed under the
+[SIL Open Font License 1.1](https://openfontlicense.org/).
 
 <div align="center">
-<sub>Built with Flutter · Drift · Riverpod · media_kit · Supabase</sub>
+<sub>Built with Flutter · Riverpod · Drift · media_kit · Supabase</sub>
 </div>
