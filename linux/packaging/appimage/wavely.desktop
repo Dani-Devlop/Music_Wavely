@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Wavely
+GenericName=Music Player
+Comment=Offline-first music player with Local and Online sources
+Exec=wavely
+Icon=wavely
+Categories=Audio;AudioVideo;Music;Player;
+Keywords=music;player;audio;wavely;
+Terminal=false
+StartupNotify=true
