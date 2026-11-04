@@ -145,5 +145,26 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Fonts are wired in a later commit of this stage once Sora/Inter assets
-  # are added under assets/fonts/ (see Stage 1.1 design-system work).
+  # Stage 6: the typefaces the design system always referenced are now
+  # bundled. Sora (headings) + Inter (body) are OFL-licensed; the committed
+  # files are static weight instances generated from the Google Fonts
+  # variable fonts with `fonttools varLib.instancer` (wght 600/700 for Sora,
+  # opsz 14 + wght 400/500 for Inter). The `Roboto` entry maps Material's
+  # default family onto Inter so any platform-default text stays on-brand
+  # (and `flutter test` renders real glyphs instead of Ahem placeholders).
+  fonts:
+    - family: Sora
+      fonts:
+        - asset: assets/fonts/Sora-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Sora-Bold.ttf
+          weight: 700
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf

@@ -95,6 +95,12 @@ class WavelyTestHarness {
 /// - [extraOverrides]: appended after the harness overrides so tests can
 ///   replace anything else.
 /// - [settle]: runs `tester.pumpAndSettle()` after mounting (default true).
+/// - [db]: an externally-created [AppDatabase] to mount the app on instead
+///   of a fresh in-memory one. Stage 6 E2E fakes (the seeding library
+///   scanner) need the SAME database instance the app runs on, and the
+///   override list is built before the first pump — so the test creates the
+///   database, wires it into its fakes, and hands it in here. The harness
+///   `tearDown()` still closes it; the test must not close it too.
 Future<WavelyTestHarness> pumpWavelyApp(
   WidgetTester tester, {
   bool onboardingCompleted = false,
@@ -102,6 +108,7 @@ Future<WavelyTestHarness> pumpWavelyApp(
   FakePlaybackEngine? engine,
   List<Override> extraOverrides = const <Override>[],
   bool settle = true,
+  AppDatabase? db,
 }) async {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -123,18 +130,18 @@ Future<WavelyTestHarness> pumpWavelyApp(
     buildSignature: 'test',
   );
 
-  final db = AppDatabase(NativeDatabase.memory());
+  final AppDatabase effectiveDb = db ?? AppDatabase(NativeDatabase.memory());
   final fakeEngine = engine ?? FakePlaybackEngine();
 
   final container = ProviderContainer(
     overrides: <Override>[
-      ...buildOverrides(db: db, prefs: prefs),
+      ...buildOverrides(db: effectiveDb, prefs: prefs),
       playbackEngineProvider.overrideWithValue(fakeEngine),
       // MainShell starts the sync engine on first build; the idle service
       // keeps the connectivity_plus channel out of the test.
       syncServiceProvider.overrideWith(
         (ref) => _IdleSyncService(
-          db,
+          effectiveDb,
           ref.watch(settingsStoreProvider),
         ),
       ),
@@ -153,7 +160,7 @@ Future<WavelyTestHarness> pumpWavelyApp(
   }
 
   return WavelyTestHarness._(
-    db: db,
+    db: effectiveDb,
     prefs: prefs,
     engine: fakeEngine,
     container: container,
