@@ -14,7 +14,6 @@ import 'package:wavely/core/device/device_identity.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/daos/eq_presets_dao.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
-import 'package:wavely/data/local/db/tables/eq_presets.dart';
 import 'package:wavely/design_system/themes/theme_provider.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';

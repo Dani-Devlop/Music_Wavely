@@ -1,6 +1,4 @@
-import 'dart:convert';
 
-import 'package:wavely/core/errors/failures.dart';
 import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/data/remote/metadata_http.dart';
 

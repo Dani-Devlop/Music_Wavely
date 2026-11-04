@@ -35,13 +35,21 @@ jobs:
       - name: Run Code Generation
         run: dart run build_runner build --delete-conflicting-outputs
 
+      # FAIL-FAST (owner mandate: "0 errors, all tests pass" must be
+      # observable as a green run). Previously both steps ended with
+      # `|| true`, which meant a red issue could never turn the run red —
+      # the logs were uploaded but the workflow was green no matter what.
+      # Gate policy: ERRORS and WARNINGS fail the run (--no-fatal-infos
+      # keeps the ~2.4k pre-existing style infos visible but non-blocking);
+      # logs are uploaded on failure for debugging.
       - name: Analyze
-        run: flutter analyze > analyze.log 2>&1 || true
+        run: flutter analyze --no-fatal-infos > analyze.log 2>&1 || { tail -50 analyze.log; exit 1; }
 
       - name: Test
-        run: flutter test --coverage > test.log 2>&1 || true
+        run: flutter test --coverage > test.log 2>&1 || { tail -100 test.log; exit 1; }
 
       - name: Upload Logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-logs

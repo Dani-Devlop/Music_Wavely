@@ -15,7 +15,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:wavely/core/errors/failures.dart';
-import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/features/ai_chat/data/ai_provider.dart';
 import 'package:wavely/features/ai_chat/data/gemini_provider.dart';
 import 'package:wavely/features/ai_chat/data/openai_provider.dart';

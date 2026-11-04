@@ -802,4 +802,4 @@ class _Card extends StatelessWidget {
 // -- small helpers ------------------------------------------------------------
 
 Future<List<String>> _readList(SettingsStore store, String key) async =>
-    (await store.read<List>(key) ?? const <Object?>[]).cast<String>();
+    (await store.read<List<dynamic>>(key) ?? const <Object?>[]).cast<String>();

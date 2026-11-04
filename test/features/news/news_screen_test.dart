@@ -23,7 +23,6 @@ import 'package:wavely/features/news/data/news_prefs.dart';
 import 'package:wavely/features/news/data/news_providers.dart';
 import 'package:wavely/features/news/data/news_service.dart';
 import 'package:wavely/features/news/presentation/news_screen.dart';
-import 'package:wavely/features/news/presentation/news_settings_screen.dart';
 
 class _NoopClient extends http.BaseClient {
   @override

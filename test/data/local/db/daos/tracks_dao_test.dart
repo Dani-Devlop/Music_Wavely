@@ -366,7 +366,7 @@ void main() {
     test('returns exactly the requested rows (db order, not input order)',
         () async {
       final id1 = await insert(title: 't1');
-      final id2 = await insert(title: 't2');
+      await insert(title: 't2');
       final id3 = await insert(title: 't3');
 
       final result = await db.tracksDao.byIds([id3, id1]);

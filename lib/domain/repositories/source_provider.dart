@@ -1,5 +1,4 @@
 import 'package:wavely/domain/entities/entities.dart';
-import 'package:wavely/domain/repositories/source_file.dart';
 
 /// Contract every audio source (local library, self-hosted server, free
 /// catalog, ...) must fulfil.

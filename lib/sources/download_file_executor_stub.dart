@@ -1,4 +1,3 @@
-import 'package:wavely/domain/repositories/source_file.dart';
 import 'package:wavely/sources/download_file_executor.dart';
 
 /// Compile-only web stub. Never functional: writing downloads to disk is an

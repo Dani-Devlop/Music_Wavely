@@ -47,7 +47,6 @@ class _RecordingLauncher implements TrackLauncher {
 /// Library rows for the pool: two English rock tracks, an English
 /// romantic-genre track, an English love-genre track and a Spanish track.
 Future<void> _seedPool(AppDatabase db) async {
-  final DateTime at = DateTime.utc(2024, 6, 1);
   final List<Track> pool = <Track>[
     seedTrack(1,
         title: 'Stone Heart',
@@ -291,8 +290,7 @@ void main() {
         () async {
       await _seedPool(db);
       final FakePlaybackEngine engine = FakePlaybackEngine();
-      final MoodResult mood =
-          MoodClassifier.classify('uplifting motivation please');
+      MoodClassifier.classify('uplifting motivation please');
       final ShuffleConfig config = ShuffleConfig(
         allowedGenres: <String>{'rock'},
         seed: 42,

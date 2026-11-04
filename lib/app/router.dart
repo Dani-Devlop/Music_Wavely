@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wavely/app/main_shell.dart';
+import 'package:wavely/core/config/env.dart';
 import 'package:wavely/features/ai_chat/presentation/ai_chat_screen.dart';
 import 'package:wavely/features/analytics/presentation/analytics_screen.dart';
 import 'package:wavely/features/analytics/presentation/lifetime_favorites_screen.dart';
@@ -14,14 +15,15 @@ import 'package:wavely/features/auth/presentation/welcome_screen.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
 import 'package:wavely/features/downloads/presentation/download_settings_screen.dart';
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
+import 'package:wavely/features/home/presentation/home_screen.dart';
 import 'package:wavely/features/library/presentation/album_detail_screen.dart';
 import 'package:wavely/features/library/presentation/artist_detail_screen.dart';
+import 'package:wavely/features/library/presentation/library_screen.dart';
 import 'package:wavely/features/news/presentation/news_screen.dart';
 import 'package:wavely/features/news/presentation/news_settings_screen.dart';
-import 'package:wavely/core/config/env.dart';
-import 'package:wavely/features/library/presentation/library_screen.dart';
 import 'package:wavely/features/onboarding/data/onboarding_repository.dart';
 import 'package:wavely/features/onboarding/presentation/onboarding_flow.dart';
+import 'package:wavely/features/online/presentation/online_screen.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
@@ -33,9 +35,10 @@ import 'package:wavely/features/settings/presentation/settings_screen.dart';
 final GlobalKey<NavigatorState> rootNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'rootNavigator');
 
-/// App router: 3-branch stateful shell (library incl. nested artist/album
-/// details, search, settings) plus fullscreen routes pushed on the ROOT
-/// navigator (now-playing with a fade; Stage 1.2 feature screens).
+/// App router: 5-branch stateful shell (home, local library incl. nested
+/// artist/album details, online sources, search, settings) plus fullscreen
+/// routes pushed on the ROOT navigator (now-playing with a fade; Stage 1.2
+/// feature screens).
 // Manual Provider on purpose: the GoRouter must be constructed once and its
 // lifecycle tied to the container; codegen adds nothing here.
 final routerProvider = Provider<GoRouter>((ref) {
@@ -44,7 +47,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final prefs = ref.watch(sharedPrefsProvider);
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: LibraryScreen.libraryRoute,
+    initialLocation: HomeScreen.route,
     redirect: (context, state) {
       final completed = OnboardingRepository(prefs).isCompleted();
       final onOnboarding = state.matchedLocation == OnboardingFlow.route;
@@ -52,7 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return OnboardingFlow.route;
       }
       if (completed && onOnboarding) {
-        return LibraryScreen.libraryRoute;
+        return HomeScreen.route;
       }
       // Auth guard: /ai-chat requires a session (library + playback never
       // do). Parental/analytics/discovery stay local-only (no account).
@@ -75,6 +78,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
+                path: HomeScreen.route,
+                builder: (context, state) => const HomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
                 path: LibraryScreen.libraryRoute,
                 builder: (context, state) => const LibraryScreen(),
                 routes: <RouteBase>[
@@ -92,6 +103,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: OnlineScreen.route,
+                builder: (context, state) => const OnlineScreen(),
               ),
             ],
           ),

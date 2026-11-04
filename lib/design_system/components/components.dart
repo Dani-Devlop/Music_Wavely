@@ -15,4 +15,5 @@ export 'progress_ring.dart';
 export 'section_header.dart';
 export 'shimmer.dart';
 export 'source_badge.dart';
+export 'staggered_appear.dart';
 export 'track_tile.dart';

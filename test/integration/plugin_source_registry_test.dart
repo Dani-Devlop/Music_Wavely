@@ -20,7 +20,7 @@ import 'dart:typed_data';
 
 import 'package:drift/native.dart';
 import 'package:dio/dio.dart';
-import 'package:file_system/file_system.dart' show FileSystem, MemoryFileSystem;
+import 'package:file_system/file_system.dart' show MemoryFileSystem;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/data/local/db/app_database.dart';

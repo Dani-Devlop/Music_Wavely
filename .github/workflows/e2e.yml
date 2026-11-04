@@ -75,6 +75,8 @@ jobs:
         run: flutter create . --platforms=android --org app.wavely --project-name wavely
       - name: Patch Android desugaring
         run: python3 tools/patch_android_desugaring.py
+      - name: Patch Android MediaStore bridge
+        run: python3 tools/patch_android_media_store.py
       - name: Install dependencies
         run: flutter pub get
 

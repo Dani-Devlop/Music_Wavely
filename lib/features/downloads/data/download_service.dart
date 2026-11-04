@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:drift/drift.dart' show Value;
 
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/tables/downloads.dart';

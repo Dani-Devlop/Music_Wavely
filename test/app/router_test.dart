@@ -6,16 +6,16 @@
 /// 1. CONFIGURATION — the [routerProvider] is built exactly as the app
 ///    does (inside a ProviderContainer with `sharedPrefsProvider` pointed
 ///    at mock prefs) and its `GoRouter.configuration` is walked to assert
-///    the full path table, the initial location and the 3-branch shell.
+///    the full path table, the initial location and the 5-branch shell.
 /// 2. BEHAVIOR — the REAL WavelyApp is pumped through the pump_app harness
 ///    and the onboarding redirect (`wavely.onboarding.completed` → wizard
-///    vs library) plus the no-Supabase auth-guard bounce (`/ai-chat` →
+///    vs home) plus the no-Supabase auth-guard bounce (`/ai-chat` →
 ///    `/settings`) are exercised end-to-end.
 ///
 /// `WavelyEnv.hasSupabase` is a compile-time constant that is false in
 /// `flutter test` builds, which is exactly the state the guard tests want.
+library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -29,13 +29,15 @@ import 'package:wavely/features/auth/presentation/signup_screen.dart';
 import 'package:wavely/features/auth/presentation/telegram_login_screen.dart';
 import 'package:wavely/features/auth/presentation/welcome_screen.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
-import 'package:wavely/features/library/presentation/library_screen.dart';
 import 'package:wavely/features/downloads/presentation/download_settings_screen.dart';
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
+import 'package:wavely/features/home/presentation/home_screen.dart';
+import 'package:wavely/features/library/presentation/library_screen.dart';
 import 'package:wavely/features/news/presentation/news_screen.dart';
 import 'package:wavely/features/news/presentation/news_settings_screen.dart';
 import 'package:wavely/features/onboarding/data/onboarding_state.dart';
 import 'package:wavely/features/onboarding/presentation/onboarding_flow.dart';
+import 'package:wavely/features/online/presentation/online_screen.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
@@ -75,7 +77,7 @@ Future<ProviderContainer> configContainer() async {
 
 void main() {
   group('router configuration', () {
-    test('initial location is the library route', () async {
+    test('initial location is the home route', () async {
       final container = await configContainer();
       addTearDown(container.dispose);
       final router = container.read(routerProvider);
@@ -83,7 +85,7 @@ void main() {
       // location is observable through the route information provider.
       expect(
         router.routeInformationProvider.value.location,
-        LibraryScreen.libraryRoute,
+        HomeScreen.route,
       );
     });
 
@@ -94,9 +96,11 @@ void main() {
 
       final expected = <String>{
         // Shell branches.
+        HomeScreen.route,
         LibraryScreen.libraryRoute,
         '${LibraryScreen.libraryRoute}/artist/:name',
         '${LibraryScreen.libraryRoute}/album/:artist/:album',
+        OnlineScreen.route,
         SearchScreen.route,
         SettingsScreen.route,
         // Root-navigator fullscreen routes.
@@ -123,7 +127,7 @@ void main() {
       expect(actual, equals(expected));
     });
 
-    test('the stateful shell owns exactly three branches', () async {
+    test('the stateful shell owns exactly five branches', () async {
       final container = await configContainer();
       addTearDown(container.dispose);
       final router = container.read(routerProvider);
@@ -132,7 +136,7 @@ void main() {
           .whereType<StatefulShellRoute>()
           .toList();
       expect(shells, hasLength(1));
-      expect(shells.single.branches, hasLength(3));
+      expect(shells.single.branches, hasLength(5));
     });
 
     test('library detail routes are nested under the library branch',
@@ -179,7 +183,7 @@ void main() {
       expect(find.byType(LibraryScreen), findsNothing);
     });
 
-    testWidgets('completed onboarding boots into the library shell',
+    testWidgets('completed onboarding boots into the home shell',
         (tester) async {
       final harness = await pumpWavelyApp(
         tester,
@@ -188,10 +192,10 @@ void main() {
       addTearDown(harness.tearDown);
 
       expect(find.byType(OnboardingFlow), findsNothing);
-      expect(find.byType(LibraryScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
-    testWidgets('completing onboarding + refresh moves wizard → library',
+    testWidgets('completing onboarding + refresh moves wizard → home',
         (tester) async {
       final harness = await pumpWavelyApp(tester);
       addTearDown(harness.tearDown);
@@ -204,7 +208,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(OnboardingFlow), findsNothing);
-      expect(find.byType(LibraryScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
     testWidgets('without Supabase, /ai-chat bounces back to /settings',
@@ -214,7 +218,7 @@ void main() {
         onboardingCompleted: true,
       );
       addTearDown(harness.tearDown);
-      expect(find.byType(LibraryScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
 
       harness.container.read(routerProvider).go(AiChatScreen.route);
       await tester.pumpAndSettle();

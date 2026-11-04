@@ -19,7 +19,6 @@
 // OS notification wiring) belongs to integration_test runs.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/playback/engines/desktop_playback_engine.dart';
-import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine_io.dart';
 import 'package:wavely/playback/engines/mobile_playback_engine.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
@@ -51,7 +50,7 @@ void runSmokeTests() {
                 'integration tests');
         return;
       }
-      final engine = engineOrNull!;
+      final engine = engineOrNull;
       try {
         expect(
           engine is DesktopPlaybackEngine || engine is MobilePlaybackEngine,
@@ -61,7 +60,7 @@ void runSmokeTests() {
         expect(engine.positionStream, isNotNull);
       } finally {
         try {
-          await engineOrNull?.dispose();
+          await engineOrNull.dispose();
         } on Object catch (_) {
           // Best-effort teardown of a partially-initialized native engine.
         }

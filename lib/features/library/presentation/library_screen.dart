@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wavely/design_system/design_system.dart';
-import 'package:wavely/features/library/presentation/all_tracks_tab.dart';
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
 import 'package:wavely/features/library/presentation/albums_tab.dart';
+import 'package:wavely/features/library/presentation/all_tracks_tab.dart';
 import 'package:wavely/features/library/presentation/artists_tab.dart';
 import 'package:wavely/features/library/presentation/folders_tab.dart';
 import 'package:wavely/features/library/presentation/genres_tab.dart';
@@ -14,17 +14,18 @@ import 'package:wavely/features/library/presentation/genres_tab.dart';
 /// Number of library tabs (Folders, Artists, Albums, Genres, All Tracks).
 const int _tabCount = 5;
 
-/// Library root screen: glassy header with the settings entry point plus a
-/// tab bar over the five library tabs.
+/// Local library root screen: glassy header with the settings entry point
+/// plus a tab bar over the five library tabs (Folders, Artists, Albums,
+/// Genres, All Tracks).
 ///
-/// Route: [libraryRoute] (Task 4 registers it with go_router).
+/// Route: [libraryRoute] (the router's Local branch).
 class LibraryScreen extends ConsumerWidget {
   /// Creates the library screen; [onSettingsTap] is optional because the app
   /// shell may own the settings navigation instead.
   const LibraryScreen({super.key, this.onSettingsTap});
 
-  /// Route path for Task 4's router.
-  static const String libraryRoute = '/library';
+  /// Route path for the router's Local branch.
+  static const String libraryRoute = '/local';
 
   final VoidCallback? onSettingsTap;
 
@@ -44,7 +45,7 @@ class LibraryScreen extends ConsumerWidget {
                     const SizedBox(width: Spacing.lg),
                     Expanded(
                       child: Text(
-                        'Library',
+                        'Local',
                         style: WavelyTypography.title20(
                           color: colors.textPrimary,
                         ),

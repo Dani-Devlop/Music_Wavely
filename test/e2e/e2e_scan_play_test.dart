@@ -13,11 +13,12 @@ library;
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:wavely/app/wavely_app.dart' show WavelyApp;
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/domain/entities/entities.dart';
+import 'package:wavely/features/library/data/library_scanner.dart' show LibraryScanner;
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
@@ -25,7 +26,7 @@ import 'package:wavely/playback/queue/queue_manager.dart';
 import '../app/pump_app.dart';
 import '../features/library/fakes.dart'
     show FakeLibraryScanner, seedCompanion;
-import '../support/track_factory.dart';
+import '../support/fake_playback_engine.dart' show FakePlaybackEngine;
 
 /// Scanner fake that seeds the SAME database the app runs on (what the
 /// real `ScanLibrary` usecase does when it walks picked folders) and then
@@ -55,7 +56,7 @@ class _SeedingScanner extends FakeLibraryScanner {
   Stream<ScanEvent> scan(List<String> folders) async* {
     scanCalls++;
     scannedFolders.add(List<String>.of(folders));
-    for (final TracksCompanion track in tracks) {
+    for (final track in tracks) {
       await db.tracksDao.insertTrack(track);
     }
     yield* Stream<ScanEvent>.fromIterable(events);
@@ -65,15 +66,15 @@ class _SeedingScanner extends FakeLibraryScanner {
 void main() {
   testWidgets('scan → library populated → first song plays with the '
       'mini-player visible and in the playing state', (tester) async {
-    final AppDatabase db = AppDatabase(NativeDatabase.memory());
+    final db = AppDatabase(NativeDatabase.memory());
 
-    const List<String> titles = <String>[
+    const titles = <String>[
       'Neon Rivers',
       'Glass Harbour',
       'Northbound',
       'Afterglow',
     ];
-    final _SeedingScanner scanner = _SeedingScanner(
+    final scanner = _SeedingScanner(
       db: db,
       pickedRoot: '/music',
       tracks: <TracksCompanion>[
@@ -84,7 +85,7 @@ void main() {
       ],
     );
 
-    final WavelyTestHarness harness = await pumpWavelyApp(
+    final harness = await pumpWavelyApp(
       tester,
       onboardingCompleted: true,
       db: db,
@@ -95,9 +96,12 @@ void main() {
     addTearDown(harness.tearDown);
 
     // ── 1. Add a music folder from the Folders tab ───────────────────────
+    // The app boots into the Home branch; switch to the Local branch, whose
     // LibraryScreen opens on the Folders tab. (Both the header row and the
     // empty state offer an 'Add folder' button — either starts a scan.)
-    final Finder addFolder = find.widgetWithText(FilledButton, 'Add folder');
+    await tester.tap(find.text('Local'));
+    await tester.pumpAndSettle();
+    final addFolder = find.widgetWithText(FilledButton, 'Add folder');
     expect(addFolder, findsWidgets);
     await tester.tap(addFolder.first);
     await tester.pumpAndSettle();
@@ -109,7 +113,7 @@ void main() {
     // ── 2. The scan populated the library ───────────────────────────────
     await tester.tap(find.text('All Tracks'));
     await tester.pumpAndSettle();
-    for (final String title in titles) {
+    for (final title in titles) {
       expect(find.text(title), findsOneWidget, reason: title);
     }
 

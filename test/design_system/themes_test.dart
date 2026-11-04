@@ -25,8 +25,7 @@ void main() {
       for (final (accent, dark) in combos) {
         final theme =
             dark ? WavelyThemes.dark(accent) : WavelyThemes.light(accent);
-        final semantic =
-            theme.extension<WavelySemanticColors>()! as WavelySemanticColors;
+        final semantic = theme.extension<WavelySemanticColors>()!;
         final tokens = accent.colors;
 
         // Color scheme exists and mirrors the semantic surface.

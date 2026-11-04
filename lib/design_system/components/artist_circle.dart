@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/design_system/components/track_tile.dart';
 import 'package:wavely/design_system/components/wavely_cover.dart';
-import 'package:wavely/design_system/themes/semantic_extension.dart';
 
 /// Circular artist avatar.
 ///
