@@ -270,6 +270,13 @@ jobs:
           mkdir -p dist
           find artifacts -type f -exec cp {} dist/ \;
           ls -la dist/
+      # Stage 7: WinSparkle appcast for the in-app Windows updater. The
+      # app degrades to an in-app MSIX download when the feed is absent,
+      # so a failure here must never block the release (best-effort).
+      - name: Generate Sparkle appcast (best-effort)
+        run: |
+          python3 tools/generate_appcast.py dist "${GITHUB_REF_NAME}" || \
+            echo "::warning::appcast.xml generation failed — Windows in-app updater falls back to the MSIX download"
       # SHA256SUMS.txt is deliberately NOT generated (owner decision):
       # the file must never appear among the release assets.
       - name: Create release

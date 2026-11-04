@@ -8,6 +8,7 @@ import 'package:wavely/core/constants/app_constants.dart' show AppConstants;
 import 'package:wavely/data/sync/sync_providers.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/player/presentation/mini_player_widget.dart';
+import 'package:wavely/features/settings/data/update_providers.dart';
 import 'package:wavely/features/web/ios_guidance_banner.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
@@ -93,7 +94,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 }
 
 /// The floating, heavily-blurred glass bottom navigation bar.
-class _FloatingGlassNav extends StatelessWidget {
+class _FloatingGlassNav extends ConsumerWidget {
   const _FloatingGlassNav({required this.navigationShell});
 
   static const List<_NavDestination> _destinations = <_NavDestination>[
@@ -104,10 +105,13 @@ class _FloatingGlassNav extends StatelessWidget {
     _NavDestination(label: 'Settings', icon: Icons.settings_rounded),
   ];
 
+  /// Index of the Settings destination (badge host for update notices).
+  static const int _settingsTabIndex = 4;
+
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SafeArea(
       top: false,
       child: Padding(
@@ -128,7 +132,7 @@ class _FloatingGlassNav extends StatelessWidget {
             children: <Widget>[
               for (var i = 0; i < _destinations.length; i++)
                 Expanded(
-                  child: _navButton(context, _destinations[i], i),
+                  child: _navButton(context, ref, _destinations[i], i),
                 ),
             ],
           ),
@@ -139,6 +143,7 @@ class _FloatingGlassNav extends StatelessWidget {
 
   Widget _navButton(
     BuildContext context,
+    WidgetRef ref,
     _NavDestination destination,
     int index,
   ) {
@@ -146,6 +151,10 @@ class _FloatingGlassNav extends StatelessWidget {
     final selected = index == navigationShell.currentIndex;
     final accent = colors.accentColors.accent;
     final color = selected ? accent : colors.textSecondary;
+    // Stage 7: subtle dot on the Settings tab while a newer release is
+    // published (one-shot background check, hermetic under flutter test).
+    final showUpdateBadge = index == _settingsTabIndex &&
+        (ref.watch(updateAvailableBadgeProvider).value ?? false);
     return Semantics(
       button: true,
       selected: selected,
@@ -184,7 +193,31 @@ class _FloatingGlassNav extends StatelessWidget {
                   scale: selected ? 1.12 : 1.0,
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutBack,
-                  child: Icon(destination.icon, color: color, size: 22),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: <Widget>[
+                      Icon(destination.icon, color: color, size: 22),
+                      if (showUpdateBadge)
+                        Positioned(
+                          top: -1,
+                          right: -3,
+                          child: Container(
+                            key: const Key('nav-update-badge'),
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: colors.accentColors.accent,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: colors.bgBase,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: Spacing.xs),
