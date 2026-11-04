@@ -65,16 +65,20 @@ jobs:
           flutter build apk --release --split-per-abi
           --target-platform android-arm,android-arm64,android-x64
       - name: Stage artifacts
+        # GITHUB_REF_NAME is slash-free on tag refs (v1.0.0) but contains a
+        # slash on workflow_dispatch from a branch — sanitize so artifact
+        # paths never escape the dist/ dir and dispatch test runs work.
         run: |
+          NAME="${GITHUB_REF_NAME//\//_}"
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-universal.apk
+            dist/wavely-$NAME-android-universal.apk
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-armeabi-v7a.apk
+            dist/wavely-$NAME-android-armeabi-v7a.apk
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-arm64-v8a.apk
+            dist/wavely-$NAME-android-arm64-v8a.apk
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-x86_64.apk
+            dist/wavely-$NAME-android-x86_64.apk
           ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
@@ -104,9 +108,10 @@ jobs:
       - name: Zip release bundle
         shell: pwsh
         run: |
+          $n = $env:GITHUB_REF_NAME -replace '/', '_'
           New-Item -ItemType Directory -Force dist | Out-Null
           Compress-Archive -Path build/windows/x64/runner/Release/* `
-            -DestinationPath dist/wavely-${env:GITHUB_REF_NAME}-windows-x64.zip
+            -DestinationPath dist/wavely-$n-windows-x64.zip
       # MSIX via msix_config.yaml. Signed when the MSIX_CERTIFICATE secret
       # (base64-encoded PFX) is present; otherwise unsigned. Fails soft —
       # the zip remains.
@@ -166,8 +171,9 @@ jobs:
       - run: flutter build linux --release
       - name: Tar release bundle
         run: |
+          NAME="${GITHUB_REF_NAME//\//_}"
           mkdir -p dist
-          tar -czf dist/wavely-${GITHUB_REF_NAME}-linux-x64.tar.gz \
+          tar -czf "dist/wavely-$NAME-linux-x64.tar.gz" \
             -C build/linux/x64/release .
       # AppImage via tools/package_appimage.sh (hand-rolled). ENFORCED
       # (no continue-on-error): a red job here means no AppImage asset,
@@ -191,10 +197,11 @@ jobs:
       # APPIMAGE_EXTRACT_AND_RUN=1 (no FUSE on runners).
       - name: Package AppImage
         run: |
+          NAME="${GITHUB_REF_NAME//\//_}"
           bash tools/package_appimage.sh \
             build/linux/x64/release/bundle \
-            "dist/wavely-${GITHUB_REF_NAME}-linux-x64.AppImage"
-          test -f "dist/wavely-${GITHUB_REF_NAME}-linux-x64.AppImage" || {
+            "dist/wavely-$NAME-linux-x64.AppImage"
+          test -f "dist/wavely-$NAME-linux-x64.AppImage" || {
             echo '::error::packaging completed but produced no .AppImage'
             exit 1
           }
@@ -232,7 +239,7 @@ jobs:
           flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
           flatpak-builder --force-clean --user --repo=flatpak-repo flatpak-build flatpak/app.wavely.music.yml
           flatpak build-bundle flatpak-repo \
-            dist/wavely-${GITHUB_REF_NAME}-linux-x64.flatpak app.wavely.music
+            "dist/wavely-${GITHUB_REF_NAME//\//_}-linux-x64.flatpak" app.wavely.music
       - name: Stage Linux artifacts
         run: |
           mkdir -p dist
