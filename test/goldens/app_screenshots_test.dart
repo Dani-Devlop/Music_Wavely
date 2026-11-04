@@ -46,6 +46,7 @@ import 'package:wavely/features/ai_chat/data/ai_provider.dart';
 import 'package:wavely/features/ai_chat/data/ai_service.dart';
 import 'package:wavely/features/ai_chat/data/ai_tools.dart';
 import 'package:wavely/features/ai_chat/presentation/ai_chat_screen.dart';
+import 'package:wavely/features/library/data/library_scanner_provider.dart';
 import 'package:wavely/features/library/data/track_launcher.dart'
     show trackLauncherProvider;
 import 'package:wavely/features/onboarding/data/onboarding_state.dart';
@@ -53,9 +54,44 @@ import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
-import '../features/library/fakes.dart' show seedCompanion;
+import '../features/library/fakes.dart'
+    show FakeLibraryScanner, seedCompanion;
 import '../support/ai_chat_fakes.dart';
 import '../support/fake_playback_engine.dart';
+
+/// Scanner fake that seeds the SAME database the app runs on (mirrors the
+/// `ScanLibrary` usecase) and replays a started/completed event pair —
+/// the same approach the e2e scan test uses, which drives the app's real
+/// scan→invalidate→library-refresh path.
+class _SeedingScanner extends FakeLibraryScanner {
+  _SeedingScanner({
+    required this.db,
+    required this.tracks,
+    required String pickedRoot,
+  }) : super(
+          picked: <String>[pickedRoot],
+          events: <ScanEvent>[
+            ScanEvent.scanStarted(root: pickedRoot),
+            ScanEvent.completed(
+              count: tracks.length,
+              errors: const <String>[],
+            ),
+          ],
+        );
+
+  final AppDatabase db;
+  final List<TracksCompanion> tracks;
+
+  @override
+  Stream<ScanEvent> scan(List<String> folders) async* {
+    scanCalls++;
+    scannedFolders.add(List<String>.of(folders));
+    for (final TracksCompanion track in tracks) {
+      await db.tracksDao.insertTrack(track);
+    }
+    yield* Stream<ScanEvent>.fromIterable(events);
+  }
+}
 
 /// Compile-time switches (see the file header).
 const bool _kCapture =
@@ -235,8 +271,41 @@ void main() {
   testWidgets('home — library with a live mini-player',
       (WidgetTester tester) async {
     final AppDatabase db = AppDatabase(NativeDatabase.memory());
-    final _Harness harness = await _pumpApp(tester, db: db);
+    final _SeedingScanner scanner = _SeedingScanner(
+      db: db,
+      pickedRoot: '/music',
+      tracks: _libraryTracks()
+          .map(
+            (Track t) => TracksCompanion.insert(
+              sourceId: t.sourceId,
+              sourceTrackId: t.sourceTrackId,
+              title: t.title,
+              artist: t.artist,
+              album: Value<String?>(t.album),
+              genre: Value<String?>(t.genre),
+              durationMs: t.durationMs,
+              format: t.format,
+              addedAt: t.addedAt,
+              updatedAt: t.updatedAt,
+            ),
+          )
+          .toList(),
+    );
+    final _Harness harness = await _pumpApp(
+      tester,
+      db: db,
+      extraOverrides: <Override>[
+        libraryScannerProvider.overrideWithValue(scanner),
+      ],
+    );
     addTearDown(() => _dispose(harness));
+
+    // Populate the library through the app's REAL scan flow (Add folder →
+    // scan → invalidate → list refresh).
+    await tester.tap(find.widgetWithText(FilledButton, 'Add folder').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All Tracks'));
+    await tester.pumpAndSettle();
 
     // Start playback of the first track so the mini-player is live.
     await harness.container.read(queueManagerProvider.notifier).setQueue(
@@ -247,13 +316,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey<String>('mini-player')), findsOneWidget);
-    expect(find.text('Folders'), findsOneWidget);
-
-    // Capture the populated All Tracks view (the library was seeded) with
-    // the live mini-player docked at the bottom.
-    await tester.tap(find.text('All Tracks'));
-    await tester.pumpAndSettle();
-    expect(find.text('Neon Rivers'), findsOneWidget);
+    // Both the track tile and the mini-player show the playing track.
+    expect(find.text('Neon Rivers'), findsNWidgets(2));
 
     await _capture(tester, 'home.png');
   });
