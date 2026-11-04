@@ -21,8 +21,9 @@ import 'package:wavely/features/library/presentation/library_providers.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/settings/data/cache_cleaner.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
-import 'package:wavely/features/settings/data/update_service.dart';
+import 'package:wavely/features/settings/data/update_providers.dart';
 import 'package:wavely/features/settings/domain/settings.dart';
+import 'package:wavely/features/settings/presentation/screens/update_screen.dart';
 import 'package:wavely/features/settings/presentation/widgets/sources_settings_section.dart';
 
 /// Bytes per megabyte for the cache-size row (data math, not a token).
@@ -58,6 +59,10 @@ class SettingsScreen extends ConsumerWidget {
     final colors = context.wavelyColors;
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    // Stage 7: one-shot background check; drives the row subtitle + dot.
+    // Hermetic under flutter test (the provider short-circuits there).
+    final bool updateBadge =
+        ref.watch(updateAvailableBadgeProvider).value ?? false;
     return Scaffold(
       backgroundColor: colors.bgBase,
       appBar: AppBar(
@@ -444,7 +449,7 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: const Text('github.com/Dani-Devlop/Music_Wavely'),
                 onTap: () => unawaited(_openGitHub(context, ref)),
               ),
-              // -- Stage 2.2: auto-updater --------------------------------
+              // -- Stage 7: auto-update flow -------------------------------
               ListTile(
                 key: const Key('settings-updates-row'),
                 contentPadding: EdgeInsets.zero,
@@ -453,8 +458,23 @@ class SettingsScreen extends ConsumerWidget {
                   color: colors.textSecondary,
                 ),
                 title: const Text('Check for updates'),
-                subtitle: const Text('Releases are published on GitHub'),
-                onTap: () => unawaited(_checkForUpdates(context, ref)),
+                subtitle: Text(
+                  updateBadge
+                      ? 'Update available — tap to review'
+                      : 'Releases are published on GitHub',
+                ),
+                trailing: updateBadge
+                    ? Container(
+                        key: const Key('settings-updates-badge'),
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: colors.accentColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      )
+                    : null,
+                onTap: () => unawaited(context.push(UpdateScreen.route)),
               ),
             ],
           ),
@@ -604,38 +624,6 @@ class SettingsScreen extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Open in browser: $_gitHubUrl')),
     );
-  }
-
-  /// Stage 2.2: runs the GitHub-Releases update check and reports the
-  /// outcome as a SnackBar; when an update exists the release page opens
-  /// through the [LinkLauncher] (install flows stay user-visible — see
-  /// docs/PACKAGING.md).
-  Future<void> _checkForUpdates(BuildContext context, WidgetRef ref) async {
-    final service = UpdateService();
-    final UpdateCheckResult result = await service.checkForUpdate();
-    if (!context.mounted) {
-      return;
-    }
-    final messenger = ScaffoldMessenger.of(context);
-    if (!result.updateAvailable) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Wavely is up to date.')),
-      );
-      return;
-    }
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('Update available: ${result.latestVersion}'),
-      ),
-    );
-    final url = Uri.parse(result.releaseUrl ?? UpdateService.releasesPage);
-    final launched =
-        await ref.read(linkLauncherProvider).launchExternal(url);
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Open in browser: ${url.toString()}')),
-      );
-    }
   }
 }
 

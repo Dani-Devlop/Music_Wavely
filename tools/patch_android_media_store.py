@@ -14,6 +14,10 @@ every music file the system indexer knows about (path + coarse tags), and
 requests READ_MEDIA_AUDIO (API 33+) / READ_EXTERNAL_STORAGE (API < 33) on
 first use.
 
+Stage 7 additionally declares REQUEST_INSTALL_PACKAGES so the in-app
+updater can hand a downloaded APK to the system package installer
+(open_filex -> ACTION_VIEW application/vnd.android.package-archive).
+
 Run this after scaffolding (release.yml and e2e.yml do the same in CI):
 
     python3 tools/patch_android_media_store.py
@@ -37,6 +41,14 @@ PERMISSION_LINES = (
     'android:name="android.permission.READ_EXTERNAL_STORAGE" '
     'android:maxSdkVersion="32" />\n'
     '    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />'
+)
+
+# Stage 7: in-app APK updates. The system package installer refuses to
+# start without this declaration; the user still confirms every install
+# through the "install unknown apps" flow, so no runtime grant is needed.
+INSTALL_PERMISSION_LINE = (
+    '    <uses-permission '
+    'android:name="android.permission.REQUEST_INSTALL_PACKAGES" />'
 )
 
 # The Kotlin implementation is written with a __PACKAGE__ placeholder and
@@ -204,15 +216,32 @@ def patch_manifest() -> bool:
     src = MANIFEST.read_text(encoding="utf-8")
     if "READ_MEDIA_AUDIO" in src:
         print(f"[patch] {MANIFEST}: media permissions already declared")
+    else:
+        needle = "<application"
+        index = src.find(needle)
+        if index < 0:
+            print(f"[patch] ERROR: no <application tag found in {MANIFEST}")
+            return False
+        src = src[:index] + PERMISSION_LINES + "\n" + src[index:]
+        MANIFEST.write_text(src, encoding="utf-8")
+        print(f"[patch] {MANIFEST}: declared READ_MEDIA_AUDIO + legacy READ_EXTERNAL_STORAGE")
+    return patch_install_permission()
+
+
+def patch_install_permission() -> bool:
+    """Declares REQUEST_INSTALL_PACKAGES for the Stage 7 update flow."""
+    src = MANIFEST.read_text(encoding="utf-8")
+    if "REQUEST_INSTALL_PACKAGES" in src:
+        print(f"[patch] {MANIFEST}: install-packages permission already declared")
         return True
     needle = "<application"
     index = src.find(needle)
     if index < 0:
         print(f"[patch] ERROR: no <application tag found in {MANIFEST}")
         return False
-    src = src[:index] + PERMISSION_LINES + "\n" + src[index:]
+    src = src[:index] + INSTALL_PERMISSION_LINE + "\n" + src[index:]
     MANIFEST.write_text(src, encoding="utf-8")
-    print(f"[patch] {MANIFEST}: declared READ_MEDIA_AUDIO + legacy READ_EXTERNAL_STORAGE")
+    print(f"[patch] {MANIFEST}: declared REQUEST_INSTALL_PACKAGES (in-app APK updates)")
     return True
 
 

@@ -3,6 +3,35 @@
 All notable changes to Wavely. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1] - 2026-11-04
+
+### Added — Stage 7: complete auto-update system
+
+- **Update check** (`UpdateService`): GitHub Releases `/latest` lookup with
+  `pub_semver` comparison (`v1.0.1` vs `1.0.1+5` equivalence), 15 s bound,
+  never throws — failures degrade to "up to date".
+- **Platform install flows** (conditional-imported, web-safe):
+  - Windows: WinSparkle via `auto_updater` against the release
+    `appcast.xml` (generated per release by `tools/generate_appcast.py`);
+    automatic fallback to an in-app MSIX download + App Installer.
+  - Linux: in-place AppImage replacement (download → `chmod +x` → atomic
+    rename → detached relaunch) when running as an AppImage; otherwise the
+    release page opens.
+  - Android: APK download into the app-specific downloads directory with
+    live progress, then the system package installer via `open_filex`
+    (`REQUEST_INSTALL_PACKAGES` now declared by
+    `tools/patch_android_media_store.py`). Device-ABI split APK preferred,
+    universal fallback.
+  - Web/iOS: the GitHub release page opens in the browser.
+- **Update screen** (`/settings/update`): current → latest version header,
+  markdown release notes, "Update now" button with a determinate download
+  progress bar (percentage), outcome screens for installer hand-off,
+  AppImage restart and failures (retry + open release page).
+- **Settings**: "Check for updates" row now opens the update screen and
+  shows an accent dot when the one-shot background check finds a release.
+- **Bottom nav**: subtle badge dot on the Settings tab while an update is
+  available (skipped under `flutter test` for hermetic suites).
+- Version bumped to `1.0.1+5`; MSIX identity version `1.0.1.0`.
 
 ## [0.1.2-dev] - Unreleased
 

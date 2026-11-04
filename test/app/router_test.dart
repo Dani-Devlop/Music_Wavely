@@ -35,6 +35,7 @@ import 'package:wavely/features/home/presentation/home_screen.dart';
 import 'package:wavely/features/library/presentation/library_screen.dart';
 import 'package:wavely/features/news/presentation/news_screen.dart';
 import 'package:wavely/features/news/presentation/news_settings_screen.dart';
+import 'package:wavely/features/settings/presentation/screens/update_screen.dart';
 import 'package:wavely/features/onboarding/data/onboarding_state.dart';
 import 'package:wavely/features/onboarding/presentation/onboarding_flow.dart';
 import 'package:wavely/features/online/presentation/online_screen.dart';
@@ -120,6 +121,8 @@ void main() {
         downloadSettingsRoute,
         newsRoute,
         newsSettingsRoute,
+        // Stage 7: in-app update flow.
+        UpdateScreen.route,
       };
 
       final actual =

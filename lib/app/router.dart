@@ -28,6 +28,7 @@ import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
+import 'package:wavely/features/settings/presentation/screens/update_screen.dart';
 import 'package:wavely/features/settings/presentation/settings_screen.dart';
 
 /// Root navigator key shared by the shell and the outside-the-shell
@@ -218,6 +219,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const NewsSettingsScreen(),
           ),
         ],
+      ),
+      // -- Stage 7: in-app update flow --------------------------------------
+      GoRoute(
+        path: UpdateScreen.route,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const UpdateScreen(),
       ),
     ],
   );
