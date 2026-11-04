@@ -65,16 +65,20 @@ jobs:
           flutter build apk --release --split-per-abi
           --target-platform android-arm,android-arm64,android-x64
       - name: Stage artifacts
+        # GITHUB_REF_NAME is slash-free on tag refs (v1.0.0) but contains a
+        # slash on workflow_dispatch from a branch — sanitize so artifact
+        # paths never escape the dist/ dir and dispatch test runs work.
         run: |
+          NAME="${GITHUB_REF_NAME//\//_}"
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-universal.apk
+            dist/wavely-$NAME-android-universal.apk
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-armeabi-v7a.apk
+            dist/wavely-$NAME-android-armeabi-v7a.apk
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-arm64-v8a.apk
+            dist/wavely-$NAME-android-arm64-v8a.apk
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
-            dist/wavely-${GITHUB_REF_NAME}-android-x86_64.apk
+            dist/wavely-$NAME-android-x86_64.apk
           ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
@@ -104,9 +108,10 @@ jobs:
       - name: Zip release bundle
         shell: pwsh
         run: |
+          $n = $env:GITHUB_REF_NAME -replace '/', '_'
           New-Item -ItemType Directory -Force dist | Out-Null
           Compress-Archive -Path build/windows/x64/runner/Release/* `
-            -DestinationPath dist/wavely-${env:GITHUB_REF_NAME}-windows-x64.zip
+            -DestinationPath dist/wavely-$n-windows-x64.zip
       # MSIX via msix_config.yaml. Signed when the MSIX_CERTIFICATE secret
       # (base64-encoded PFX) is present; otherwise unsigned. Fails soft —
       # the zip remains.
@@ -154,8 +159,9 @@ jobs:
         # Plugin parity: ffmpeg_kit_flutter_new pkg-checks json-glib-1.0,
         # flutter_secure_storage_linux pkg-checks libsecret-1 (>= 0.18.4),
         # sentry-native links libcurl; libgtk-3-dev/libmpv-dev are the
-        # verify.yml parity set for the desktop engine.
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libmpv-dev mpv ninja-build clang cmake pkg-config libjson-glib-dev libsecret-1-dev libcurl4-openssl-dev
+        # verify.yml parity set for the desktop engine. squashfs-tools
+        # provides mksquashfs for the AppImage pack (tools/package_appimage.sh).
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libmpv-dev mpv ninja-build clang cmake pkg-config libjson-glib-dev libsecret-1-dev libcurl4-openssl-dev squashfs-tools
       # Scaffold the missing Linux runner (see README "Getting Started").
       - run: flutter config --enable-linux-desktop
       - run: flutter create . --platforms=linux --org app.wavely --project-name wavely
@@ -165,31 +171,38 @@ jobs:
       - run: flutter build linux --release
       - name: Tar release bundle
         run: |
+          NAME="${GITHUB_REF_NAME//\//_}"
           mkdir -p dist
-          tar -czf dist/wavely-${GITHUB_REF_NAME}-linux-x64.tar.gz \
+          tar -czf "dist/wavely-$NAME-linux-x64.tar.gz" \
             -C build/linux/x64/release .
-      # AppImage via flutter_distributor. ENFORCED (no continue-on-error):
-      # a red job here means no AppImage asset, which is a release blocker.
-      # Three hard requirements discovered in the v1.0.0 post-mortem (CI
-      # log: "Could not find an option named \"--skip-tests\""):
-      # 1. 0.6.10's CLI has NO --skip-tests — the correct flag is
-      #    --skip-clean (the v1.0.0 step died at argument parsing and the
-      #    failure was silently swallowed).
-      # 2. `dart pub global` bin dir MUST be on PATH.
-      # 3. linux/packaging/appimage/make_config.yaml MUST exist (shipped
-      #    with the repo) and the nested appimagetool/linuxdeploy AppImages
-      #    must run without FUSE — ubuntu-latest has no libfuse2, so
-      #    APPIMAGE_EXTRACT_AND_RUN=1 makes them extract-and-run instead.
+      # AppImage via tools/package_appimage.sh (hand-rolled). ENFORCED
+      # (no continue-on-error): a red job here means no AppImage asset,
+      # which is a release blocker.
+      #
+      # Why NOT flutter_distributor (post-mortem of the second v1.0.0
+      # attempt, run 41785397396 — "MakeError: cp: cannot stat 'not'"):
+      # 0.6.10 is the latest upstream release and its appimage maker runs
+      # `ldd -d` over every bundled .so, then THROWS when a prebuilt
+      # ffmpeg_kit library references a soname modern runners no longer
+      # ship (libvpx.so.7, libx265.so.199, libtheora{enc,dec}.so.1,
+      # libopencore-amrnb.so.0, libvo-amrwbenc.so.0, libxml2.so.2). Its
+      # parser even turns the `=> not found` output into a literal
+      # `cp not ...` command. There is no exclude option and no newer
+      # version to upgrade to. The script re-implements the pass with
+      # tolerance: the missing sonames ship INSIDE the image (pinned
+      # Ubuntu 22.04 debs — the family the ffmpeg_kit prebuilts were
+      # linked against), the runner-resolved deps of every bundled .so are
+      # copied (glibc core and the GTK stack of libflutter_linux_gtk.so
+      # stay on the host), and packing uses the official appimagetool with
+      # APPIMAGE_EXTRACT_AND_RUN=1 (no FUSE on runners).
       - name: Package AppImage
-        env:
-          APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
-          export PATH="$PATH:$HOME/.pub-cache/bin"
-          dart pub global activate flutter_distributor 0.6.10
-          flutter_distributor package --platform=linux --targets=appimage \
-            --skip-clean
-          test -n "$(find . -maxdepth 3 -name '*.AppImage' -type f)" || {
-            echo '::error::flutter_distributor completed but produced no .AppImage'
+          NAME="${GITHUB_REF_NAME//\//_}"
+          bash tools/package_appimage.sh \
+            build/linux/x64/release/bundle \
+            "dist/wavely-$NAME-linux-x64.AppImage"
+          test -f "dist/wavely-$NAME-linux-x64.AppImage" || {
+            echo '::error::packaging completed but produced no .AppImage'
             exit 1
           }
       # Stage 4 §2.4: detached GPG signature when APPIMAGE_SIGNING_KEY is
@@ -206,8 +219,12 @@ jobs:
           APPIMAGE=$(find . -maxdepth 3 -name '*.AppImage' -type f | head -n 1)
           if [ -n "$APPIMAGE" ]; then
             gpg --batch --yes --detach-sign --output "${APPIMAGE}.sig" "$APPIMAGE"
-            cp "$APPIMAGE" dist/
-            cp "${APPIMAGE}.sig" dist/
+            # The packaging step stages the AppImage in dist/ directly —
+            # only copy when the artifact still lives elsewhere.
+            case "$APPIMAGE" in
+              dist/*) [ -f "${APPIMAGE}.sig" ] && cp "${APPIMAGE}.sig" dist/ ;;
+              *) cp "$APPIMAGE" dist/ && cp "${APPIMAGE}.sig" dist/ ;;
+            esac
           else
             echo "No AppImage produced — skipping signature."
           fi
@@ -222,7 +239,7 @@ jobs:
           flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
           flatpak-builder --force-clean --user --repo=flatpak-repo flatpak-build flatpak/app.wavely.music.yml
           flatpak build-bundle flatpak-repo \
-            dist/wavely-${GITHUB_REF_NAME}-linux-x64.flatpak app.wavely.music
+            "dist/wavely-${GITHUB_REF_NAME//\//_}-linux-x64.flatpak" app.wavely.music
       - name: Stage Linux artifacts
         run: |
           mkdir -p dist
@@ -230,6 +247,7 @@ jobs:
           # .flatpak) in addition to the tar.gz staged above.
           find . -maxdepth 3 \( -name '*.AppImage' -o -name '*.AppImage.sig' -o -name '*.flatpak' \) \
             -not -path './flatpak-repo/*' -not -path './flatpak-build/*' \
+            -not -path './.appimage-tools/*' \
             -exec cp {} dist/ \; || true
           ls -la dist/
       - uses: actions/upload-artifact@v4

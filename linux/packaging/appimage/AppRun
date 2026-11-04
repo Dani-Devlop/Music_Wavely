@@ -1,0 +1,11 @@
+#!/bin/sh
+# Wavely AppImage AppRun.
+#
+# Standard v2-style launcher: resolve the real AppDir (through symlinks and
+# desktop-integration mount points), expose the bundled libraries and the
+# compat set shipped in usr/lib, then exec the Flutter Linux bundle binary.
+# The binary keeps the upstream bundle layout (usr/wavely + usr/lib +
+# usr/data), so its own RPATH ($ORIGIN/lib) also resolves.
+HERE="$(dirname "$(readlink -f "$0")")"
+export LD_LIBRARY_PATH="$HERE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$HERE/usr/wavely" "$@"

@@ -1,10 +1,13 @@
-# flutter_distributor — AppImage packaging configuration.
+# flutter_distributor — AppImage packaging configuration (REFERENCE ONLY).
 #
-# The AppImage maker (flutter_distributor `appimage` target) loads this file
-# from `linux/packaging/appimage/make_config.yaml`. Without it the packager
-# crashes while parsing the config (`display_name`/`icon` are required) —
-# which is exactly why the v1.0.0 release shipped without an AppImage while
-# the step silently swallowed the failure (continue-on-error).
+# CI no longer uses flutter_distributor: its 0.6.10 appimage maker (latest
+# upstream) hard-fails on the bundled ffmpeg_kit prebuilts' old sonames and
+# even parses `=> not found` into a literal `cp not ...` command. Release
+# builds now use tools/package_appimage.sh instead. This file is kept so a
+# local `flutter_distributor package --platform=linux --targets=appimage`
+# still works, and as the canonical app identity metadata (name, icon,
+# categories) for the AppImage — which tools/package_appimage.sh mirrors in
+# linux/packaging/appimage/wavely.desktop.
 #
 # `icon` must point at a file that exists in the repository. The web icons
 # are committed, so the 512px PWA icon doubles as the Linux desktop icon.
