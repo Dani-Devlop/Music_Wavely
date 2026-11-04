@@ -98,9 +98,10 @@ Future<void> _capture(WidgetTester tester, String name) async {
   });
 }
 
-/// Phone-shaped viewport (360×640 logical px @ dpr 3) for every capture.
+/// Phone-shaped viewport (390×844 logical px @ dpr 3 — iPhone-14 class) so
+/// segmented-button labels don't wrap mid-word.
 void _usePhoneViewport(WidgetTester tester) {
-  tester.view.physicalSize = const Size(1080, 1920);
+  tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3.0;
   addTearDown(() {
     tester.view.resetPhysicalSize();
@@ -248,6 +249,12 @@ void main() {
     expect(find.byKey(const ValueKey<String>('mini-player')), findsOneWidget);
     expect(find.text('Folders'), findsOneWidget);
 
+    // Capture the populated All Tracks view (the library was seeded) with
+    // the live mini-player docked at the bottom.
+    await tester.tap(find.text('All Tracks'));
+    await tester.pumpAndSettle();
+    expect(find.text('Neon Rivers'), findsOneWidget);
+
     await _capture(tester, 'home.png');
   });
 
@@ -359,6 +366,7 @@ void main() {
         child: RepaintBoundary(
           key: _kBoundaryKey,
           child: MaterialApp(
+            debugShowCheckedModeBanner: false,
             theme: WavelyThemes.light(WavelyAccent.purple),
             home: const AiChatScreen(),
           ),
