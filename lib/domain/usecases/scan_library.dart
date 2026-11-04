@@ -5,11 +5,9 @@ import 'dart:typed_data';
 
 import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:path/path.dart' as p;
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/core/extensions/string_x.dart';
 import 'package:wavely/core/utils/stable_hash.dart';
-import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/daos/lyrics_dao.dart';
 import 'package:wavely/data/local/db/daos/tracks_dao.dart';
 import 'package:wavely/data/local/db/mappers/track_mapper.dart';
@@ -66,7 +64,7 @@ class ScanFileResult {
     required this.path,
     required this.fileSize,
     required this.mtime,
-    this.title,
+    required this.format, this.title,
     this.artist,
     this.album,
     this.genre,
@@ -74,7 +72,6 @@ class ScanFileResult {
     this.durationMs,
     this.bitrate,
     this.bitrateKbps,
-    required this.format,
     this.lyricsRaw,
     this.coverBytes,
     this.coverMime,
@@ -183,29 +180,67 @@ class ScanLibrary {
     required List<String> folders,
     String? coversDir,
   }) {
-    // Single-subscription + lazy start: _run begins on the FIRST listen so
-    // the leading ScanStarted is never emitted before a subscriber exists
-    // (a broadcast controller would silently drop it — the stream contract
-    // is "ScanStarted first, ScanCompleted last").
+    return _stream(folders: folders, coversDir: coversDir);
+  }
+
+  /// Scans an explicit list of audio [paths] and emits [ScanEvent]s.
+  ///
+  /// This is the Android 10+ (scoped storage) entry point: the platform
+  /// MediaStore bridge enumerates the music files the system indexer knows
+  /// about (directory walking with dart:io is refused for third-party
+  /// audio on Android 11+), and the resulting concrete paths are parsed
+  /// through the exact same batch/isolate/persist pipeline as [scan].
+  /// Paths with unsupported extensions are dropped silently, mirroring the
+  /// folder-walk filter.
+  Stream<ScanEvent> scanFilePaths({
+    required List<String> paths,
+    String? coversDir,
+  }) {
+    return _stream(paths: paths, coversDir: coversDir);
+  }
+
+  /// Single-subscription + lazy start: _run begins on the FIRST listen so
+  /// the leading ScanStarted is never emitted before a subscriber exists
+  /// (a broadcast controller would silently drop it — the stream contract
+  /// is "ScanStarted first, ScanCompleted last").
+  Stream<ScanEvent> _stream({
+    List<String>? folders,
+    List<String>? paths,
+    String? coversDir,
+  }) {
     late final StreamController<ScanEvent> controller;
     controller = StreamController<ScanEvent>(
-      onListen: () => unawaited(_run(controller, folders, coversDir)),
+      onListen: () =>
+          unawaited(_run(controller, folders: folders, paths: paths, coversDir: coversDir)),
     );
     return controller.stream;
   }
 
   Future<void> _run(
-    StreamController<ScanEvent> controller,
-    List<String> folders,
+    StreamController<ScanEvent> controller, {
+    List<String>? folders,
+    List<String>? paths,
     String? coversDir,
-  ) async {
+  }) async {
+    final effectiveFolders = folders ?? const <String>[];
     final errors = <String>[];
     var persisted = 0;
     try {
-      final files = _enumerate(folders, controller, errors);
-      controller.add(
-        ScanEvent.scanStarted(root: folders.isEmpty ? '' : folders.first),
-      );
+      final List<String> files;
+      if (paths != null) {
+        files = <String>[
+          for (final path in paths)
+            if (_supportedExtensions
+                .contains(p.extension(path).replaceFirst('.', '').toLowerCase()))
+              path,
+        ];
+      } else {
+        files = _enumerate(effectiveFolders, controller, errors);
+      }
+      final root = effectiveFolders.isNotEmpty
+          ? effectiveFolders.first
+          : (paths != null && paths.isNotEmpty ? p.dirname(paths.first) : '');
+      controller.add(ScanEvent.scanStarted(root: root));
       var effectiveCoversDir = coversDir;
       if (effectiveCoversDir != null) {
         try {
@@ -280,7 +315,8 @@ class ScanLibrary {
     } on Object catch (e) {
       controller.add(
         ScanEvent.error(
-          file: folders.firstOrNull ?? '',
+          file: effectiveFolders.firstOrNull ??
+              (paths != null && paths.isNotEmpty ? paths.first : ''),
           reason: e.toString(),
         ),
       );

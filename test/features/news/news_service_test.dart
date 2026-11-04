@@ -5,7 +5,6 @@
 // (pitchfork/nme fixtures), HTTP-cache TTL behaviour, offline fallback to
 // stored rows, muted sources, custom RSS and category filtering.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/native.dart';

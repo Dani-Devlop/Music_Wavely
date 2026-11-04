@@ -22,7 +22,6 @@ import 'package:wavely/playback/equalizer/equalizer_controller.dart';
 import 'package:wavely/playback/hires/hires_audio.dart';
 
 import '../support/fake_playback_engine.dart';
-import '../support/track_factory.dart';
 
 /// A minimal engine WITHOUT the [EqualizerControl] capability — proves the
 /// controller degrades safely on legacy engines.

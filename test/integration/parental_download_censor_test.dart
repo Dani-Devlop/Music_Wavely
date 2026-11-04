@@ -355,7 +355,7 @@ void main() {
         updatedAt: at,
       ),
     );
-    final DownloadEvent completed = await completedFuture1;
+    await completedFuture1;
 
     final DownloadRow row = (await db.downloadsDao.byId(rowId))!;
 
@@ -447,7 +447,7 @@ void main() {
         updatedAt: at,
       ),
     );
-    final DownloadEvent completed = await completedFuture2;
+    await completedFuture2;
 
     final DownloadRow row = (await db.downloadsDao.byId(rowId))!;
     final Map<String, dynamic> provenanceBefore =

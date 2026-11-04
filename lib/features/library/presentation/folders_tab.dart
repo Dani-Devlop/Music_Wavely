@@ -2,15 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:wavely/core/utils/platform_utils.dart';
 import 'package:wavely/design_system/design_system.dart';
-import 'package:wavely/features/library/data/library_scanner.dart';
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
 import 'package:wavely/features/library/presentation/library_providers.dart';
 
 /// Height of the placeholder rows shown while folders load.
-const double _shimmerRowHeight = 56;
+const double _shimmerRowHeight = 72;
 
 /// Number of placeholder rows shown while folders load.
 const int _shimmerRowCount = 4;
@@ -18,7 +16,10 @@ const int _shimmerRowCount = 4;
 /// Maximum number of scan problems displayed inline.
 const int _maxInlineScanErrors = 3;
 
-/// Folders tab: manage scanned folders and watch the scan progress.
+/// Folders tab: manage scanned folders and watch the scan progress. The
+/// 2026 redesign replaces the plain ListTiles with rich folder cards
+/// (gradient folder tile, name + full path, persisted track-count badge,
+/// remove action) and staggers their entrance.
 class FoldersTab extends ConsumerWidget {
   /// Creates the folders tab.
   const FoldersTab({super.key});
@@ -105,10 +106,13 @@ class FoldersTab extends ConsumerWidget {
           if (scanState.scanning) ...<Widget>[
             const SizedBox(height: Spacing.lg),
             const SectionHeader(title: 'Scanning'),
-            LinearProgressIndicator(
-              value: scanState.progress,
-              backgroundColor: colors.borderGlass,
-              minHeight: 4,
+            ClipRRect(
+              borderRadius: AppRadii.bPill,
+              child: LinearProgressIndicator(
+                value: scanState.progress,
+                backgroundColor: colors.borderGlass,
+                minHeight: 6,
+              ),
             ),
             const SizedBox(height: Spacing.xs),
             Text(
@@ -136,23 +140,15 @@ class FoldersTab extends ConsumerWidget {
           if (folders.isNotEmpty) ...<Widget>[
             const SizedBox(height: Spacing.lg),
             const SectionHeader(title: 'Folders'),
-            for (final folder in folders)
-              ListTile(
-                key: ValueKey<String>('folder-$folder'),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: Spacing.sm),
-                leading: Icon(Icons.folder_outlined, color: colors.textSecondary),
-                title: Text(
-                  folder,
-                  style: WavelyTypography.body14(color: colors.textPrimary),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: IconButton(
-                  icon: Icon(Icons.delete_outline, color: colors.textTertiary),
-                  tooltip: 'Remove folder',
-                  onPressed: () {
-                    unawaited(_removeFolder(ref, folder));
+            const SizedBox(height: Spacing.xs),
+            for (var i = 0; i < folders.length; i++)
+              StaggeredAppear(
+                index: i,
+                child: _FolderCard(
+                  folder: folders[i],
+                  colors: colors,
+                  onRemove: () {
+                    unawaited(_removeFolder(ref, folders[i]));
                   },
                 ),
               ),
@@ -172,6 +168,111 @@ class FoldersTab extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: Spacing.xl),
+        ],
+      ),
+    );
+  }
+}
+
+/// Rich folder card: gradient folder tile, folder name, full path caption
+/// and the persisted track-count badge for that folder.
+class _FolderCard extends ConsumerWidget {
+  const _FolderCard({
+    required this.folder,
+    required this.colors,
+    required this.onRemove,
+  });
+
+  final String folder;
+  final WavelySemanticColors colors;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final counts = ref.watch(folderTrackCountsProvider).asData?.value;
+    final trackCount = counts?[folder];
+    final accent = colors.accentColors;
+    // Windows (\) and POSIX (/) separators both accepted — the folder list
+    // travels across desktop and Android.
+    final name = folder.split(RegExp(r'[/\\]')).last;
+    return Container(
+      key: ValueKey<String>('folder-$folder'),
+      margin: const EdgeInsets.only(bottom: Spacing.sm),
+      padding: const EdgeInsets.all(Spacing.md),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: AppRadii.bLg,
+        border: Border.all(color: colors.borderGlass),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              borderRadius: AppRadii.bMd,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  accent.accent.withValues(alpha: 0.85),
+                  accent.gradientStart.withValues(alpha: 0.9),
+                ],
+              ),
+            ),
+            child: const Icon(
+              Icons.folder_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: Spacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  name.isEmpty ? folder : name,
+                  style: WavelyTypography.body14Medium(
+                    color: colors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  folder,
+                  style: WavelyTypography.caption12(
+                    color: colors.textTertiary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: Spacing.sm),
+          if (trackCount != null)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Spacing.sm + 2,
+                vertical: Spacing.xs + 2,
+              ),
+              decoration: BoxDecoration(
+                color: accent.accent.withValues(alpha: 0.14),
+                borderRadius: AppRadii.bPill,
+                border: Border.all(color: accent.accent.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                '$trackCount tracks',
+                style: WavelyTypography.micro10(color: accent.accent),
+              ),
+            ),
+          IconButton(
+            icon: Icon(Icons.delete_outline, color: colors.textTertiary),
+            tooltip: 'Remove folder',
+            onPressed: onRemove,
+          ),
         ],
       ),
     );

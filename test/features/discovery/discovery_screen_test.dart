@@ -89,6 +89,20 @@ class _FakeDiscoveryService extends DiscoveryService {
 DiscoveryRelease _release(String title, String artist, String date) =>
     DiscoveryRelease(artist: artist, title: title, date: date, mbid: 'm');
 
+/// Tall viewport (390×1600 logical px) so all three discovery sections
+/// materialize inside the ListView in one pass — the redesigned EmptyState
+/// illustrations make each section taller than the default 800×600 test
+/// surface, and a lazy ListView never builds below-the-fold children (the
+/// third section's title/empty state were therefore unfindable).
+void _useTallViewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(390, 1600);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+}
+
 Widget _wrap(_FakeDiscoveryService service) => ProviderScope(
       overrides: <Override>[
         discoveryServiceProvider.overrideWithValue(service),
@@ -102,6 +116,7 @@ Widget _wrap(_FakeDiscoveryService service) => ProviderScope(
 void main() {
   testWidgets('renders the three section titles and calls each lookup once',
       (WidgetTester tester) async {
+    _useTallViewport(tester);
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final service = _FakeDiscoveryService(db);
@@ -121,6 +136,7 @@ void main() {
 
   testWidgets('ready sections render release rows and recommended artists',
       (WidgetTester tester) async {
+    _useTallViewport(tester);
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final service = _FakeDiscoveryService(db)
@@ -158,6 +174,7 @@ void main() {
 
   testWidgets('empty sections show their dedicated empty titles',
       (WidgetTester tester) async {
+    _useTallViewport(tester);
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final service = _FakeDiscoveryService(db); // all results empty
@@ -176,6 +193,7 @@ void main() {
   testWidgets('a failed section shows the offline empty state with the '
       'failure message; successful sections keep rendering',
       (WidgetTester tester) async {
+    _useTallViewport(tester);
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final service = _FakeDiscoveryService(db)
@@ -197,6 +215,7 @@ void main() {
 
   testWidgets('pull-to-refresh re-runs all three service lookups',
       (WidgetTester tester) async {
+    _useTallViewport(tester);
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final service = _FakeDiscoveryService(db);
@@ -212,7 +231,7 @@ void main() {
     final indicator = tester.widget<RefreshIndicator>(
       find.byType(RefreshIndicator),
     );
-    await indicator.onRefresh!();
+    await indicator.onRefresh.call();
     await tester.pumpAndSettle();
 
     expect(service.followedCalls, 2);

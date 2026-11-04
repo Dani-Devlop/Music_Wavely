@@ -88,7 +88,7 @@ final class SupabaseAuthApi implements AuthApi {
 
   @override
   Future<void> deleteAccount() async {
-    await _client.rpc('delete_account');
+    await _client.rpc<dynamic>('delete_account');
   }
 
   @override
@@ -103,7 +103,7 @@ final class SupabaseAuthApi implements AuthApi {
     String function, {
     Map<String, dynamic>? params,
   }) async {
-    final rows = await _client.rpc(function, params: params);
+    final rows = await _client.rpc<dynamic>(function, params: params);
     if (rows == null) return const <Map<String, dynamic>>[];
     return List<Map<String, dynamic>>.from(rows as List<dynamic>);
   }

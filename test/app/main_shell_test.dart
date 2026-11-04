@@ -6,18 +6,21 @@
 /// the fake playback engine.
 ///
 /// Covered:
-/// - The three glass bottom-nav destinations (Library / Search / Settings)
-///   render with their labels.
-/// - Tapping a destination switches the branch (SearchScreen /
-///   SettingsScreen / back to LibraryScreen).
+/// - The five glass bottom-nav destinations (Home / Local / Online /
+///   Search / Settings) render with their labels.
+/// - Tapping a destination switches the branch (HomeScreen /
+///   LibraryScreen / OnlineScreen / SearchScreen / SettingsScreen).
 /// - Once a track is queued through the real `queueManagerProvider`, the
 ///   mini player host slides in (`mini-player` key) and the fake engine
 ///   received the load call — wiring the shell → queue → engine chain
 ///   without any platform channel.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wavely/features/home/presentation/home_screen.dart';
 import 'package:wavely/features/library/presentation/library_screen.dart';
+import 'package:wavely/features/online/presentation/online_screen.dart';
 import 'package:wavely/features/player/presentation/mini_player_widget.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
 import 'package:wavely/features/settings/presentation/settings_screen.dart';
@@ -28,18 +31,47 @@ import 'pump_app.dart';
 
 void main() {
   group('MainShell bottom navigation', () {
-    testWidgets('renders the three destinations over the library branch',
+    testWidgets('renders the five destinations over the home branch',
         (tester) async {
       final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
       addTearDown(harness.tearDown);
 
-      // Library label appears twice: nav destination + screen header.
-      expect(find.text('Library'), findsNWidgets(2));
+      // The app boots into the Home branch (empty library → empty state).
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Local'), findsOneWidget);
+      expect(find.text('Online'), findsOneWidget);
       expect(find.text('Search'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);
-      expect(find.byType(LibraryScreen), findsOneWidget);
       // No track queued → mini player collapsed.
       expect(find.byType(MiniPlayerWidget), findsNothing);
+    });
+
+    testWidgets('tapping Local switches to the local library branch',
+        (tester) async {
+      final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
+      addTearDown(harness.tearDown);
+
+      await tester.tap(find.text('Local'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LibraryScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsNothing);
+      // The nav bar persists across branches; the Local header + the nav
+      // label both read "Local".
+      expect(find.text('Local'), findsNWidgets(2));
+    });
+
+    testWidgets('tapping Online switches to the online branch',
+        (tester) async {
+      final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
+      addTearDown(harness.tearDown);
+
+      await tester.tap(find.text('Online'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(OnlineScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsNothing);
     });
 
     testWidgets('tapping Search switches to the search branch',
@@ -51,7 +83,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(SearchScreen), findsOneWidget);
-      expect(find.byType(LibraryScreen), findsNothing);
+      expect(find.byType(HomeScreen), findsNothing);
       // The nav bar persists across branches.
       expect(find.text('Settings'), findsOneWidget);
     });
@@ -69,8 +101,7 @@ void main() {
       expect(find.byType(SettingsScreen), findsOneWidget);
     });
 
-    testWidgets('tapping Library returns to the library branch',
-        (tester) async {
+    testWidgets('tapping Home returns to the home branch', (tester) async {
       final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
       addTearDown(harness.tearDown);
 
@@ -78,12 +109,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SearchScreen), findsOneWidget);
 
-      // The stateful shell keeps visited branches alive in the IndexedStack,
-      // so the Library page title AND the nav label both match — the nav
-      // label is the later widget in tree order.
-      await tester.tap(find.text('Library').last);
+      await tester.tap(find.text('Home'));
       await tester.pumpAndSettle();
-      expect(find.byType(LibraryScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
       expect(find.byType(SearchScreen), findsNothing);
     });
   });

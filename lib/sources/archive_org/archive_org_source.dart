@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:wavely/data/remote/metadata_http.dart';
 
 import 'package:wavely/domain/entities/entities.dart';
-import 'package:wavely/domain/repositories/source_file.dart';
 import 'package:wavely/domain/repositories/source_provider.dart';
 import 'package:wavely/sources/download_file_exports.dart';
 import 'package:wavely/sources/source_exception.dart';

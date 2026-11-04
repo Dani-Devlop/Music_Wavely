@@ -10,7 +10,6 @@
 // (that IS the seam), so both branches are table-tested here. The
 // GoRouterState adapter (authGuardFromState) is a one-line mapping over
 // state.uri.path and is covered indirectly by the location strings below.
-library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/features/auth/data/auth_guard.dart';
@@ -30,8 +29,8 @@ void main() {
 
     test('public paths never redirect, whatever the auth state', () {
       const publicLocations = <String>[
-        '/library',
-        '/library/albums/1',
+        '/local',
+        '/local/albums/1',
         '/settings',
         '/settings/playback',
         '/onboarding',
@@ -117,7 +116,7 @@ void main() {
     });
 
     test('hasSupabase=false leaves every public path alone', () {
-      for (final location in const <String>['/library', '/settings', '/']) {
+      for (final location in const <String>['/local', '/settings', '/']) {
         expect(
           authGuard(
             hasSupabase: false,

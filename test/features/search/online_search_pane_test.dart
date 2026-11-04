@@ -29,7 +29,6 @@ import 'package:wavely/features/downloads/data/downloads_providers.dart';
 import 'package:wavely/features/search/domain/search_service.dart';
 import 'package:wavely/features/search/presentation/online_search_pane.dart';
 import 'package:wavely/sources/download_file_executor.dart';
-import 'package:wavely/sources/source_providers.dart';
 
 class _ScriptedSource implements SourceProvider {
   _ScriptedSource(this.id, this.tracks);

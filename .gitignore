@@ -32,6 +32,10 @@ android/.gradle/
 ios/Pods/
 .windows/
 .linux/
+# Linux runner files are generated (`flutter create . --platforms=linux` +
+# `flutter pub get` in CI); only hand-authored packaging configs live in
+# the repo (linux/packaging/ — the AppImage make_config.yaml).
+linux/flutter/
 *.log
 
 # ── OS ─────────────────────────────────────────────────────────

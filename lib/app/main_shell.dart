@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wavely/core/constants/app_constants.dart' show AppConstants;
 import 'package:wavely/data/sync/sync_providers.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/player/presentation/mini_player_widget.dart';
@@ -22,9 +23,17 @@ class _NavDestination {
 /// minimum touch target — AppConstants.touchTargetMin).
 const double _navButtonHeight = 56;
 
-/// Main app shell: body (stateful shell branch) + mini player + glass bottom
-/// navigation. Backdrop-filter budget: one GlassCard for the bar plus the
-/// mini player's own card — within [AppConstants.maxBackdropFiltersPerScreen].
+/// Heavy backdrop blur for the floating nav bar ("2026 look"): stronger
+/// than the elevated surface budget on purpose — the bar floats over
+/// content and must stay legible over album art.
+const double _navBlurSigma = 26;
+
+/// Main app shell: body (stateful shell branch) + mini player + floating
+/// glass bottom navigation with five destinations (Home | Local | Online |
+/// Search | Settings) and a glowing active icon.
+///
+/// Backdrop-filter budget: one GlassCard for the bar plus the mini player's
+/// own card — within [AppConstants.maxBackdropFiltersPerScreen].
 class MainShell extends ConsumerStatefulWidget {
   /// Creates the shell around [navigationShell].
   const MainShell({required this.navigationShell, super.key});
@@ -34,6 +43,7 @@ class MainShell extends ConsumerStatefulWidget {
   @override
   ConsumerState<MainShell> createState() => _MainShellState();
 }
+
 class _MainShellState extends ConsumerState<MainShell> {
   static bool _syncStarted = false;
 
@@ -75,18 +85,21 @@ class _MainShellState extends ConsumerState<MainShell> {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           if (hasTrack) const MiniPlayerWidget(),
-          _GlassBottomNav(navigationShell: widget.navigationShell),
+          _FloatingGlassNav(navigationShell: widget.navigationShell),
         ],
       ),
     );
   }
 }
 
-class _GlassBottomNav extends StatelessWidget {
-  const _GlassBottomNav({required this.navigationShell});
+/// The floating, heavily-blurred glass bottom navigation bar.
+class _FloatingGlassNav extends StatelessWidget {
+  const _FloatingGlassNav({required this.navigationShell});
 
   static const List<_NavDestination> _destinations = <_NavDestination>[
-    _NavDestination(label: 'Library', icon: Icons.library_music_rounded),
+    _NavDestination(label: 'Home', icon: Icons.home_rounded),
+    _NavDestination(label: 'Local', icon: Icons.library_music_rounded),
+    _NavDestination(label: 'Online', icon: Icons.explore_rounded),
     _NavDestination(label: 'Search', icon: Icons.search_rounded),
     _NavDestination(label: 'Settings', icon: Icons.settings_rounded),
   ];
@@ -95,30 +108,27 @@ class _GlassBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.wavelyColors;
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           Spacing.md,
-          Spacing.xs,
+          0,
           Spacing.md,
           Spacing.sm,
         ),
         child: GlassCard(
+          blurSigma: _navBlurSigma,
+          borderRadius: AppRadii.bXl,
           padding: const EdgeInsets.symmetric(
-            horizontal: Spacing.sm,
+            horizontal: Spacing.xs,
             vertical: Spacing.xs,
           ),
           child: Row(
             children: <Widget>[
               for (var i = 0; i < _destinations.length; i++)
                 Expanded(
-                  child: _navButton(
-                    colors,
-                    _destinations[i],
-                    i,
-                  ),
+                  child: _navButton(context, _destinations[i], i),
                 ),
             ],
           ),
@@ -128,12 +138,14 @@ class _GlassBottomNav extends StatelessWidget {
   }
 
   Widget _navButton(
-    WavelySemanticColors colors,
+    BuildContext context,
     _NavDestination destination,
     int index,
   ) {
+    final colors = context.wavelyColors;
     final selected = index == navigationShell.currentIndex;
-    final color = selected ? colors.accentColors.accent : colors.textSecondary;
+    final accent = colors.accentColors.accent;
+    final color = selected ? accent : colors.textSecondary;
     return Semantics(
       button: true,
       selected: selected,
@@ -149,11 +161,38 @@ class _GlassBottomNav extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Icon(destination.icon, color: color),
+              // Glowing active icon: an accent halo blooms behind the glyph
+              // (and fades out for inactive tabs) via implicit animation.
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: selected
+                      ? <BoxShadow>[
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.55),
+                            blurRadius: 16,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : const <BoxShadow>[],
+                ),
+                child: AnimatedScale(
+                  scale: selected ? 1.12 : 1.0,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutBack,
+                  child: Icon(destination.icon, color: color, size: 22),
+                ),
+              ),
               const SizedBox(height: Spacing.xs),
               Text(
                 destination.label,
-                style: WavelyTypography.caption12(color: color),
+                style: WavelyTypography.caption12(
+                  color: selected ? accent : colors.textSecondary,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

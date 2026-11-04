@@ -1,8 +1,6 @@
 import 'dart:convert';
 
-import 'package:meta/meta.dart';
 import 'package:wavely/data/local/db/daos/tracks_dao.dart';
-import 'package:wavely/domain/entities/entities.dart';
 
 /// Privacy contract (B6): the AI snapshot NEVER leaves the device with
 /// anything beyond plain metadata. Deliberately omitted:
@@ -16,11 +14,6 @@ import 'package:wavely/domain/entities/entities.dart';
 abstract final class LibrarySnapshot {
   /// Maximum number of tracks embedded in one snapshot.
   static const int maxTracks = 500;
-
-  /// Column ordering used to pick the snapshot cap: most-played first, then
-  /// alphabetical title. Trusted internal literal interpolated by
-  /// [TracksDao.getAll] (never user input).
-  static const String _orderBy = 'play_count DESC, title COLLATE NOCASE ASC';
 
   /// Builds the compact JSON snapshot of the current library.
   ///

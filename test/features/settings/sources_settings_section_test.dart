@@ -93,7 +93,7 @@ void main() {
   testWidgets('enable switch persists through SourceSettings',
       (WidgetTester tester) async {
     final SharedPreferences p = await prefs();
-    final ProviderContainer container = await _pump(tester, p);
+    await _pump(tester, p);
 
     await tester.tap(find.byKey(const Key('source-switch-archive')));
     await tester.pump();

@@ -1,11 +1,10 @@
-import 'package:wavely/data/local/db/tables/albums.dart';
-import 'package:wavely/data/local/db/tables/artists.dart';
-import 'package:wavely/data/local/db/tables/tracks.dart';
 import 'package:drift/drift.dart';
-
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/mappers/track_mapper.dart';
+import 'package:wavely/data/local/db/tables/albums.dart';
+import 'package:wavely/data/local/db/tables/artists.dart';
+import 'package:wavely/data/local/db/tables/tracks.dart';
 import 'package:wavely/domain/entities/entities.dart';
 
 part 'tracks_dao.g.dart';
@@ -186,6 +185,60 @@ class TracksDao extends DatabaseAccessor<AppDatabase> with _$TracksDaoMixin {
     return row.read(count) ?? 0;
   }
 
+  /// Number of tracks whose file path lives under [folderPrefix] (Folders
+  /// tab count badges). The prefix is normalized to end with a path
+  /// separator so `/music` does not match `/music-box/…`. SQL LIKE
+  /// wildcards inside the folder path are NOT escaped — folder paths are
+  /// user-picked directories, not search patterns.
+  Future<int> countInFolder(String folderPrefix) async {
+    final normalized =
+        folderPrefix.endsWith('/') ? folderPrefix : '$folderPrefix/';
+    final count = tracks.id.count();
+    final query = selectOnly(tracks)
+      ..addColumns([count])
+      ..where(tracks.filePath.like('$normalized%'));
+    final row = await query.getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  /// The most recently played tracks (by `lastPlayedAt`, newest first).
+  /// Tracks that have never been played are excluded; ties break by id for
+  /// a stable ordering. Feeds the Home screen "Jump back in" row.
+  Future<List<Track>> recentlyPlayed({int limit = 12}) async {
+    final rows = await customSelect(
+      'SELECT id FROM tracks '
+      'WHERE last_played_at IS NOT NULL '
+      'ORDER BY last_played_at DESC, id ASC '
+      'LIMIT ?',
+      variables: [Variable.withInt(limit)],
+    ).get();
+    return _tracksInIdOrder(
+      [for (final row in rows) row.read<int>('id')],
+    );
+  }
+
+  /// Top genres with track counts, largest first (ties alphabetical,
+  /// case-folded). Feeds the Home screen quick-mix cards.
+  Future<List<({String genre, int trackCount})>> topGenres({
+    int limit = 6,
+  }) async {
+    final rows = await customSelect(
+      'SELECT genre, COUNT(*) AS track_count FROM tracks '
+      'WHERE genre IS NOT NULL '
+      'GROUP BY genre COLLATE NOCASE '
+      'ORDER BY track_count DESC, genre COLLATE NOCASE ASC '
+      'LIMIT ?',
+      variables: [Variable.withInt(limit)],
+    ).get();
+    return <({String genre, int trackCount})>[
+      for (final row in rows)
+        (
+          genre: row.read<String>('genre'),
+          trackCount: row.read<int>('track_count'),
+        ),
+    ];
+  }
+
   /// Distinct artists with track and album counts, alphabetically (A→Z,
   /// case-folded). Cover paths are null because covers are per-track data.
   Future<List<Artist>> distinctArtists() async {
@@ -216,7 +269,7 @@ class TracksDao extends DatabaseAccessor<AppDatabase> with _$TracksDaoMixin {
       'COUNT(*) AS track_count, '
       'MIN(added_at) AS first_added '
       'FROM tracks '
-      'GROUP BY COALESCE(album, \'$_unknownAlbum\'), '
+      "GROUP BY COALESCE(album, '$_unknownAlbum'), "
       "COALESCE(artist, '$_unknownArtist') "
       'ORDER BY first_added DESC',
     ).get();

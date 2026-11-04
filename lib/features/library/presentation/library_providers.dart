@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:riverpod/src/providers/future_provider.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/design_system/themes/theme_provider.dart';
@@ -11,7 +12,7 @@ import 'package:wavely/features/library/data/library_scanner_provider.dart';
 
 /// One page of the library track list, [AppConstants.scrollPageSize] items
 /// each, ordered by title (case-folded).
-final tracksPagedProvider =
+final FutureProviderFamily<List<Track>, int> tracksPagedProvider =
     FutureProvider.family<List<Track>, int>((ref, page) async {
   final dao = ref.watch(databaseProvider).tracksDao;
   return dao.getAll(
@@ -21,7 +22,7 @@ final tracksPagedProvider =
 });
 
 /// All library tracks of one artist, grouped by album then title.
-final artistTracksProvider =
+final FutureProviderFamily<List<Track>, String> artistTracksProvider =
     FutureProvider.family<List<Track>, String>((ref, artistName) async {
   final dao = ref.watch(databaseProvider).tracksDao;
   return dao.byArtist(artistName);
@@ -29,7 +30,7 @@ final artistTracksProvider =
 
 /// All tracks of one album; the parameter is the (artist, album) pair so
 /// same-named albums by different artists stay apart.
-final albumTracksProvider =
+final FutureProviderFamily<List<Track>, ({String album, String artist})> albumTracksProvider =
     FutureProvider.family<List<Track>, ({String artist, String album})>(
         (ref, params) async {
   final dao = ref.watch(databaseProvider).tracksDao;
@@ -37,7 +38,7 @@ final albumTracksProvider =
 });
 
 /// All tracks tagged with one genre, ordered by title.
-final genreTracksProvider =
+final FutureProviderFamily<List<Track>, String> genreTracksProvider =
     FutureProvider.family<List<Track>, String>((ref, genre) async {
   final dao = ref.watch(databaseProvider).tracksDao;
   return dao.byGenre(genre);
@@ -65,6 +66,32 @@ final genresProvider = FutureProvider<List<String>>((ref) async {
 final libraryCountProvider = FutureProvider<int>((ref) async {
   final dao = ref.watch(databaseProvider).tracksDao;
   return dao.countAll();
+});
+
+/// The most recently played tracks (Home → "Jump back in"). Empty until
+/// the user plays something; refreshed after every scan.
+final recentlyPlayedProvider = FutureProvider<List<Track>>((ref) async {
+  final dao = ref.watch(databaseProvider).tracksDao;
+  return dao.recentlyPlayed();
+});
+
+/// Top genres with track counts (Home → quick-mix cards).
+final topGenresProvider =
+    FutureProvider<List<({String genre, int trackCount})>>((ref) async {
+  final dao = ref.watch(databaseProvider).tracksDao;
+  return dao.topGenres();
+});
+
+/// Track count per persisted scan folder (Folders tab badges). Computed
+/// with a LIKE prefix query per folder; the folder list is small.
+final folderTrackCountsProvider = FutureProvider<Map<String, int>>((ref) async {
+  final folders = await ref.watch(foldersProvider.future);
+  final dao = ref.watch(databaseProvider).tracksDao;
+  final counts = <String, int>{};
+  for (final folder in folders) {
+    counts[folder] = await dao.countInFolder(folder);
+  }
+  return counts;
 });
 
 /// Persisted scan folders (survives restarts).
@@ -197,7 +224,6 @@ class ScanStateNotifier extends StateNotifier<ScanUiState> {
         );
       case ScanCompleted():
         state = ScanUiState(
-          scanning: false,
           lastCount: event.count,
           errors: event.errors,
           currentFile: state.currentFile,
@@ -233,6 +259,9 @@ final scanStateProvider =
       ref.invalidate(albumsProvider);
       ref.invalidate(genresProvider);
       ref.invalidate(libraryCountProvider);
+      ref.invalidate(recentlyPlayedProvider);
+      ref.invalidate(topGenresProvider);
+      ref.invalidate(folderTrackCountsProvider);
     },
   );
 });

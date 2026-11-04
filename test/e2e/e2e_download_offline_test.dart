@@ -21,11 +21,10 @@ library;
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,7 +33,6 @@ import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/tables/downloads.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/domain/repositories/source_provider.dart';
-import 'package:wavely/features/downloads/data/download_events.dart';
 import 'package:wavely/features/downloads/data/download_prefs.dart';
 import 'package:wavely/features/downloads/data/download_service.dart';
 import 'package:wavely/features/downloads/data/downloads_providers.dart';
@@ -70,7 +68,7 @@ class _CatalogSource implements SourceProvider {
   @override
   Future<List<Track>> search(String q, {int limit = 20}) async {
     searchCalls++;
-    final DateTime at = DateTime.utc(2024, 3, 1);
+    final at = DateTime.utc(2024, 3);
     return <Track>[
       Track(
         sourceId: 'jamendo',
@@ -88,7 +86,7 @@ class _CatalogSource implements SourceProvider {
 
   @override
   Future<StreamUrl> resolveStream(Track t) async =>
-      StreamUrl(url: 'https://cdn.example.com/night-drive.mp3');
+      const StreamUrl(url: 'https://cdn.example.com/night-drive.mp3');
 
   @override
   Future<Map<String, dynamic>> getMetadata(String sourceTrackId) async =>
@@ -116,7 +114,7 @@ class _CountingCdnAdapter implements HttpClientAdapter {
   ) async {
     fetchCount++;
     return ResponseBody.fromBytes(
-      List<int>.generate(4096, (int i) => (i * 31 + 7) % 256),
+      List<int>.generate(4096, (i) => (i * 31 + 7) % 256),
       200,
       headers: <String, List<String>>{
         'content-length': <String>['4096'],
@@ -141,11 +139,11 @@ Future<void> _tick(WidgetTester tester) async {
 void main() {
   testWidgets(
     'search → download → the downloaded file plays with zero network traffic',
-    (WidgetTester tester) async {
+    (tester) async {
     // Deterministic temp dir created SYNCHRONOUSLY — awaiting real IO
     // (Directory.systemTemp.createTemp) inside the fake-async testWidgets
     // zone would hang the test forever.
-    final Directory tmp = Directory(
+    final tmp = Directory(
       '${Directory.systemTemp.path}/wavely_stage6_s4_'
       '${DateTime.now().microsecondsSinceEpoch}',
     )..createSync(recursive: true);
@@ -155,14 +153,14 @@ void main() {
       }
     });
 
-      final _CatalogSource source = _CatalogSource();
-      final _CountingCdnAdapter cdn = _CountingCdnAdapter();
-      final AppDatabase db = AppDatabase(NativeDatabase.memory());
+      final source = _CatalogSource();
+      final cdn = _CountingCdnAdapter();
+      final db = AppDatabase(NativeDatabase.memory());
 
       SharedPreferences.setMockInitialValues(<String, Object>{});
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
 
-      final DownloadService service = DownloadService(
+      final service = DownloadService(
         db: db,
         prefs: DownloadPrefs(prefs),
         resolveSources: () async => <SourceProvider>[source],
@@ -172,7 +170,7 @@ void main() {
         isUnmetered: () async => true,
       );
 
-      final WavelyTestHarness harness = await pumpWavelyApp(
+      final harness = await pumpWavelyApp(
         tester,
         onboardingCompleted: true,
         db: db,
@@ -191,8 +189,13 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'night drive');
       // Switch the scope toggle to Online — the online pane (and its hits)
-      // are only visible in the Online scope.
-      await tester.tap(find.text('Online'));
+      // are only visible in the Online scope. Scoped to the toggle by key:
+      // since the 5-tab shell the "Online" nav destination also renders
+      // the literal text "Online", so the bare text finder is ambiguous.
+      await tester.tap(find.descendant(
+        of: find.byKey(const Key('search-scope-toggle')),
+        matching: find.text('Online'),
+      ));
       // The online pane debounces for 300 ms before firing the search.
       await _tick(tester);
 
@@ -205,12 +208,12 @@ void main() {
       await tester.binding.runAsync(
         () => harness.container.read(downloadServiceProvider.future),
       );
-      final Finder downloadAction =
+      final downloadAction =
           find.byKey(const ValueKey('download-online-night-01'));
       await tester.ensureVisible(downloadAction);
       await _tick(tester);
 
-      await tester.tap(downloadAction, warnIfMissed: true);
+      await tester.tap(downloadAction);
       // Drain the microtask chain (dedupe query → render → insert → dio
       // adapter → file write).
       await tester.pump();
@@ -221,8 +224,8 @@ void main() {
       // fake-async queue, so it only drains via pump — while the port
       // response itself only arrives on the real loop (runAsync). Alternate
       // the two until the row settles.
-      List<DownloadRow> rows = await db.select(db.downloads).get();
-      for (int i = 0;
+      var rows = await db.select(db.downloads).get();
+      for (var i = 0;
           i < 15 &&
               rows.isNotEmpty &&
               rows.single.status != DownloadStatus.completed;
@@ -240,8 +243,8 @@ void main() {
         DownloadStatus.completed,
         reason: 'the download must complete on its own',
       );
-      final String downloadedPath = rows.single.targetPath;
-      final File downloaded = File(downloadedPath);
+      final downloadedPath = rows.single.targetPath;
+      final downloaded = File(downloadedPath);
       expect(downloaded.existsSync(), isTrue);
       expect(downloaded.lengthSync(), 4096);
 
@@ -261,12 +264,12 @@ void main() {
           durationMs: 180000,
           format: 'mp3',
           filePath: Value<String>(downloadedPath),
-          addedAt: DateTime(2024, 3, 1),
-          updatedAt: DateTime(2024, 3, 1),
+          addedAt: DateTime(2024, 3),
+          updatedAt: DateTime(2024, 3),
         ),
       );
 
-      harness.container.read(routerProvider).go('/library');
+      harness.container.read(routerProvider).go('/local');
       await _tick(tester);
       await tester.tap(find.text('All Tracks'));
       await _tick(tester);

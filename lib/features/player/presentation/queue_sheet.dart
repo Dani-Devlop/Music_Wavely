@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:wavely/core/extensions/extensions.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 

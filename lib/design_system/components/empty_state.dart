@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/design_system/themes/semantic_extension.dart';
+import 'package:wavely/design_system/tokens/radii.dart';
 import 'package:wavely/design_system/tokens/spacing.dart';
 import 'package:wavely/design_system/tokens/typography.dart';
 
-/// Fixed metrics of the empty-state illustration (no matching tokens).
-const double _circleDiameter = 64;
-const double _iconSize = 32;
+/// Fixed metrics of the empty-state illustration.
+const double _outerRing = 148;
+const double _innerRing = 116;
+const double _badgeDiameter = 88;
+const double _iconSize = 40;
 
-/// Centered empty-state placeholder with optional CTA.
+/// Centered empty-state placeholder with an optional glowing CTA.
+///
+/// The 2026 overhaul replaces the old single-circle placeholder with a
+/// layered ring illustration (two concentric accent rings around a glowing
+/// badge), display-scale typography and a CTA that carries a soft accent
+/// glow. The public API is unchanged: the CTA renders only when BOTH
+/// [ctaLabel] and [onCta] are provided.
 class EmptyState extends StatelessWidget {
   const EmptyState({
     required this.icon,
@@ -28,51 +37,101 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.wavelyColors;
+    final accent = colors.accentColors.accent;
     final showCta = ctaLabel != null && onCta != null;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: _circleDiameter,
-            height: _circleDiameter,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: colors.accentColors.accent.withValues(alpha: 0.12),
-              border: Border.all(color: colors.borderGlass),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              icon,
-              size: _iconSize,
-              color: colors.accentColors.accent,
+          SizedBox(
+            width: _outerRing,
+            height: _outerRing,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Outer breathing ring.
+                Container(
+                  width: _outerRing,
+                  height: _outerRing,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.10),
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: _innerRing,
+                  height: _innerRing,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.22),
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: _badgeDiameter,
+                  height: _badgeDiameter,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: accent.withValues(alpha: 0.14),
+                    border: Border.all(color: accent.withValues(alpha: 0.45)),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.28),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(icon, size: _iconSize, color: accent),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: Spacing.lg),
+          const SizedBox(height: Spacing.xl),
           Text(
             title,
-            style: WavelyTypography.title20(color: colors.textPrimary),
+            style: WavelyTypography.display24(color: colors.textPrimary),
             textAlign: TextAlign.center,
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: Spacing.xs),
+            const SizedBox(height: Spacing.sm),
             Text(
               subtitle!,
-              style: WavelyTypography.caption12(color: colors.textSecondary),
+              style: WavelyTypography.body14(color: colors.textSecondary),
               textAlign: TextAlign.center,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
           ],
           if (showCta) ...[
-            const SizedBox(height: Spacing.lg),
-            ConstrainedBox(
-              constraints: const BoxConstraints(
-                minHeight: AppConstants.touchTargetMin,
+            const SizedBox(height: Spacing.xl),
+            // The glow lives OUTSIDE the button so the pressed/hover states
+            // of the button itself stay untouched.
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.40),
+                    blurRadius: 26,
+                    spreadRadius: 1,
+                  ),
+                ],
               ),
-              child: FilledButton(
-                onPressed: onCta,
-                child: Text(ctaLabel!),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: AppConstants.touchTargetMin,
+                ),
+                child: FilledButton(
+                  onPressed: onCta,
+                  child: Text(ctaLabel!),
+                ),
               ),
             ),
           ],

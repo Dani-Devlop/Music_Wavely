@@ -61,18 +61,14 @@ class UnifiedSearchResult {
 ///   `title.toLowerCase() + artist.toLowerCase()` with Levenshtein
 ///   distance < 3.
 class SearchService {
-  /// Creates the service over [sources]; [timeout] and [now] injectable for
-  /// tests.
+  /// Creates the service over [sources]; [timeout] injectable for tests.
   SearchService({
     required List<SourceProvider> sources,
     this.timeout = const Duration(seconds: 5),
-    DateTime Function()? now,
-  })  : _sources = List<SourceProvider>.of(sources),
-        _now = now ?? DateTime.now;
+  }) : _sources = List<SourceProvider>.of(sources);
 
   final List<SourceProvider> _sources;
   final Duration timeout;
-  final DateTime Function() _now;
 
   /// Immutable view of the sources this instance queries.
   List<SourceProvider> get sources => List.unmodifiable(_sources);

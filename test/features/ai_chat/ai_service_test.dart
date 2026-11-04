@@ -11,7 +11,6 @@ library;
 
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/core/errors/failures.dart';
@@ -99,11 +98,10 @@ class _RecordingLauncher implements TrackLauncher {
 /// Auto-advancing fake clock: every [now] call steps [step] forward; tests
 /// may also [jump] explicitly.
 class _FakeClock {
-  _FakeClock({DateTime? start, this.step = const Duration(seconds: 1)})
-      : _t = start ?? DateTime(2024, 6, 1, 12);
+  _FakeClock({DateTime? start}) : _t = start ?? DateTime(2024, 6, 1, 12);
 
   DateTime _t;
-  Duration step;
+  Duration step = const Duration(seconds: 1);
 
   DateTime now() {
     _t = _t.add(step);

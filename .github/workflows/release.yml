@@ -47,6 +47,9 @@ jobs:
       # the flutter create template does not enable — see tools/
       # patch_android_desugaring.py.
       - run: python3 tools/patch_android_desugaring.py
+      # Android 10+ scoped storage: write the MediaStore bridge MainActivity
+      # + media permissions (see tools/patch_android_media_store.py).
+      - run: python3 tools/patch_android_media_store.py
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
       # Universal (fat) APK. Target set = every ABI modern Flutter engines
@@ -165,14 +168,30 @@ jobs:
           mkdir -p dist
           tar -czf dist/wavely-${GITHUB_REF_NAME}-linux-x64.tar.gz \
             -C build/linux/x64/release .
-      # AppImage via flutter_distributor (needs linuxdeploy/appimagetool,
-      # which the distributor downloads). Fails soft.
+      # AppImage via flutter_distributor. ENFORCED (no continue-on-error):
+      # a red job here means no AppImage asset, which is a release blocker.
+      # Three hard requirements discovered in the v1.0.0 post-mortem (CI
+      # log: "Could not find an option named \"--skip-tests\""):
+      # 1. 0.6.10's CLI has NO --skip-tests — the correct flag is
+      #    --skip-clean (the v1.0.0 step died at argument parsing and the
+      #    failure was silently swallowed).
+      # 2. `dart pub global` bin dir MUST be on PATH.
+      # 3. linux/packaging/appimage/make_config.yaml MUST exist (shipped
+      #    with the repo) and the nested appimagetool/linuxdeploy AppImages
+      #    must run without FUSE — ubuntu-latest has no libfuse2, so
+      #    APPIMAGE_EXTRACT_AND_RUN=1 makes them extract-and-run instead.
       - name: Package AppImage
-        continue-on-error: true
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
           dart pub global activate flutter_distributor 0.6.10
           flutter_distributor package --platform=linux --targets=appimage \
-            --skip-tests
+            --skip-clean
+          test -n "$(find . -maxdepth 3 -name '*.AppImage' -type f)" || {
+            echo '::error::flutter_distributor completed but produced no .AppImage'
+            exit 1
+          }
       # Stage 4 §2.4: detached GPG signature when APPIMAGE_SIGNING_KEY is
       # present; otherwise the AppImage stays unsigned. Fails soft.
       - name: Sign AppImage (when APPIMAGE_SIGNING_KEY is present)
@@ -233,18 +252,13 @@ jobs:
           mkdir -p dist
           find artifacts -type f -exec cp {} dist/ \;
           ls -la dist/
-      # Stage 3 audit (SEC-15): publish SHA-256 checksums so the app's update
-      # checker / owner can verify artifact integrity before installing.
-      - name: Generate checksums
-        run: |
-          cd dist
-          sha256sum * > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+      # SHA256SUMS.txt is deliberately NOT generated (owner decision):
+      # the file must never appear among the release assets.
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             --title "Wavely ${GITHUB_REF_NAME}" \
-            --notes "Automated multi-arch release build (4 Android APKs: universal + armeabi-v7a/arm64-v8a/x86_64 splits — modern Flutter engines no longer ship 32-bit x86; Windows x64; Linux x64). MSIX/AppImage are UNSIGNED unless the owner configured signing secrets — verify against SHA256SUMS.txt; see docs/PACKAGING.md." \
+            --notes "Automated multi-arch release build (4 Android APKs: universal + armeabi-v7a/arm64-v8a/x86_64 splits — modern Flutter engines no longer ship 32-bit x86; Windows x64; Linux x64 with tar.gz, AppImage and Flatpak). MSIX/AppImage are UNSIGNED unless the owner configured signing secrets — see docs/PACKAGING.md." \
             dist/*

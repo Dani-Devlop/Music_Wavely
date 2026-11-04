@@ -18,7 +18,6 @@
 library;
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:drift/drift.dart' show Value;
@@ -38,14 +37,13 @@ import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/sync/sync_providers.dart';
 import 'package:wavely/data/sync/sync_service.dart';
 import 'package:wavely/design_system/design_system.dart';
-import 'package:wavely/design_system/themes/theme_provider.dart'
-    show settingsStoreProvider;
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/ai_chat/ai_chat_providers.dart';
 import 'package:wavely/features/ai_chat/data/ai_provider.dart';
 import 'package:wavely/features/ai_chat/data/ai_service.dart';
 import 'package:wavely/features/ai_chat/data/ai_tools.dart';
 import 'package:wavely/features/ai_chat/presentation/ai_chat_screen.dart';
+import 'package:wavely/features/home/presentation/home_screen.dart';
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
 import 'package:wavely/features/library/data/track_launcher.dart'
     show trackLauncherProvider;
@@ -54,8 +52,7 @@ import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
-import '../features/library/fakes.dart'
-    show FakeLibraryScanner, seedCompanion;
+import '../features/library/fakes.dart' show FakeLibraryScanner;
 import '../support/ai_chat_fakes.dart';
 import '../support/fake_playback_engine.dart';
 
@@ -86,7 +83,7 @@ class _SeedingScanner extends FakeLibraryScanner {
   Stream<ScanEvent> scan(List<String> folders) async* {
     scanCalls++;
     scannedFolders.add(List<String>.of(folders));
-    for (final TracksCompanion track in tracks) {
+    for (final track in tracks) {
       await db.tracksDao.insertTrack(track);
     }
     yield* Stream<ScanEvent>.fromIterable(events);
@@ -95,7 +92,7 @@ class _SeedingScanner extends FakeLibraryScanner {
 
 /// Compile-time switches (see the file header).
 const bool _kCapture =
-    bool.fromEnvironment('WAVELY_CAPTURE', defaultValue: false);
+    bool.fromEnvironment('WAVELY_CAPTURE');
 const String _kDir = String.fromEnvironment(
   'WAVELY_SCREENSHOT_DIR',
   defaultValue: 'docs/assets',
@@ -122,10 +119,10 @@ Future<void> _capture(WidgetTester tester, String name) async {
       find.byKey(_kBoundaryKey),
     );
     final ui.Image image = await boundary.toImage(pixelRatio: 2.0);
-    final ByteData? data = await image.toByteData(
+    final data = await image.toByteData(
       format: ui.ImageByteFormat.png,
     );
-    final Directory dir = Directory(_kDir);
+    final dir = Directory(_kDir);
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }
@@ -149,8 +146,8 @@ void _usePhoneViewport(WidgetTester tester) {
 /// order of `_seedLibrary`, so lyrics seeds and AI `build_queue` ids line
 /// up with the database rows).
 List<Track> _libraryTracks() {
-  final DateTime at = DateTime.utc(2024, 1, 1);
-  final List<(String, String, String, String)> rows =
+  final at = DateTime.utc(2024);
+  final rows =
       <(String, String, String, String)>[
     ('Neon Rivers', 'Velvet Echo', 'Midnight Signals', 'Electronic'),
     ('Glass Harbour', 'Cedar Waves', 'Tidelines', 'Ambient'),
@@ -159,8 +156,8 @@ List<Track> _libraryTracks() {
     ('Cascade', 'Cedar Waves', 'Tidelines', 'Ambient'),
     ('Slow Tide', 'Mara Bell', 'Postcard Songs', 'Indie'),
   ];
-  return List<Track>.generate(rows.length, (int i) {
-    final (String, String, String, String) row = rows[i];
+  return List<Track>.generate(rows.length, (i) {
+    final row = rows[i];
     return Track(
       id: i + 1,
       sourceId: 'local',
@@ -179,7 +176,7 @@ List<Track> _libraryTracks() {
 
 /// Seeds the same rows as [_libraryTracks] into [db].
 Future<void> _seedLibrary(AppDatabase db) async {
-  for (final Track track in _libraryTracks()) {
+  for (final track in _libraryTracks()) {
     await db.tracksDao.insertTrack(
       TracksCompanion.insert(
         sourceId: track.sourceId,
@@ -211,7 +208,7 @@ Future<_Harness> _pumpApp(
   SharedPreferences.setMockInitialValues(<String, Object>{
     OnboardingDraft.prefsCompletedKey: 'true',
   });
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final prefs = await SharedPreferences.getInstance();
   PackageInfo.setMockInitialValues(
     appName: 'Wavely',
     packageName: 'dev.wavely.test',
@@ -220,8 +217,8 @@ Future<_Harness> _pumpApp(
     buildSignature: 'test',
   );
 
-  final FakePlaybackEngine engine = FakePlaybackEngine();
-  final ProviderContainer container = ProviderContainer(
+  final engine = FakePlaybackEngine();
+  final container = ProviderContainer(
     overrides: <Override>[
       ...buildOverrides(db: db, prefs: prefs),
       playbackEngineProvider.overrideWithValue(engine),
@@ -235,9 +232,9 @@ Future<_Harness> _pumpApp(
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: RepaintBoundary(
+      child: const RepaintBoundary(
         key: _kBoundaryKey,
-        child: const WavelyApp(),
+        child: WavelyApp(),
       ),
     ),
   );
@@ -268,15 +265,15 @@ class _IdleSyncService extends SyncService {
 }
 
 void main() {
-  testWidgets('home — library with a live mini-player',
-      (WidgetTester tester) async {
-    final AppDatabase db = AppDatabase(NativeDatabase.memory());
-    final _SeedingScanner scanner = _SeedingScanner(
+  testWidgets('local — library with a live mini-player (plus home capture)',
+      (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final scanner = _SeedingScanner(
       db: db,
       pickedRoot: '/music',
       tracks: _libraryTracks()
           .map(
-            (Track t) => TracksCompanion.insert(
+            (t) => TracksCompanion.insert(
               sourceId: t.sourceId,
               sourceTrackId: t.sourceTrackId,
               title: t.title,
@@ -291,7 +288,7 @@ void main() {
           )
           .toList(),
     );
-    final _Harness harness = await _pumpApp(
+    final harness = await _pumpApp(
       tester,
       db: db,
       extraOverrides: <Override>[
@@ -300,8 +297,11 @@ void main() {
     );
     addTearDown(() => _dispose(harness));
 
-    // Populate the library through the app's REAL scan flow (Add folder →
-    // scan → invalidate → list refresh).
+    // The app boots into the Home branch; the Local branch owns the
+    // library. Populate the library through the app's REAL scan flow
+    // (Local tab → Add folder → scan → invalidate → list refresh).
+    await tester.tap(find.text('Local'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Add folder').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('All Tracks'));
@@ -319,12 +319,23 @@ void main() {
     // Both the track tile and the mini-player show the playing track.
     expect(find.text('Neon Rivers'), findsNWidgets(2));
 
+    await _capture(tester, 'local.png');
+
+    // Home capture: the same session, now with "Jump back in" populated by
+    // the real play + the mini-player still live.
+    await tester.tap(find.text('Home'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HomeScreen), findsOneWidget);
+    // At least the "Jump back in" card shows the playing track (the mini
+    // player may also show it, depending on how many sections render).
+    expect(find.text('Neon Rivers'), findsWidgets);
+
     await _capture(tester, 'home.png');
   });
 
-  testWidgets('now_playing — full screen player', (WidgetTester tester) async {
-    final AppDatabase db = AppDatabase(NativeDatabase.memory());
-    final _Harness harness = await _pumpApp(tester, db: db);
+  testWidgets('now_playing — full screen player', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final harness = await _pumpApp(tester, db: db);
     addTearDown(() => _dispose(harness));
 
     await harness.container.read(queueManagerProvider.notifier).setQueue(
@@ -345,8 +356,8 @@ void main() {
   });
 
   testWidgets('synced_lyrics — overlay highlighting the active line',
-      (WidgetTester tester) async {
-    final AppDatabase db = AppDatabase(NativeDatabase.memory());
+      (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
     await _seedLibrary(db);
     // Seed the REAL DriftLyricsCache (wired by buildOverrides) through the
     // lyrics DAO — the overlay reads it via lyricsFutureProvider.
@@ -360,7 +371,7 @@ void main() {
           '[00:13.00]Midnight is a lullaby\n'
           '[00:16.00]Skyline drawn in neon dye\n',
     );
-    final _Harness harness = await _pumpApp(tester, db: db);
+    final harness = await _pumpApp(tester, db: db);
     addTearDown(() => _dispose(harness));
 
     await harness.container.read(queueManagerProvider.notifier).setQueue(
@@ -386,17 +397,17 @@ void main() {
   });
 
   testWidgets('ai_chat — assistant reply with a generated queue',
-      (WidgetTester tester) async {
-    final AppDatabase db = AppDatabase(NativeDatabase.memory());
+      (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
     await _seedLibrary(db);
     _usePhoneViewport(tester);
 
-    final RecordingTrackLauncher launcher = RecordingTrackLauncher();
-    final ScriptedAiProvider provider = ScriptedAiProvider(<AiReply>[
-      AiReply(
+    final launcher = RecordingTrackLauncher();
+    final provider = ScriptedAiProvider(<AiReply>[
+      const AiReply(
         text: '',
         toolCalls: <AiToolCall>[
-          const AiToolCall(
+          AiToolCall(
             id: 'c1',
             name: 'build_queue',
             argumentsJson:
@@ -409,14 +420,14 @@ void main() {
             'low key. Tap Play all to start.',
       ),
     ]);
-    final AiService service = AiService(
+    final service = AiService(
       provider: provider,
       executor: AiToolExecutor(tracksDao: db.tracksDao, launcher: launcher),
       snapshotLoader: () async =>
           '{"tracks":[],"counts":{"totalTracks":6,"artists":3,"genres":[]}}',
     );
 
-    final ProviderContainer container = ProviderContainer(
+    final container = ProviderContainer(
       overrides: <Override>[
         aiServiceProvider.overrideWithValue(service),
         trackLauncherProvider.overrideWithValue(launcher),
@@ -448,9 +459,9 @@ void main() {
     await _capture(tester, 'ai_chat.png');
   });
 
-  testWidgets('settings — the settings screen', (WidgetTester tester) async {
-    final AppDatabase db = AppDatabase(NativeDatabase.memory());
-    final _Harness harness = await _pumpApp(tester, db: db);
+  testWidgets('settings — the settings screen', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final harness = await _pumpApp(tester, db: db);
     addTearDown(() => _dispose(harness));
 
     harness.container.read(routerProvider).go('/settings');

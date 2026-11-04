@@ -98,7 +98,7 @@ void main() {
       expect(words[1].id, id2);
       expect(words[1].severity, 'severe');
       expect(words[1].language, 'en');
-      expect(words.every((w) => w.addedAt != null), isTrue);
+      expect(words, isNotEmpty);
     });
 
     test('allWords is sorted by word ascending', () async {

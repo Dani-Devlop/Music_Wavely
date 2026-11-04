@@ -4,7 +4,6 @@ import 'package:html/parser.dart' as html_parser;
 
 import 'package:wavely/data/remote/metadata_http.dart';
 import 'package:wavely/domain/entities/entities.dart';
-import 'package:wavely/domain/repositories/source_file.dart';
 import 'package:wavely/domain/repositories/source_provider.dart';
 import 'package:wavely/sources/source_exception.dart';
 

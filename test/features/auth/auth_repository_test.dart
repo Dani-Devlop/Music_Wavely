@@ -313,7 +313,7 @@ void main() {
         ..rpcRows = const <Map<String, dynamic>>[
           <String, dynamic>{'email': 'a@b.c', 'token_hash': 'th'},
         ];
-      final repository = AuthRepository(api);
+      AuthRepository(api);
 
       final rows = await api.rpc(
         'redeem_telegram_session',
@@ -327,7 +327,7 @@ void main() {
 
     test('verifyMagicLink forwards email + tokenHash', () async {
       final api = _FakeAuthApi()..verifySession = _session('verified');
-      final repository = AuthRepository(api);
+      AuthRepository(api);
 
       final session = await api.verifyMagicLink(
         email: 'a@b.c',

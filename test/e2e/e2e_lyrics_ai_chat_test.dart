@@ -27,7 +27,6 @@ import 'package:wavely/features/library/data/track_launcher.dart'
 import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
-import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
 import '../features/lyrics/fakes.dart' show FakeLyricsCache, makeTrack;

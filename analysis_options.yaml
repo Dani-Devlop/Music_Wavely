@@ -6,6 +6,7 @@ analyzer:
     - "**/*.freezed.dart"
     - build/**
     - web/**
+    - linux/**
 
 linter:
   rules:

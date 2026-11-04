@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
-import 'package:wavely/core/errors/failures.dart';
 import 'package:wavely/core/errors/result.dart';
 import 'package:wavely/features/ai_chat/data/gemini_provider.dart';
 import 'package:wavely/features/ai_chat/data/openai_provider.dart';

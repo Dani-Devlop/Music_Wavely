@@ -23,8 +23,6 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/data/local/db/app_database.dart';
-import 'package:wavely/data/local/db/daos/plays_dao.dart';
-import 'package:wavely/data/local/db/daos/sync_outbox_dao.dart';
 import 'package:wavely/data/repositories/play_recorder.dart';
 import 'package:wavely/data/sync/fingerprint.dart';
 import 'package:wavely/data/sync/plays_sync.dart';

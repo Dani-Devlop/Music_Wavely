@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/design_system/themes/app_theme.dart';
-import 'package:wavely/design_system/tokens/colors.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/settings/domain/settings.dart';
 

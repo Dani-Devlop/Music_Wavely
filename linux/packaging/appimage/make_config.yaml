@@ -1,0 +1,22 @@
+# flutter_distributor — AppImage packaging configuration.
+#
+# The AppImage maker (flutter_distributor `appimage` target) loads this file
+# from `linux/packaging/appimage/make_config.yaml`. Without it the packager
+# crashes while parsing the config (`display_name`/`icon` are required) —
+# which is exactly why the v1.0.0 release shipped without an AppImage while
+# the step silently swallowed the failure (continue-on-error).
+#
+# `icon` must point at a file that exists in the repository. The web icons
+# are committed, so the 512px PWA icon doubles as the Linux desktop icon.
+display_name: Wavely
+icon: web/icons/icon-512.png
+generic_name: Music Player
+categories:
+  - Audio
+  - AudioVideo
+  - Music
+keywords:
+  - music
+  - player
+  - audio
+startup_notify: true

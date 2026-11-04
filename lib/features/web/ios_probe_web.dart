@@ -9,7 +9,6 @@ class IosPlatformProbe {
   static JSObject get _navigator =>
       globalContext.getProperty('navigator'.toJS) as JSObject;
 
-  @override
   bool get isIos {
     try {
       final String ua = (_navigator.getProperty('userAgent'.toJS) as JSString)
@@ -23,7 +22,6 @@ class IosPlatformProbe {
     }
   }
 
-  @override
   bool get isStandalone {
     try {
       // iOS Safari exposes navigator.standalone (undefined = false).

@@ -4,7 +4,6 @@
 // custom RSS validation (bad/non-http rejected, good added), feed removal
 // and muted-source unmute.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
