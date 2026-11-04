@@ -216,23 +216,23 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      // One-shot row snapshot (a watch().first would race its own initial
-      // empty emission against the download).
+      // The download's final step (`RandomAccessFile.close`) round-trips on
+      // the real IO service port: its completion microtask lands on the
+      // fake-async queue, so it only drains via pump — while the port
+      // response itself only arrives on the real loop (runAsync). Alternate
+      // the two until the row settles.
       List<DownloadRow> rows = await db.select(db.downloads).get();
-      if (rows.isEmpty ||
-          rows.single.status != DownloadStatus.completed) {
-        // The async file-handle close lives on the real IO loop: give it
-        // a bounded window on the real event loop, then re-snapshot.
-        await tester.binding.runAsync(() async {
-          for (int i = 0; i < 50; i++) {
-            await Future<void>.delayed(const Duration(milliseconds: 100));
-            rows = await db.select(db.downloads).get();
-            if (rows.isNotEmpty &&
-                rows.single.status == DownloadStatus.completed) {
-              break;
-            }
-          }
-        });
+      for (int i = 0;
+          i < 15 &&
+              rows.isNotEmpty &&
+              rows.single.status != DownloadStatus.completed;
+          i++) {
+        await tester.binding.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 200)),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        rows = await db.select(db.downloads).get();
       }
       expect(rows, hasLength(1), reason: 'exactly one download row');
       expect(
