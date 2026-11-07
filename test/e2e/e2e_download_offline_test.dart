@@ -271,7 +271,7 @@ void main() {
 
       harness.container.read(routerProvider).go('/local');
       await _tick(tester);
-      await tester.tap(find.text('All Tracks'));
+      await tester.tap(find.text('Songs'));
       await _tick(tester);
       await tester.tap(find.text('Night Drive'));
       await _tick(tester);

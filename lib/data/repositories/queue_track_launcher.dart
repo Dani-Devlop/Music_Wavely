@@ -8,7 +8,10 @@ import 'package:wavely/playback/queue/queue_manager.dart';
 /// starts at [playTracks]' [startIndex] and plays immediately. The play is
 /// optimistic ([QueueManager.play] flips the state first); the engine state
 /// stream reconciles afterwards.
-class QueueTrackLauncher implements TrackLauncher {
+///
+/// Also implements the Phase-6 [QueueBridge] ("Play Next" / "Add to Queue")
+/// so one adapter serves both providers.
+class QueueTrackLauncher implements TrackLauncher, QueueBridge {
   /// Creates the launcher over [manager].
   const QueueTrackLauncher(this._manager);
 
@@ -19,4 +22,11 @@ class QueueTrackLauncher implements TrackLauncher {
     await _manager.setQueue(tracks, startIndex: startIndex);
     await _manager.play();
   }
+
+  @override
+  Future<void> playNext(List<Track> tracks) => _manager.playNext(tracks);
+
+  @override
+  Future<void> appendToQueue(List<Track> tracks) =>
+      _manager.appendToQueue(tracks);
 }

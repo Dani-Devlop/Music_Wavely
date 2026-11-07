@@ -466,6 +466,55 @@ class QueueManager extends StateNotifier<QueueState> {
     _persist();
   }
 
+  /// Inserts [tracks] right after the current track ("Play Next"). With no
+  /// active queue this replaces the queue; with shuffle enabled the tracks
+  /// join the shuffled order after the current index and the pre-shuffle
+  /// list so un-shuffling keeps them. The engine only reloads when the queue
+  /// was empty before (same guard as [setQueue]).
+  Future<void> playNext(List<Track> tracks) async {
+    if (tracks.isEmpty) {
+      return;
+    }
+    if (!state.hasCurrent) {
+      await setQueue(tracks);
+      return;
+    }
+    final list = List<Track>.of(state.tracks);
+    list.insertAll(state.currentIndex + 1, tracks);
+    _unshuffledTracks?.addAll(tracks);
+    final currentBefore = state.currentTrack;
+    state = state.copyWith(tracks: list);
+    final currentAfter = state.currentTrack;
+    if (!identical(currentBefore, currentAfter) &&
+        currentBefore != currentAfter) {
+      await _loadCurrent();
+    }
+    _persist();
+  }
+
+  /// Appends [tracks] to the end of the queue ("Add to Queue"). With no
+  /// active queue this replaces the queue; the engine never reloads because
+  /// the current track keeps its index.
+  Future<void> appendToQueue(List<Track> tracks) async {
+    if (tracks.isEmpty) {
+      return;
+    }
+    if (!state.hasCurrent) {
+      await setQueue(tracks);
+      return;
+    }
+    final list = List<Track>.of(state.tracks)..addAll(tracks);
+    _unshuffledTracks?.addAll(tracks);
+    final currentBefore = state.currentTrack;
+    state = state.copyWith(tracks: list);
+    final currentAfter = state.currentTrack;
+    if (!identical(currentBefore, currentAfter) &&
+        currentBefore != currentAfter) {
+      await _loadCurrent();
+    }
+    _persist();
+  }
+
   /// Pauses playback once [duration] elapses. Accepts any Duration so tests
   /// can use millisecond timers (presets come in minutes from the UI).
   void startSleepTimer(Duration duration) {

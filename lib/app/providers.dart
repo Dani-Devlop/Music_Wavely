@@ -93,6 +93,9 @@ List<Override> buildOverrides({
       trackLauncherProvider.overrideWith(
         (ref) => QueueTrackLauncher(ref.watch(queueManagerProvider.notifier)),
       ),
+      queueBridgeProvider.overrideWith(
+        (ref) => QueueTrackLauncher(ref.watch(queueManagerProvider.notifier)),
+      ),
       advancedShuffleConfigProvider.overrideWith(
         (ref) => ShuffleConfigNotifier(ref.watch(sharedPrefsProvider)),
       ),

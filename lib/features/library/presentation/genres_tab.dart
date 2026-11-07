@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/design_system/design_system.dart';
+import 'package:wavely/features/library/data/library_view_config.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/library/presentation/library_providers.dart';
+import 'package:wavely/features/library/presentation/quick_search_box.dart';
+import 'package:wavely/features/library/presentation/sort_menu.dart';
 
 /// Height of the placeholder rows shown while genres load.
 const double _shimmerRowHeight = 40;
@@ -26,6 +29,7 @@ class GenresTab extends ConsumerStatefulWidget {
 
 class _GenresTabState extends ConsumerState<GenresTab> {
   String? _selectedGenre;
+  String _chipQuery = '';
 
   void _select(String? genre) {
     setState(() {
@@ -39,6 +43,10 @@ class _GenresTabState extends ConsumerState<GenresTab> {
     final genresAsync = ref.watch(genresProvider);
     return Column(
       children: <Widget>[
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: <Widget>[SortMenuButton(tab: LibraryTabId.genres)],
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(
             Spacing.lg,
@@ -53,6 +61,15 @@ class _GenresTabState extends ConsumerState<GenresTab> {
               style: WavelyTypography.caption12(color: colors.error),
             ),
             data: (genres) {
+              final sort = ref.watch(sortConfigProvider(LibraryTabId.genres));
+              var visible = <String>[
+                for (final genre in genres)
+                  if (quickSearchMatches(genre, _chipQuery)) genre,
+              ];
+              visible.sort((a, b) {
+                final cmp = a.toLowerCase().compareTo(b.toLowerCase());
+                return sort == SortKey.titleDesc ? -cmp : cmp;
+              });
               if (genres.isEmpty) {
                 return Text(
                   'No genres yet — scan a folder first.',
@@ -65,7 +82,7 @@ class _GenresTabState extends ConsumerState<GenresTab> {
                 spacing: Spacing.sm,
                 runSpacing: Spacing.xs,
                 children: <Widget>[
-                  for (final genre in genres)
+                  for (final genre in visible)
                     ChipFilter(
                       key: ValueKey<String>('genre-$genre'),
                       label: genre,
@@ -88,6 +105,11 @@ class _GenresTabState extends ConsumerState<GenresTab> {
                   subtitle: 'Tap a genre chip above to see its tracks.',
                 )
               : _GenreTrackList(genre: _selectedGenre!),
+        ),
+        QuickSearchBox(
+          filterKey: const ValueKey<String>('quick-search-genres'),
+          hintText: 'Filter Genres…',
+          onQueryChanged: (query) => setState(() => _chipQuery = query),
         ),
       ],
     );

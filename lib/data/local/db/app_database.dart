@@ -9,6 +9,7 @@ import 'package:wavely/data/local/db/daos/lyrics_dao.dart';
 import 'package:wavely/data/local/db/daos/news_dao.dart';
 import 'package:wavely/data/local/db/daos/parental_dao.dart';
 import 'package:wavely/data/local/db/daos/plays_dao.dart';
+import 'package:wavely/data/local/db/daos/playlists_dao.dart';
 import 'package:wavely/data/local/db/daos/sync_outbox_dao.dart';
 import 'package:wavely/data/local/db/daos/tracks_dao.dart';
 import 'package:wavely/data/local/db/migrations/0001_init.dart';
@@ -69,6 +70,7 @@ part 'app_database.g.dart';
   ],
   daos: [
     TracksDao,
+    PlaylistsDao,
     PlaysDao,
     LyricsDao,
     HttpCacheDao,

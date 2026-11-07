@@ -9,17 +9,244 @@ import 'package:wavely/design_system/themes/theme_provider.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/library/data/library_scanner.dart';
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
+import 'package:wavely/features/library/data/library_view_config.dart';
+import 'package:wavely/features/library/presentation/sort_menu.dart';
+
+/// SQL ORDER BY fragment for a [SortKey] (trusted literals only — the enum
+/// guarantees the values; user input never reaches this switch).
+String orderBySqlFor(SortKey key) => switch (key) {
+      SortKey.titleAsc => 'title COLLATE NOCASE ASC',
+      SortKey.titleDesc => 'title COLLATE NOCASE DESC',
+      SortKey.artistAsc => 'artist COLLATE NOCASE ASC, title COLLATE NOCASE ASC',
+      SortKey.durationAsc => 'duration_ms ASC, title COLLATE NOCASE ASC',
+      SortKey.durationDesc =>
+        'duration_ms DESC, title COLLATE NOCASE ASC',
+      SortKey.dateAddedAsc => 'added_at ASC, id ASC',
+      SortKey.dateAddedDesc => 'added_at DESC, id DESC',
+      SortKey.playCountDesc =>
+        'play_count DESC, title COLLATE NOCASE ASC, id ASC',
+      SortKey.trackCountDesc => 'play_count DESC, title COLLATE NOCASE ASC',
+    };
+
+/// Resolves the SQL fragment for the Songs tab's current sort.
+final songsOrderByProvider = Provider<String>((ref) {
+  return orderBySqlFor(ref.watch(sortConfigProvider(LibraryTabId.songs)));
+});
 
 /// One page of the library track list, [AppConstants.scrollPageSize] items
 /// each, ordered by title (case-folded).
 final FutureProviderFamily<List<Track>, int> tracksPagedProvider =
     FutureProvider.family<List<Track>, int>((ref, page) async {
   final dao = ref.watch(databaseProvider).tracksDao;
-  return dao.getAll(
+  final tracks = await dao.getAll(
     limit: AppConstants.scrollPageSize,
     offset: page * AppConstants.scrollPageSize,
   );
+  return _applyVisibility(ref, tracks);
 });
+
+/// One page of the library track list honoring the Songs tab sort memory.
+final FutureProviderFamily<List<Track>, (int page, String orderBy)>
+    sortedTracksPagedProvider =
+    FutureProvider.family<List<Track>, (int page, String orderBy)>(
+        (ref, params) async {
+  final (page, orderBy) = params;
+  final dao = ref.watch(databaseProvider).tracksDao;
+  final tracks = await dao.getAll(
+    limit: AppConstants.scrollPageSize,
+    offset: page * AppConstants.scrollPageSize,
+    orderBy: orderBy,
+  );
+  return _applyVisibility(ref, tracks);
+});
+
+/// One page of the newest additions (Recently Added tab).
+final FutureProviderFamily<List<Track>, int> recentlyAddedPagedProvider =
+    FutureProvider.family<List<Track>, int>((ref, page) async {
+  final dao = ref.watch(databaseProvider).tracksDao;
+  final tracks = await dao.recentlyAdded(
+    limit: AppConstants.scrollPageSize,
+    offset: page * AppConstants.scrollPageSize,
+  );
+  return _applyVisibility(ref, tracks);
+});
+
+/// One page of the most played tracks (Most Played tab).
+final FutureProviderFamily<List<Track>, int> mostPlayedPagedProvider =
+    FutureProvider.family<List<Track>, int>((ref, page) async {
+  final dao = ref.watch(databaseProvider).tracksDao;
+  final tracks = await dao.mostPlayed(
+    limit: AppConstants.scrollPageSize,
+    offset: page * AppConstants.scrollPageSize,
+  );
+  return _applyVisibility(ref, tracks);
+});
+
+/// The distinct non-local source ids (Online tab sections).
+final onlineSourcesProvider = FutureProvider<List<String>>((ref) async {
+  final dao = ref.watch(databaseProvider).tracksDao;
+  return dao.distinctSources();
+});
+
+/// Tracks of one non-local source (Online tab rows).
+final FutureProviderFamily<List<Track>, String> onlineTracksProvider =
+    FutureProvider.family<List<Track>, String>((ref, sourceId) async {
+  final dao = ref.watch(databaseProvider).tracksDao;
+  final tracks = await dao.bySource(sourceId);
+  return _applyVisibility(ref, tracks);
+});
+
+/// All playlists with item counts (Playlists tab).
+final playlistsProvider = FutureProvider<List<Playlist>>((ref) async {
+  final dao = ref.watch(databaseProvider).playlistsDao;
+  return dao.getAll();
+});
+
+/// Tracks of one playlist in persisted order.
+final FutureProviderFamily<List<Track>, int> playlistTracksProvider =
+    FutureProvider.family<List<Track>, int>((ref, playlistId) async {
+  final dao = ref.watch(databaseProvider).playlistsDao;
+  return dao.tracksOf(playlistId);
+});
+
+/// Distinct indexed file paths (folder-browser tree).
+final libraryFilePathsProvider = FutureProvider<List<String>>((ref) async {
+  final dao = ref.watch(databaseProvider).tracksDao;
+  return dao.distinctFilePaths();
+});
+
+/// Tracks under one folder prefix (folder-browser library view). Path
+/// matching happens in memory against the distinct indexed paths so SQL
+/// LIKE-wildcard pitfalls (paths containing % or _) never apply.
+final FutureProviderFamily<List<Track>, String> folderTracksProvider =
+    FutureProvider.family<List<Track>, String>((ref, folder) async {
+  final dao = ref.watch(databaseProvider).tracksDao;
+  final paths = await ref.watch(libraryFilePathsProvider.future);
+  final normalized = LibraryVisibility.normalizePrefix(folder);
+  final matching = paths
+      .where((path) => path.startsWith(normalized))
+      .toList(growable: false);
+  final tracks = await dao.byFilePaths(matching);
+  return _applyVisibility(ref, tracks);
+});
+
+/// Applies the persisted visibility rules (folder blacklist / whitelist,
+/// minimum track duration) to [tracks].
+List<Track> _applyVisibility(Ref ref, List<Track> tracks) {
+  final visibility = ref.watch(libraryVisibilityProvider);
+  if (visibility.blacklist.isEmpty &&
+      visibility.whitelist.isEmpty &&
+      visibility.minDurationSeconds <= 0) {
+    return tracks;
+  }
+  return LibraryVisibility.apply(
+    tracks: tracks,
+    pathOf: (track) => track.filePath,
+    durationMsOf: (track) => track.durationMs,
+    blacklist: visibility.blacklist,
+    whitelist: visibility.whitelist,
+    minDurationSeconds: visibility.minDurationSeconds,
+  );
+}
+
+/// Persisted visibility rules driving [_applyVisibility].
+class LibraryVisibilityConfig {
+  const LibraryVisibilityConfig({
+    this.blacklist = const <String>[],
+    this.whitelist = const <String>[],
+    this.minDurationSeconds = 0,
+  });
+
+  /// Folders hidden from library views.
+  final List<String> blacklist;
+
+  /// When non-empty, ONLY these folders are shown.
+  final List<String> whitelist;
+
+  /// Tracks shorter than this many seconds are hidden (0 = off).
+  final int minDurationSeconds;
+}
+
+/// Hydrates the visibility config and persists every mutation.
+class LibraryVisibilityNotifier
+    extends StateNotifier<LibraryVisibilityConfig> {
+  LibraryVisibilityNotifier(this._store)
+      : super(const LibraryVisibilityConfig()) {
+    _hydrate();
+  }
+
+  final LibraryViewConfigStore _store;
+
+  Future<void> _hydrate() async {
+    final blacklist = await _store.readBlacklist();
+    final whitelist = await _store.readWhitelist();
+    final minDuration = await _store.readMinDurationSeconds();
+    if (mounted) {
+      state = LibraryVisibilityConfig(
+        blacklist: blacklist,
+        whitelist: whitelist,
+        minDurationSeconds: minDuration,
+      );
+    }
+  }
+
+  /// Replaces the blacklist and persists.
+  Future<void> setBlacklist(List<String> folders) async {
+    state = LibraryVisibilityConfig(
+      blacklist: folders,
+      whitelist: state.whitelist,
+      minDurationSeconds: state.minDurationSeconds,
+    );
+    await _store.writeBlacklist(folders);
+  }
+
+  /// Replaces the whitelist and persists.
+  Future<void> setWhitelist(List<String> folders) async {
+    state = LibraryVisibilityConfig(
+      blacklist: state.blacklist,
+      whitelist: folders,
+      minDurationSeconds: state.minDurationSeconds,
+    );
+    await _store.writeWhitelist(folders);
+  }
+
+  /// Sets the minimum track duration (seconds) and persists.
+  Future<void> setMinDurationSeconds(int seconds) async {
+    state = LibraryVisibilityConfig(
+      blacklist: state.blacklist,
+      whitelist: state.whitelist,
+      minDurationSeconds: seconds,
+    );
+    await _store.writeMinDurationSeconds(seconds);
+  }
+}
+
+/// The visibility rules provider (consumed by every library track list).
+final libraryVisibilityProvider =
+    StateNotifierProvider<LibraryVisibilityNotifier, LibraryVisibilityConfig>(
+        (ref) {
+  return LibraryVisibilityNotifier(ref.watch(libraryViewConfigStoreProvider));
+});
+
+/// Invalidates every library list provider after destructive actions
+/// (multi-select delete) or config changes.
+void refreshLibraryProviders(Ref ref) {
+  ref.invalidate(tracksPagedProvider);
+  ref.invalidate(sortedTracksPagedProvider);
+  ref.invalidate(recentlyAddedPagedProvider);
+  ref.invalidate(mostPlayedPagedProvider);
+  ref.invalidate(onlineSourcesProvider);
+  ref.invalidate(onlineTracksProvider);
+  ref.invalidate(playlistsProvider);
+  ref.invalidate(playlistTracksProvider);
+  ref.invalidate(libraryFilePathsProvider);
+  ref.invalidate(folderTracksProvider);
+  ref.invalidate(artistsProvider);
+  ref.invalidate(albumsProvider);
+  ref.invalidate(genresProvider);
+  ref.invalidate(libraryCountProvider);
+  ref.invalidate(folderTrackCountsProvider);
+}
 
 /// All library tracks of one artist, grouped by album then title.
 final FutureProviderFamily<List<Track>, String> artistTracksProvider =
@@ -254,14 +481,9 @@ final scanStateProvider =
   return ScanStateNotifier(
     scanner: ref.watch(libraryScannerProvider),
     onScanCompleted: () {
-      ref.invalidate(tracksPagedProvider);
-      ref.invalidate(artistsProvider);
-      ref.invalidate(albumsProvider);
-      ref.invalidate(genresProvider);
-      ref.invalidate(libraryCountProvider);
+      refreshLibraryProviders(ref);
       ref.invalidate(recentlyPlayedProvider);
       ref.invalidate(topGenresProvider);
-      ref.invalidate(folderTrackCountsProvider);
     },
   );
 });

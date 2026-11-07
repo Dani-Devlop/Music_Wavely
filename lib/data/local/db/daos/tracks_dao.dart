@@ -34,6 +34,107 @@ class TracksDao extends DatabaseAccessor<AppDatabase> with _$TracksDaoMixin {
     );
   }
 
+  /// Tracks ordered by `addedAt`, newest first (Recently Added tab). Ties
+  /// break by id for a stable ordering.
+  Future<List<Track>> recentlyAdded({
+    required int limit,
+    required int offset,
+  }) async {
+    final rows = await customSelect(
+      'SELECT id FROM tracks ORDER BY added_at DESC, id ASC LIMIT ? OFFSET ?',
+      variables: [Variable.withInt(limit), Variable.withInt(offset)],
+    ).get();
+    return _tracksInIdOrder(
+      [for (final row in rows) row.read<int>('id')],
+    );
+  }
+
+  /// Tracks ordered by `playCount`, most played first (Most Played tab);
+  /// never-played tracks keep a stable title order at the end.
+  Future<List<Track>> mostPlayed({
+    required int limit,
+    required int offset,
+  }) async {
+    final rows = await customSelect(
+      'SELECT id FROM tracks '
+      'ORDER BY play_count DESC, title COLLATE NOCASE ASC, id ASC '
+      'LIMIT ? OFFSET ?',
+      variables: [Variable.withInt(limit), Variable.withInt(offset)],
+    ).get();
+    return _tracksInIdOrder(
+      [for (final row in rows) row.read<int>('id')],
+    );
+  }
+
+  /// All tracks of one non-local [sourceId] (Online tab), newest addition
+  /// first.
+  Future<List<Track>> bySource(
+    String sourceId, {
+    int limit = 500,
+    int offset = 0,
+  }) async {
+    final rows = await customSelect(
+      'SELECT id FROM tracks WHERE source_id = ? '
+      'ORDER BY added_at DESC, id ASC LIMIT ? OFFSET ?',
+      variables: [
+        Variable.withString(sourceId),
+        Variable.withInt(limit),
+        Variable.withInt(offset),
+      ],
+    ).get();
+    return _tracksInIdOrder(
+      [for (final row in rows) row.read<int>('id')],
+    );
+  }
+
+  /// Distinct non-local source ids present in the library (Online tab).
+  Future<List<String>> distinctSources() async {
+    final rows = await customSelect(
+      "SELECT source_id FROM tracks WHERE source_id != 'local' "
+      'GROUP BY source_id ORDER BY source_id ASC',
+    ).get();
+    return [for (final row in rows) row.read<String>('source_id')];
+  }
+
+  /// Deletes the tracks with the given ids (playlists cascade via FK) and
+  /// returns the number of removed rows.
+  Future<int> deleteByIds(List<int> ids) async {
+    if (ids.isEmpty) {
+      return 0;
+    }
+    return (delete(tracks)..where((t) => t.id.isIn(ids))).go();
+  }
+
+  /// Distinct file paths currently indexed (folder-browser tree). Paths are
+  /// returned as stored; callers normalize separators.
+  Future<List<String>> distinctFilePaths() async {
+    final rows = await customSelect(
+      'SELECT DISTINCT file_path FROM tracks '
+      'WHERE file_path IS NOT NULL ORDER BY file_path ASC',
+    ).get();
+    return [for (final row in rows) row.read<String>('file_path')];
+  }
+
+  /// Tracks whose `file_path` is one of [paths] (folder-browser library
+  /// view). Matching is exact — callers derive the path list from
+  /// [distinctFilePaths] so wildcards never apply.
+  Future<List<Track>> byFilePaths(List<String> paths) async {
+    if (paths.isEmpty) {
+      return const <Track>[];
+    }
+    final rows =
+        await (select(tracks)..where((t) => t.filePath.isIn(paths))).get();
+    final result = TrackMapper.toDomainList(rows).toList();
+    result.sort((a, b) {
+      final byPath = (a.filePath ?? '').compareTo(b.filePath ?? '');
+      if (byPath != 0) {
+        return byPath;
+      }
+      return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+    });
+    return result;
+  }
+
   /// Inserts a track and returns its row id.
   Future<int> insertTrack(TracksCompanion entry) =>
       into(tracks).insert(entry);

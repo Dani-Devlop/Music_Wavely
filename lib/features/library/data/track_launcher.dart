@@ -22,3 +22,30 @@ final trackLauncherProvider = Provider<TrackLauncher>(
     'trackLauncherProvider must be overridden in the composition root (Task 4)',
   ),
 );
+
+/// Optional queue bridge for the library multi-select bulk actions
+/// ("Play Next" / "Add to Queue"). Kept separate from [TrackLauncher] so
+/// existing implementations and fakes stay untouched; the composition root
+/// overrides [queueBridgeProvider] with the queue-manager adapter.
+abstract class QueueBridge {
+  /// Inserts [tracks] right after the current track.
+  Future<void> playNext(List<Track> tracks);
+
+  /// Appends [tracks] to the end of the queue.
+  Future<void> appendToQueue(List<Track> tracks);
+}
+
+/// Default binding — overridden in the composition root next to
+/// [trackLauncherProvider]. The no-op default keeps selection actions safe
+/// when the playback layer is not wired (pure UI contexts).
+final queueBridgeProvider = Provider<QueueBridge>(
+  (ref) => _NoopQueueBridge(),
+);
+
+class _NoopQueueBridge implements QueueBridge {
+  @override
+  Future<void> playNext(List<Track> tracks) async {}
+
+  @override
+  Future<void> appendToQueue(List<Track> tracks) async {}
+}

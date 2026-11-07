@@ -302,9 +302,14 @@ void main() {
     // (Local tab → Add folder → scan → invalidate → list refresh).
     await tester.tap(find.text('Local'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Folders'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Add folder').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('All Tracks'));
+    // Selecting Folders (5th of 9 tabs) scrolled the bar; bring Songs back.
+    await tester.fling(find.byType(TabBar), const Offset(400, 0), 1000);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Songs'));
     await tester.pumpAndSettle();
 
     // Start playback of the first track so the mini-player is live.

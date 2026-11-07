@@ -96,10 +96,11 @@ void main() {
     addTearDown(harness.tearDown);
 
     // ── 1. Add a music folder from the Folders tab ───────────────────────
-    // The app boots into the Home branch; switch to the Local branch, whose
-    // LibraryScreen opens on the Folders tab. (Both the header row and the
-    // empty state offer an 'Add folder' button — either starts a scan.)
+    // The app boots into the Home branch; switch to the Local branch, then
+    // to the Folders tab (Phase 6 opens the library on Songs).
     await tester.tap(find.text('Local'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Folders'));
     await tester.pumpAndSettle();
     final addFolder = find.widgetWithText(FilledButton, 'Add folder');
     expect(addFolder, findsWidgets);
@@ -111,7 +112,10 @@ void main() {
     expect(scanner.scanCalls, 1);
 
     // ── 2. The scan populated the library ───────────────────────────────
-    await tester.tap(find.text('All Tracks'));
+    // Selecting Folders (5th of 9 tabs) scrolled the bar; bring Songs back.
+    await tester.fling(find.byType(TabBar), const Offset(400, 0), 1000);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Songs'));
     await tester.pumpAndSettle();
     for (final title in titles) {
       expect(find.text(title), findsOneWidget, reason: title);

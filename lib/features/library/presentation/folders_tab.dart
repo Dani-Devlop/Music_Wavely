@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/core/utils/platform_utils.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
+import 'package:wavely/features/library/presentation/folder_browser_screen.dart';
 import 'package:wavely/features/library/presentation/library_providers.dart';
+import 'package:wavely/features/library/presentation/quick_search_box.dart';
 
 /// Height of the placeholder rows shown while folders load.
 const double _shimmerRowHeight = 72;
@@ -20,9 +22,19 @@ const int _maxInlineScanErrors = 3;
 /// 2026 redesign replaces the plain ListTiles with rich folder cards
 /// (gradient folder tile, name + full path, persisted track-count badge,
 /// remove action) and staggers their entrance.
-class FoldersTab extends ConsumerWidget {
+///
+/// Phase 6 adds the folder browser entry point (tree + library view), quick
+/// filtering of the folder list and the library-filter entry point.
+class FoldersTab extends ConsumerStatefulWidget {
   /// Creates the folders tab.
   const FoldersTab({super.key});
+
+  @override
+  ConsumerState<FoldersTab> createState() => _FoldersTabState();
+}
+
+class _FoldersTabState extends ConsumerState<FoldersTab> {
+  String _query = '';
 
   Future<void> _addFolder(WidgetRef ref) async {
     final picked = await ref.read(libraryScannerProvider).pickFolders();
@@ -43,7 +55,7 @@ class FoldersTab extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colors = context.wavelyColors;
     final foldersAsync = ref.watch(foldersProvider);
     final scanState = ref.watch(scanStateProvider);
@@ -73,103 +85,141 @@ class FoldersTab extends ConsumerWidget {
         detail: error.toString(),
         onRetry: () => ref.invalidate(foldersProvider),
       ),
-      data: (folders) => ListView(
-        padding: const EdgeInsets.all(Spacing.lg),
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: scanState.scanning
-                      ? null
-                      : () {
-                          unawaited(_addFolder(ref));
-                        },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add folder'),
-                ),
-              ),
-              const SizedBox(width: Spacing.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: (scanState.scanning || folders.isEmpty)
-                      ? null
-                      : () {
-                          unawaited(_rescanAll(ref));
-                        },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Rescan all'),
-                ),
-              ),
-            ],
-          ),
-          if (scanState.scanning) ...<Widget>[
-            const SizedBox(height: Spacing.lg),
-            const SectionHeader(title: 'Scanning'),
-            ClipRRect(
-              borderRadius: AppRadii.bPill,
-              child: LinearProgressIndicator(
-                value: scanState.progress,
-                backgroundColor: colors.borderGlass,
-                minHeight: 6,
+      data: (folders) {
+        final visible = <String>[
+          for (final folder in folders)
+            if (quickSearchMatches(
+                folder.split(RegExp(r'[/\\]')).last, _query) ||
+                quickSearchMatches(folder, _query))
+              folder,
+        ];
+        return Column(
+          children: <Widget>[
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(Spacing.lg),
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: scanState.scanning
+                              ? null
+                              : () {
+                                  unawaited(_addFolder(ref));
+                                },
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add folder'),
+                        ),
+                      ),
+                      const SizedBox(width: Spacing.sm),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: (scanState.scanning || folders.isEmpty)
+                              ? null
+                              : () {
+                                  unawaited(_rescanAll(ref));
+                                },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Rescan all'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Spacing.sm),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          key: const ValueKey<String>('open-folder-browser'),
+                          onPressed: folders.isEmpty
+                              ? null
+                              : () => unawaited(
+                                  FolderBrowserScreen.open(context)),
+                          icon: const Icon(Icons.account_tree_outlined),
+                          label: const Text('Browse folders'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (scanState.scanning) ...<Widget>[
+                    const SizedBox(height: Spacing.lg),
+                    const SectionHeader(title: 'Scanning'),
+                    ClipRRect(
+                      borderRadius: AppRadii.bPill,
+                      child: LinearProgressIndicator(
+                        value: scanState.progress,
+                        backgroundColor: colors.borderGlass,
+                        minHeight: 6,
+                      ),
+                    ),
+                    const SizedBox(height: Spacing.xs),
+                    Text(
+                      scanState.total > 0
+                          ? '${scanState.processed} of ${scanState.total} — '
+                              '${scanState.currentFile}'
+                          : 'Looking for audio files…',
+                      style: WavelyTypography.caption12(
+                          color: colors.textTertiary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (!scanState.scanning &&
+                      scanState.errors.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: Spacing.lg),
+                    const SectionHeader(title: 'Scan problems'),
+                    for (final error
+                        in scanState.errors.take(_maxInlineScanErrors))
+                      Text(
+                        error,
+                        style: WavelyTypography.caption12(color: colors.error),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                  if (visible.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: Spacing.lg),
+                    const SectionHeader(title: 'Folders'),
+                    const SizedBox(height: Spacing.xs),
+                    for (var i = 0; i < visible.length; i++)
+                      StaggeredAppear(
+                        index: i,
+                        child: _FolderCard(
+                          folder: visible[i],
+                          colors: colors,
+                          onRemove: () {
+                            unawaited(_removeFolder(ref, visible[i]));
+                          },
+                        ),
+                      ),
+                  ],
+                  if (trackCount == 0 && !scanState.scanning) ...<Widget>[
+                    const SizedBox(height: Spacing.xl),
+                    EmptyState(
+                      icon: Icons.library_music,
+                      title: 'No music yet',
+                      subtitle:
+                          'Add a folder with your own audio files and Wavely '
+                          'will index it locally.',
+                      ctaLabel: 'Add folder',
+                      onCta: () {
+                        unawaited(_addFolder(ref));
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: Spacing.xl),
+                ],
               ),
             ),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              scanState.total > 0
-                  ? '${scanState.processed} of ${scanState.total} — '
-                      '${scanState.currentFile}'
-                  : 'Looking for audio files…',
-              style: WavelyTypography.caption12(color: colors.textTertiary),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            QuickSearchBox(
+              filterKey: const ValueKey<String>('quick-search-folders-tab'),
+              hintText: 'Filter Folders…',
+              onQueryChanged: (query) => setState(() => _query = query),
             ),
           ],
-          if (!scanState.scanning &&
-              scanState.errors.isNotEmpty) ...<Widget>[
-            const SizedBox(height: Spacing.lg),
-            const SectionHeader(title: 'Scan problems'),
-            for (final error in scanState.errors.take(_maxInlineScanErrors))
-              Text(
-                error,
-                style: WavelyTypography.caption12(color: colors.error),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-          ],
-          if (folders.isNotEmpty) ...<Widget>[
-            const SizedBox(height: Spacing.lg),
-            const SectionHeader(title: 'Folders'),
-            const SizedBox(height: Spacing.xs),
-            for (var i = 0; i < folders.length; i++)
-              StaggeredAppear(
-                index: i,
-                child: _FolderCard(
-                  folder: folders[i],
-                  colors: colors,
-                  onRemove: () {
-                    unawaited(_removeFolder(ref, folders[i]));
-                  },
-                ),
-              ),
-          ],
-          if (trackCount == 0 && !scanState.scanning) ...<Widget>[
-            const SizedBox(height: Spacing.xl),
-            EmptyState(
-              icon: Icons.library_music,
-              title: 'No music yet',
-              subtitle:
-                  'Add a folder with your own audio files and Wavely will '
-                  'index it locally.',
-              ctaLabel: 'Add folder',
-              onCta: () {
-                unawaited(_addFolder(ref));
-              },
-            ),
-          ],
-          const SizedBox(height: Spacing.xl),
-        ],
-      ),
+        );
+      },
     );
   }
 }
