@@ -4,11 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
+import 'package:wavely/features/audio_cutter/presentation/audio_cutter_screen.dart';
+import 'package:wavely/features/library/data/file_operations/file_operations.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
+import 'package:wavely/features/library/presentation/file_ops_dialogs.dart';
 import 'package:wavely/features/library/presentation/playlist_picker.dart';
+import 'package:wavely/features/tag_editor/presentation/tag_editor_screen.dart';
 
 import 'package:wavely/data/local/db/database_provider.dart';
 
@@ -230,6 +235,70 @@ abstract final class LibrarySelectionActions {
     }
   }
 
+  /// Opens the tag editor for the selected rows' files (batch mode when
+  /// more than one local track is selected).
+  static Future<void> editTags(
+    BuildContext context,
+    List<Track> selectedTracks,
+  ) async {
+    final List<String> paths = <String>[
+      for (final Track track in selectedTracks)
+        if (track.filePath case final String path? when path.isNotEmpty) path,
+    ];
+    if (paths.isEmpty || !context.mounted) {
+      announce(context, 'Selected tracks have no local files');
+      return;
+    }
+    await GoRouter.of(context).push(kTagEditorRoute, extra: paths);
+  }
+
+  /// Opens the audio cutter for a single selected track.
+  static Future<void> cutAudio(
+    BuildContext context,
+    List<Track> selectedTracks,
+  ) async {
+    if (selectedTracks.length != 1) {
+      announce(context, 'Select exactly one track to cut');
+      return;
+    }
+    final String? path = selectedTracks.first.filePath;
+    if (path == null || path.isEmpty) {
+      announce(context, 'Selected track has no local file');
+      return;
+    }
+    await GoRouter.of(context).push(kAudioCutterRoute, extra: path);
+  }
+
+  /// Opens the file-operations flow (rename / move / copy / delete with
+  /// confirmation dialogs) over the selected rows' local files.
+  static Future<void> fileOperations(
+    BuildContext context,
+    WidgetRef ref,
+    List<Track> selectedTracks,
+  ) async {
+    final List<String> paths = <String>[
+      for (final Track track in selectedTracks)
+        if (track.filePath case final String path? when path.isNotEmpty) path,
+    ];
+    if (paths.isEmpty || !context.mounted) {
+      announce(context, 'Selected tracks have no local files');
+      return;
+    }
+    final FileOpBatchResult? result =
+        await showFileOpsSheet(context, ref, paths);
+    if (result == null || !context.mounted) {
+      return;
+    }
+    final int ok = result.succeeded.length;
+    final int failed = result.failed.length;
+    announce(
+      context,
+      failed == 0
+          ? 'Done: $ok ${ok == 1 ? 'file' : 'files'} updated'
+          : 'Done with errors: $ok ok, $failed failed',
+    );
+  }
+
   /// Convenience snackbar used by the selection bar after each action.
   static void announce(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
@@ -432,6 +501,43 @@ class SelectionBar extends ConsumerWidget {
                       );
                     }),
                   ),
+                  _ActionChip(
+                    key: const ValueKey<String>('selection-edit-tags'),
+                    icon: Icons.edit_outlined,
+                    label: 'Edit Tags',
+                    enabled: selectedTracks.isNotEmpty,
+                    onTap: () => runAction(() async {
+                      await LibrarySelectionActions.editTags(
+                        context,
+                        selectedTracks,
+                      );
+                    }),
+                  ),
+                  _ActionChip(
+                    key: const ValueKey<String>('selection-cut-audio'),
+                    icon: Icons.content_cut_rounded,
+                    label: 'Cut',
+                    enabled: selectedTracks.length == 1,
+                    onTap: () => runAction(() async {
+                      await LibrarySelectionActions.cutAudio(
+                        context,
+                        selectedTracks,
+                      );
+                    }),
+                  ),
+                  _ActionChip(
+                    key: const ValueKey<String>('selection-file-ops'),
+                    icon: Icons.folder_open_rounded,
+                    label: 'File ops',
+                    enabled: selectedTracks.isNotEmpty,
+                    onTap: () => runAction(() async {
+                      await LibrarySelectionActions.fileOperations(
+                        context,
+                        ref,
+                        selectedTracks,
+                      );
+                    }),
+                  ),
                 ],
               ),
             ),
@@ -449,6 +555,7 @@ class _ActionChip extends StatelessWidget {
     required this.onTap,
     required this.enabled,
     this.danger = false,
+    super.key,
   });
 
   final IconData icon;

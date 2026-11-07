@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:wavely/domain/entities/entities.dart' hide Playlist;
 import 'package:wavely/playback/engines/playback_engine.dart';
+import 'package:wavely/playback/effects/audio_effects.dart';
+import 'package:wavely/playback/effects/effects_filter.dart';
 import 'package:wavely/playback/equalizer/eq_filter.dart';
 import 'package:wavely/playback/equalizer/eq_presets.dart';
 import 'package:wavely/playback/equalizer/equalizer_control.dart';
@@ -20,7 +22,8 @@ import 'package:wavely/playback/equalizer/equalizer_control.dart';
 ///   caller drive play/pause.
 /// - Events via `player.stream` (singular; `streams` is deprecated):
 ///   `.position/.duration/.playing/.completed/.buffering/.error/.rate`.
-class DesktopPlaybackEngine implements PlaybackEngine, EqualizerControl {
+class DesktopPlaybackEngine
+    implements PlaybackEngine, EqualizerControl, AudioEffectsControl {
   DesktopPlaybackEngine() {
     if (!_nativeInitialized) {
       MediaKit.ensureInitialized();
@@ -58,6 +61,10 @@ class DesktopPlaybackEngine implements PlaybackEngine, EqualizerControl {
   /// Whether the EQ chain is enabled (disabled clears the mpv `af`
   /// property).
   bool _eqEnabled = true;
+
+  /// Current effects state (Phase 8.1); pushed together with the EQ into
+  /// one `af` property write.
+  AudioEffectsState _effects = const AudioEffectsState();
 
   @override
   Stream<Duration> get positionStream => _positionController.stream;
@@ -211,20 +218,47 @@ class DesktopPlaybackEngine implements PlaybackEngine, EqualizerControl {
 
   /// Ships the current gain vector to libmpv as one `af` property write
   /// (`lavfi=[equalizer=...]`, or the empty string when disabled/flat).
-  Future<bool> _pushEqualizerFilter() async {
+  Future<bool> _pushEqualizerFilter() async => _pushAudioFilter();
+
+  /// Builds the combined EQ + effects `af` value and writes it to libmpv.
+  Future<bool> _pushAudioFilter() async {
     final PlatformPlayer? platform = _player.platform;
     if (platform is! NativePlayer) {
       return false;
     }
     try {
-      final String filter = _eqEnabled
+      final String eq = _eqEnabled
           ? buildLavfiEqualizer(kStandardEqFrequencies, _eqGains)
           : '';
+      final String effects = buildLavfiEffectsChain(
+        EffectsFilterInput(
+          bassBoost: _effects.bassBoost,
+          virtualizer: _effects.virtualizer,
+          reverbPreset: _effects.reverbPreset,
+          balance: _effects.balance,
+          forceMono: _effects.forceMono,
+        ),
+      );
+      final String filter = combineAfFilters(eq, effects);
       await platform.setProperty('af', filter);
       return true;
     } on Object {
       return false;
     }
+  }
+
+  // --- Phase 8.1: effects capability (AudioEffectsControl) -------------------
+
+  @override
+  bool get effectsAvailable => true;
+
+  @override
+  Future<bool> applyEffects(AudioEffectsState state) async {
+    if (_disposed) {
+      return false;
+    }
+    _effects = state;
+    return _pushAudioFilter();
   }
 
   @override

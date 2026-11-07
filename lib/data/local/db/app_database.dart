@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import 'package:wavely/data/local/db/daos/artist_follows_dao.dart';
+import 'package:wavely/data/local/db/daos/audio_profiles_dao.dart';
 import 'package:wavely/data/local/db/daos/downloads_dao.dart';
 import 'package:wavely/data/local/db/daos/eq_presets_dao.dart';
 import 'package:wavely/data/local/db/daos/http_cache_dao.dart';
@@ -10,6 +11,7 @@ import 'package:wavely/data/local/db/daos/news_dao.dart';
 import 'package:wavely/data/local/db/daos/parental_dao.dart';
 import 'package:wavely/data/local/db/daos/plays_dao.dart';
 import 'package:wavely/data/local/db/daos/playlists_dao.dart';
+import 'package:wavely/data/local/db/daos/replay_gain_dao.dart';
 import 'package:wavely/data/local/db/daos/sync_outbox_dao.dart';
 import 'package:wavely/data/local/db/daos/tracks_dao.dart';
 import 'package:wavely/data/local/db/migrations/0001_init.dart';
@@ -17,9 +19,11 @@ import 'package:wavely/data/local/db/migrations/0002_stage_1_2.dart';
 import 'package:wavely/data/local/db/migrations/0003_downloads.dart';
 import 'package:wavely/data/local/db/migrations/0004_news.dart';
 import 'package:wavely/data/local/db/migrations/0005_eq_presets.dart';
+import 'package:wavely/data/local/db/migrations/0006_audio_engine.dart';
 import 'package:wavely/data/local/db/tables/albums.dart';
 import 'package:wavely/data/local/db/tables/artist_follows.dart';
 import 'package:wavely/data/local/db/tables/artists.dart';
+import 'package:wavely/data/local/db/tables/audio_profiles.dart';
 import 'package:wavely/data/local/db/tables/blocked_words.dart';
 import 'package:wavely/data/local/db/tables/downloads.dart';
 import 'package:wavely/data/local/db/tables/eq_presets.dart';
@@ -32,6 +36,7 @@ import 'package:wavely/data/local/db/tables/playlist_items.dart';
 import 'package:wavely/data/local/db/tables/plays.dart';
 import 'package:wavely/data/local/db/tables/profiles_local.dart';
 import 'package:wavely/data/local/db/tables/parental_audit.dart';
+import 'package:wavely/data/local/db/tables/replay_gain.dart';
 import 'package:wavely/data/local/db/tables/sync_outbox.dart';
 import 'package:wavely/data/local/db/tables/tracks.dart';
 
@@ -45,7 +50,9 @@ part 'app_database.g.dart';
 /// Stage 1.2 tables (cache/outbox/parental/follows — see [Migration0002]);
 /// version 3 adds the Stage 2.1 downloads table (see [Migration0003]);
 /// version 4 adds the Stage 2.2 news_articles table (see [Migration0004]);
-/// version 5 adds the Stage 4 eq_presets table (see [Migration0005]).
+/// version 5 adds the Stage 4 eq_presets table (see [Migration0005]);
+/// version 6 adds the Phase 8 audio-engine tables — replay_gain_data and
+/// audio_profiles (see [Migration0006]).
 /// Pass a custom [QueryExecutor]
 /// for tests, e.g. `AppDatabase(NativeDatabase.memory())`.
 @DriftDatabase(
@@ -67,6 +74,8 @@ part 'app_database.g.dart';
     Downloads,
     NewsArticles,
     EqPresets,
+    ReplayGainData,
+    AudioProfiles,
   ],
   daos: [
     TracksDao,
@@ -80,13 +89,15 @@ part 'app_database.g.dart';
     DownloadsDao,
     NewsDao,
     EqPresetsDao,
+    ReplayGainDao,
+    AudioProfilesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -112,6 +123,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 5) {
             // Stage 4: eq_presets table (per-device EQ presets).
             await Migration0005.run(m, this);
+          }
+          if (from < 6) {
+            // Phase 8: replay_gain_data + audio_profiles tables.
+            await Migration0006.run(m, this);
           }
         },
         // SQLite ships with foreign-key enforcement OFF per connection;

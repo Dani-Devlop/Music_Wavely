@@ -13,7 +13,8 @@ abstract final class AppConstants {
   static const int retryCount = 3;
   static const int retryBackoffMs = 500;
   static const int lyricsAutoScrollResumeDelaySeconds = 3;
-  static const int crossfadeMaxSeconds = 12;
+  /// Musicolet-parity crossfade range (Phase 8.3): 0–30 s.
+  static const int crossfadeMaxSeconds = 30;
 
   /// Rendering / performance budgets.
   static const int maxBackdropFiltersPerScreen = 3;

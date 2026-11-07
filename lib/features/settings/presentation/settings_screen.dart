@@ -23,6 +23,8 @@ import 'package:wavely/features/settings/data/cache_cleaner.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/settings/data/update_providers.dart';
 import 'package:wavely/features/settings/domain/settings.dart';
+import 'package:wavely/features/settings/presentation/screens/audio_settings_screen.dart'
+    show kAudioSettingsRoute;
 import 'package:wavely/features/settings/presentation/screens/update_screen.dart';
 import 'package:wavely/features/settings/presentation/widgets/sources_settings_section.dart';
 
@@ -157,6 +159,20 @@ class SettingsScreen extends ConsumerWidget {
           _SectionGroup(
             title: 'Playback',
             children: <Widget>[
+              ListTile(
+                key: const ValueKey<String>('settings-audio-engine'),
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.equalizer_rounded),
+                title: Text(
+                  'Equalizer & effects',
+                  style: WavelyTypography.body14(color: colors.textPrimary),
+                ),
+                subtitle: Text(
+                  'EQ, BassBoost, Reverb, ReplayGain, per-device profiles',
+                  style: WavelyTypography.caption12(color: colors.textSecondary),
+                ),
+                onTap: () => unawaited(context.push(kAudioSettingsRoute)),
+              ),
               Semantics(
                 label: 'Crossfade',
                 child: ListTile(

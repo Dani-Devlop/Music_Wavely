@@ -15,6 +15,7 @@ import 'package:wavely/features/auth/presentation/welcome_screen.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
 import 'package:wavely/features/downloads/presentation/download_settings_screen.dart';
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
+import 'package:wavely/features/audio_cutter/presentation/audio_cutter_screen.dart';
 import 'package:wavely/features/home/presentation/home_screen.dart';
 import 'package:wavely/features/library/presentation/album_detail_screen.dart';
 import 'package:wavely/features/library/presentation/artist_detail_screen.dart';
@@ -28,7 +29,9 @@ import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
+import 'package:wavely/features/settings/presentation/screens/audio_settings_screen.dart';
 import 'package:wavely/features/settings/presentation/screens/update_screen.dart';
+import 'package:wavely/features/tag_editor/presentation/tag_editor_screen.dart';
 import 'package:wavely/features/settings/presentation/settings_screen.dart';
 
 /// Root navigator key shared by the shell and the outside-the-shell
@@ -225,6 +228,31 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: UpdateScreen.route,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const UpdateScreen(),
+      ),
+      // -- Phase 7: tag editor & audio cutter --------------------------------
+      GoRoute(
+        path: kTagEditorRoute,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final Object? extra = state.extra;
+          final List<String> paths = extra is List<Object?>
+              ? extra.whereType<String>().toList(growable: false)
+              : const <String>[];
+          return TagEditorScreen(filePaths: paths);
+        },
+      ),
+      GoRoute(
+        path: kAudioCutterRoute,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => AudioCutterScreen(
+          sourcePath: (state.extra as String?) ?? '',
+        ),
+      ),
+      // -- Phase 8: equalizer & effects ---------------------------------------
+      GoRoute(
+        path: kAudioSettingsRoute,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AudioSettingsScreen(),
       ),
     ],
   );

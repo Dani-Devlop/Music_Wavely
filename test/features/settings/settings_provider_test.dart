@@ -209,7 +209,7 @@ void main() {
   });
 
   group('setter guards', () {
-    test('crossfade clamps to the 0..12s token, speed to 0.5..2.0',
+    test('crossfade clamps to the 0..30s token, speed to 0.5..2.0',
         () async {
       SharedPreferences.setMockInitialValues(<String, Object>{});
       final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -221,7 +221,7 @@ void main() {
       notifier.setCrossfade(99);
       expect(container.read(settingsProvider).crossfadeSeconds,
           AppConstants.crossfadeMaxSeconds.toDouble());
-      expect(prefs.getDouble(_key('crossfadeSeconds')), 12.0);
+      expect(prefs.getDouble(_key('crossfadeSeconds')), 30.0);
 
       notifier.setPlaybackSpeed(5);
       expect(container.read(settingsProvider).playbackSpeed, 2.0);

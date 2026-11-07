@@ -43,7 +43,11 @@ import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
+import 'package:wavely/features/settings/presentation/screens/audio_settings_screen.dart';
 import 'package:wavely/features/settings/presentation/settings_screen.dart';
+import 'package:wavely/features/tag_editor/presentation/tag_editor_screen.dart';
+import 'package:wavely/features/audio_cutter/presentation/audio_cutter_screen.dart'
+    show kAudioCutterRoute;
 
 import 'pump_app.dart';
 
@@ -123,6 +127,10 @@ void main() {
         newsSettingsRoute,
         // Stage 7: in-app update flow.
         UpdateScreen.route,
+        // Phase 7/8: tag editor, audio cutter, equalizer & effects.
+        kTagEditorRoute,
+        kAudioCutterRoute,
+        kAudioSettingsRoute,
       };
 
       final actual =

@@ -25,8 +25,8 @@ void main() {
   });
   tearDown(() => db.close());
 
-  test('schemaVersion is 5 (Stage 1.2 + 2.1 + 2.2 + 4 schema)', () {
-    expect(db.schemaVersion, 5);
+  test('schemaVersion is 6 (Stage 1.2 + 2.1 + 2.2 + 4 + Phase 8 schema)', () {
+    expect(db.schemaVersion, 6);
   });
 
   test('onCreate creates every base + Stage 1.2 table plus tracks_fts',
