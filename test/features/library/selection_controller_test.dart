@@ -54,7 +54,7 @@ Future<(ProviderContainer, FakeTrackLauncher, RecordingQueueBridge)>
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: WavelyThemes.dark(WavelyAccent.purple),
+        theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const Scaffold(body: AllTracksTab()),
       ),
     ),

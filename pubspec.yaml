@@ -1,7 +1,7 @@
 name: wavely
 description: "Wavely — a glassy, privacy-first music player for legal sources only."
 publish_to: "none"
-version: 1.0.1+5
+version: 1.0.1+6
 
 environment:
   sdk: "^3.9.0"
@@ -108,6 +108,8 @@ dependencies:
   sentry_flutter: ^10.2.0
   pub_semver: ^2.2.1
   open_filex: ^5.0.0
+  home_widget: ^0.8.1
+  flutter_svg: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -145,8 +147,33 @@ dev_dependencies:
   # release workflow (version drift tolerated there).
   flutter_distributor: ^0.6.10
 
+# Native-assets hook user-defines. By default the sqlite3 package's build
+# hook downloads prebuilt libsqlite3 binaries from the simolus3/sqlite3.dart
+# GitHub release; CI runners intermittently received corrupted bytes for
+# those release-asset URLs (identical wrong SHA-256 for different assets →
+# "Bad state: Hash of downloaded file ..."), which broke the
+# Android/Windows/Linux builds. Compiling from the vendored amalgamation
+# (third_party/sqlite3/ — see its README) removes the network dependency
+# and makes the native build deterministic. The hook's default feature set
+# applies, including SQLITE_ENABLE_FTS5 (required by the instant-search
+# index).
+hooks:
+  user_defines:
+    sqlite3:
+      source:
+        default: source
+      path: third_party/sqlite3/sqlite3.c
+      additional_includes:
+        - third_party/sqlite3/
+
 flutter:
   uses-material-design: true
+  # Phase 11: generated localizations (l10n.yaml -> lib/l10n/*.arb).
+  generate: true
+
+  # Phase 12: brand assets (neon-glass logo; rendered by the splash).
+  assets:
+    - assets/brand/wavely_logo.svg
 
   # Stage 6: the typefaces the design system always referenced are now
   # bundled. Sora (headings) + Inter (body) are OFL-licensed; the committed

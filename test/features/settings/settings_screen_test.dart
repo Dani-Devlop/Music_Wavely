@@ -70,7 +70,7 @@ Future<ProviderContainer> _pumpScreen(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: WavelyThemes.dark(WavelyAccent.purple),
+        theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const SettingsScreen(),
       ),
     ),
@@ -84,6 +84,9 @@ void main() {
     await _pumpScreen(tester);
 
     expect(find.text('Appearance'), findsOneWidget);
+    // Phase 10 grew the Appearance section (AMOLED/adaptive/language/
+    // sliders) — Playback may fall below the fold, so scroll to it.
+    await _scrollTo(tester, find.text('Playback'));
     expect(find.text('Playback'), findsOneWidget);
     // The lazy ListView builds below-the-fold sections on demand — scroll
     // to Storage before asserting (the group's existence is the contract,
@@ -167,9 +170,12 @@ void main() {
       (tester) async {
     final ProviderContainer container = await _pumpScreen(tester);
 
-    // Sliders: crossfade first, playback speed second. Tapping the center
-    // of the 0.5..2.0 slider with 6 divisions snaps to 1.25x.
-    final Finder speedSlider = find.byType(Slider).at(1);
+    // Keyed sliders (Phase 10 added two more sliders to the Appearance
+    // group — index-based finders are fragile). Tapping the center of the
+    // 0.5..2.0 slider with 6 divisions snaps to 1.25x.
+    final Finder speedSlider = find.byKey(
+      const ValueKey<String>('settings-speed-slider'),
+    );
     await _scrollTo(tester, speedSlider);
     await tester.tap(speedSlider, warnIfMissed: false);
     await tester.pump();

@@ -42,7 +42,7 @@ Future<(ProviderContainer, FakePlaybackEngine)> _pumpHost(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: WavelyThemes.dark(WavelyAccent.purple),
+        theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: Scaffold(
           body: const SizedBox.shrink(),
           bottomSheet: MiniPlayerHost(onOpenNowPlaying: onOpenNowPlaying),

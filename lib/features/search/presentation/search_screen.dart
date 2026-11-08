@@ -253,7 +253,7 @@ class _ResultsList extends ConsumerWidget {
                 itemBuilder: (context, artistIndex) {
                   final artist = results.artists[artistIndex];
                   return Padding(
-                    padding: const EdgeInsets.only(right: Spacing.lg),
+                    padding: const EdgeInsetsDirectional.only(end: Spacing.lg),
                     child: ArtistCircle(
                       name: artist.name,
                       coverPath: artist.coverPath,
@@ -285,7 +285,7 @@ class _ResultsList extends ConsumerWidget {
                 itemBuilder: (context, albumIndex) {
                   final album = results.albums[albumIndex];
                   return Padding(
-                    padding: const EdgeInsets.only(right: Spacing.lg),
+                    padding: const EdgeInsetsDirectional.only(end: Spacing.lg),
                     child: AlbumCard(
                       title: album.title,
                       artist: album.artist,

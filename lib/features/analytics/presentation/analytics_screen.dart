@@ -157,7 +157,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         children: <Widget>[
           for (final period in AnalyticsPeriod.values)
             Padding(
-              padding: const EdgeInsets.only(right: Spacing.sm),
+              padding: const EdgeInsetsDirectional.only(end: Spacing.sm),
               child: ChipFilter(
                 label: period.label,
                 selected: period == _period,

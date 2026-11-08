@@ -101,7 +101,7 @@ Future<void> _pumpScreen(
         trackLauncherProvider.overrideWithValue(launcher),
       ],
       child: MaterialApp(
-        theme: WavelyThemes.light(WavelyAccent.purple),
+        theme: WavelyThemes.light(WavelyAccent.purple.colors),
         home: const AiChatScreen(),
       ),
     ),

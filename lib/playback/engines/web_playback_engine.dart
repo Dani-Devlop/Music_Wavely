@@ -147,6 +147,24 @@ class WebPlaybackEngine implements PlaybackEngine {
     );
   }
 
+  // --- Phase 9: system-surface hooks (no-ops on web) ------------------------
+  //
+  // The web target has no lock-screen media session / widgets / QS tile /
+  // headset-button rules; the transport hooks stay inert.
+
+  @override
+  void setTransportCallbacks({
+    void Function()? onNext,
+    void Function()? onPrevious,
+    void Function()? onTogglePlayPause,
+  }) {}
+
+  @override
+  Future<void> seekBy(Duration offset) async {}
+
+  @override
+  Future<void> setLyrics(String? lyrics) async {}
+
   @override
   Future<void> dispose() async {
     if (_disposed) {

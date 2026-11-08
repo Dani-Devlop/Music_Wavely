@@ -17,6 +17,27 @@ needs two adjustments for the plugin set:
        uses-sdk:minSdkVersion 24 cannot be smaller than version 26
        declared in library [:sentry_flutter]
 
+3. Kotlin jvm-target validation mode — `home_widget` (and potentially
+   other Kotlin plugins) ship Android Kotlin compiled with jvmTarget 1.8
+   while their androidx dependencies expose inline functions built with
+   JVM target 11. The Kotlin Gradle Plugin's default validation mode
+   (`error`) fails the build with:
+
+       Cannot inline bytecode built with JVM target 11 into bytecode
+       that is being built with JVM target 1.8.
+
+   Setting `kotlin.jvm.target.validation.mode=warning` downgrades the
+   mismatch to a warning; the inlined body is re-lowered at the current
+   compilation target (the standard mitigation for third-party plugins
+   that pin jvmTarget 1.8).
+
+4. androidx.glance pin — `home_widget` declares its glance dependency
+   with the floating version "1.+", which currently resolves to
+   1.3.0-alpha02, an AAR whose metadata demands compileSdk 37 (the app
+   compiles against 36, AGP 9.1.0's recommended max). Pin the stable
+   1.2.0 (minCompileSdk 35) for every module via a root-gradle
+   resolutionStrategy so the AAR metadata check passes.
+
 Run this after scaffolding (release.yml does the same in CI):
 
     python3 tools/patch_android_desugaring.py
@@ -35,6 +56,7 @@ from pathlib import Path
 
 DESUGAR_LIB = "com.android.tools:desugar_jdk_libs:2.1.5"
 APP_DIR = Path("android") / "app"
+KOTLIN_VALIDATION_PROP = "kotlin.jvm.target.validation.mode=warning"
 
 
 def patch_kts(path: Path) -> bool:
@@ -148,16 +170,79 @@ def patch_groovy(path: Path) -> bool:
     return True
 
 
+def patch_gradle_properties(path: Path) -> None:
+    """Downgrade the Kotlin jvm-target validation to a warning (fix #3)."""
+    if not path.exists():
+        return
+    src = path.read_text(encoding="utf-8")
+    prop = KOTLIN_VALIDATION_PROP.split("=")[0]
+    if any(line.strip().startswith(prop) for line in src.splitlines()):
+        print(f"[patch] {path}: kotlin validation mode already set")
+        return
+    sep = "" if src.endswith("\n") or not src else "\n"
+    src += f"{sep}# Wavely: home_widget ships jvmTarget 1.8 Kotlin but inlines JVM 11\n"
+    src += "# bytecode — downgrade the KGP mismatch check to a warning.\n"
+    src += KOTLIN_VALIDATION_PROP + "\n"
+    path.write_text(src, encoding="utf-8")
+    print(f"[patch] {path}: kotlin.jvm.target.validation.mode=warning")
+
+
+def patch_root_gradle(path: Path) -> None:
+    """Pin androidx.glance to a stable version in the root build file (fix #4)."""
+    if not path.exists():
+        return
+    src = path.read_text(encoding="utf-8")
+    if "glance-appwidget" in src:
+        print(f"[patch] {path}: glance pin already present")
+        return
+    if path.suffix == ".kts":
+        block = (
+            "\n// Wavely: home_widget declares androidx.glance:glance-appwidget with the\n"
+            "// floating version \"1.+\", which currently resolves to 1.3.0-alpha02 —\n"
+            "// an AAR whose metadata demands compileSdk 37 (the app compiles against\n"
+            "// 36, AGP 9.1.0's recommended max). Pin the stable 1.2.0 for every\n"
+            "// module so the AAR metadata check passes.\n"
+            "subprojects {\n"
+            "    configurations.all {\n"
+            "        resolutionStrategy {\n"
+            "            force(\"androidx.glance:glance-appwidget:1.2.0\")\n"
+            "        }\n"
+            "    }\n"
+            "}\n"
+        )
+    else:
+        block = (
+            "\n// Wavely: pin androidx.glance:glance-appwidget to the stable 1.2.0 — the\n"
+            "// floating \"1.+\" in home_widget resolves to an alpha AAR whose\n"
+            "// metadata demands compileSdk 37 (app compiles against 36).\n"
+            "subprojects {\n"
+            "    configurations.all {\n"
+            "        resolutionStrategy {\n"
+            "            force 'androidx.glance:glance-appwidget:1.2.0'\n"
+            "        }\n"
+            "    }\n"
+            "}\n"
+        )
+    src += block
+    path.write_text(src, encoding="utf-8")
+    print(f"[patch] {path}: pinned androidx.glance:glance-appwidget to 1.2.0")
+
+
 def main() -> int:
     kts = APP_DIR / "build.gradle.kts"
     groovy = APP_DIR / "build.gradle"
     if kts.exists():
-        return 0 if patch_kts(kts) else 1
-    if groovy.exists():
-        return 0 if patch_groovy(groovy) else 1
-    print("[patch] no Android runner found (android/app/build.gradle*) — "
-          "scaffold it first with `flutter create . --platforms=android`")
-    return 0
+        ok = patch_kts(kts)
+    elif groovy.exists():
+        ok = patch_groovy(groovy)
+    else:
+        print("[patch] no Android runner found (android/app/build.gradle*) — "
+              "scaffold it first with `flutter create . --platforms=android`")
+        return 0
+    patch_gradle_properties(Path("android") / "gradle.properties")
+    patch_root_gradle(Path("android") / "build.gradle.kts")
+    patch_root_gradle(Path("android") / "build.gradle")
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

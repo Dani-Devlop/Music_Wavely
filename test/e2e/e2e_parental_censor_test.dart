@@ -65,7 +65,7 @@ void main() {
       ProviderScope(
         overrides: <Override>[databaseProvider.overrideWithValue(db)],
         child: MaterialApp(
-          theme: WavelyThemes.dark(WavelyAccent.purple),
+          theme: WavelyThemes.dark(WavelyAccent.purple.colors),
           home: const ParentalScreen(),
         ),
       ),

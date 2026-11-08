@@ -7,6 +7,7 @@ export 'album_card.dart';
 export 'artist_circle.dart';
 export 'chip_filter.dart';
 export 'empty_state.dart';
+export 'wavely_logo.dart';
 export 'error_state.dart';
 export 'explicit_badge.dart';
 export 'glass_card.dart';
