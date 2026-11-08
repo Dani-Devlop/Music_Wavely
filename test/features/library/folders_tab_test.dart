@@ -19,6 +19,7 @@ import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/library/data/library_scanner_provider.dart';
 import 'package:wavely/features/library/presentation/folders_tab.dart';
 import 'package:wavely/features/library/presentation/library_providers.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 import 'fakes.dart';
 
@@ -44,6 +45,8 @@ Future<(ProviderContainer, FakeLibraryScanner)> _pumpTab(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const Scaffold(body: FoldersTab()),
       ),

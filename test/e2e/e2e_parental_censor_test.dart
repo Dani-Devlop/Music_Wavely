@@ -40,6 +40,7 @@ import 'package:wavely/features/parental/data/pin_hash.dart';
 import 'package:wavely/features/parental/data/track_filter.dart';
 import 'package:wavely/features/parental/data/word_matcher.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layer 1 — the parental screen PIN gate.
@@ -66,6 +67,9 @@ void main() {
         overrides: <Override>[databaseProvider.overrideWithValue(db)],
         child: MaterialApp(
           theme: WavelyThemes.dark(WavelyAccent.purple.colors),
+          // Phase 11: delegates so localized screens resolve under test.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const ParentalScreen(),
         ),
       ),

@@ -28,6 +28,7 @@ import 'package:wavely/features/ai_chat/data/ai_tools.dart';
 import 'package:wavely/features/ai_chat/data/mood_classifier.dart';
 import 'package:wavely/features/ai_chat/presentation/ai_chat_screen.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 /// Scripted provider whose pending reply can be held back with a
 /// [Completer] (to make the in-flight 'Cancel' control deterministic).
@@ -101,6 +102,8 @@ Future<void> _pumpScreen(
         trackLauncherProvider.overrideWithValue(launcher),
       ],
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.light(WavelyAccent.purple.colors),
         home: const AiChatScreen(),
       ),

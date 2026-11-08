@@ -28,6 +28,7 @@ import 'package:wavely/features/downloads/data/download_service.dart';
 import 'package:wavely/features/downloads/data/downloads_providers.dart';
 import 'package:wavely/features/search/domain/search_service.dart';
 import 'package:wavely/features/search/presentation/online_search_pane.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 import 'package:wavely/sources/download_file_executor.dart';
 
 class _ScriptedSource implements SourceProvider {
@@ -165,7 +166,11 @@ Future<ProviderContainer> _pump(
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: Scaffold(body: OnlineSearchPane())),
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: OnlineSearchPane()),
+      ),
     ),
   );
   await tester.pump();

@@ -15,6 +15,7 @@ import 'package:wavely/features/news/data/news_prefs.dart';
 import 'package:wavely/features/news/data/news_providers.dart';
 import 'package:wavely/features/news/presentation/news_settings_screen.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
@@ -33,6 +34,8 @@ Future<ProviderContainer> _pump(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const NewsSettingsScreen(),
       ),

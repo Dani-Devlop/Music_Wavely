@@ -23,6 +23,7 @@ import 'package:wavely/data/remote/metadata_http.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/discovery/discovery_service.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 /// http.Client stub for the throwaway clients the fake service's super
 /// constructor requires — no call ever reaches it (all three lookups are
@@ -108,6 +109,8 @@ Widget _wrap(_FakeDiscoveryService service) => ProviderScope(
         discoveryServiceProvider.overrideWithValue(service),
       ],
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const DiscoveryScreen(),
       ),

@@ -26,6 +26,7 @@ import 'package:wavely/features/library/data/track_launcher.dart'
     show trackLauncherProvider;
 import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
@@ -65,6 +66,9 @@ Future<ProviderContainer> _pumpNowPlaying(
       container: container,
       child: MaterialApp(
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
+        // Phase 11: delegates so localized screens resolve under test.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: const NowPlayingScreen(),
       ),
     ),
@@ -194,6 +198,9 @@ void main() {
         ],
         child: MaterialApp(
           theme: WavelyThemes.light(WavelyAccent.purple.colors),
+          // Phase 11: delegates so localized screens resolve under test.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const AiChatScreen(),
         ),
       ),

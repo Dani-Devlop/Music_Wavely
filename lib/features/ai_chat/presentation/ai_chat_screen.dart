@@ -304,7 +304,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             ? colors.error.withValues(alpha: 0.12)
             : colors.elevated;
     return Align(
-      alignment: entry.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      // RTL: user bubbles hug the trailing edge, assistant the leading edge.
+      alignment: entry.isUser
+          ? AlignmentDirectional.centerEnd
+          : AlignmentDirectional.centerStart,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -353,7 +356,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Widget _buildTypingIndicator(WavelySemanticColors colors) => Align(
-        alignment: Alignment.centerLeft,
+        alignment: AlignmentDirectional.centerStart,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

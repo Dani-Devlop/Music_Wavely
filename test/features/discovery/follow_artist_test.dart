@@ -23,6 +23,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/features/discovery/follow_artist.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 AppDatabase _memoryDb() => AppDatabase(NativeDatabase.memory());
 
@@ -66,6 +67,8 @@ Widget _wrap(AppDatabase db, {required String artist, String? mbid}) =>
     ProviderScope(
       overrides: <Override>[databaseProvider.overrideWithValue(db)],
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: _FollowHarness(artist, mbid: mbid),
       ),
     );

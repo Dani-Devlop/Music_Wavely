@@ -119,7 +119,7 @@ class _PlaylistsTabState extends ConsumerState<PlaylistsTab> {
                 padding: const EdgeInsets.all(Spacing.lg),
                 children: <Widget>[
                   Align(
-                    alignment: Alignment.centerLeft,
+                    alignment: AlignmentDirectional.centerStart,
                     child: OutlinedButton.icon(
                       key: const ValueKey<String>('create-playlist-button'),
                       onPressed: () => unawaited(_createPlaylist()),

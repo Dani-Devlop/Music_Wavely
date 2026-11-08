@@ -13,6 +13,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/settings/presentation/widgets/subsonic_config_sheet.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 import 'package:wavely/sources/source_providers.dart';
 import 'package:wavely/sources/source_registry.dart';
 import 'package:wavely/sources/subsonic/subsonic_config.dart';
@@ -54,6 +55,8 @@ Future<(ProviderContainer, _InMemoryStore)> _pump(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Builder(
             builder: (BuildContext context) => Center(

@@ -625,7 +625,7 @@ class _WhitelistEditorState extends State<_WhitelistEditor> {
               ),
             ),
         Align(
-          alignment: Alignment.centerLeft,
+          alignment: AlignmentDirectional.centerStart,
           child: OutlinedButton.icon(
             key: const ValueKey<String>('whitelist-add-button'),
             onPressed: () => unawaited(_add()),

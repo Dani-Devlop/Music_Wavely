@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/app/splash.dart';
 import 'package:wavely/design_system/components/wavely_logo.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +17,11 @@ void main() {
     testWidgets('renders the shipped SVG asset at the requested size',
         (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: Center(child: WavelyLogo(size: 96))),
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Center(child: WavelyLogo(size: 96)),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -39,7 +44,11 @@ void main() {
     testWidgets('fades the splash in and hands off to the child',
         (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: SplashGate(child: Text('content'))),
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SplashGate(child: Text('content')),
+        ),
       );
 
       // Splash overlay visible mid-fade.

@@ -27,6 +27,7 @@ import 'package:wavely/features/downloads/data/download_prefs.dart';
 import 'package:wavely/features/downloads/data/download_service.dart';
 import 'package:wavely/features/downloads/data/downloads_providers.dart';
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 import 'package:wavely/sources/download_file_executor.dart';
 
 /// Filesystem-in-memory executor: the row actions under test (pause/retry)
@@ -93,7 +94,11 @@ Future<ProviderContainer> _pump(
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: DownloadsScreen()),
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: DownloadsScreen(),
+      ),
     ),
   );
   await tester.pump();

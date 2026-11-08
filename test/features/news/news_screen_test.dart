@@ -23,6 +23,7 @@ import 'package:wavely/features/news/data/news_prefs.dart';
 import 'package:wavely/features/news/data/news_providers.dart';
 import 'package:wavely/features/news/data/news_service.dart';
 import 'package:wavely/features/news/presentation/news_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 class _NoopClient extends http.BaseClient {
   @override
@@ -108,6 +109,8 @@ Future<ProviderContainer> _pump(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const NewsScreen(),
       ),

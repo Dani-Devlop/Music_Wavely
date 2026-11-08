@@ -456,7 +456,7 @@ class _ParentalScreenState extends ConsumerState<ParentalScreen> {
                   ),
                   const SizedBox(height: 8),
                   Align(
-                    alignment: Alignment.centerRight,
+                    alignment: AlignmentDirectional.centerEnd,
                     child: FilledButton(
                       key: const Key('save-blocks-button'),
                       onPressed: _saveBlocks,

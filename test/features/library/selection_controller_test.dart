@@ -16,6 +16,7 @@ import 'package:wavely/features/library/data/library_view_config.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/library/presentation/all_tracks_tab.dart';
 import 'package:wavely/features/library/presentation/sort_menu.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 import 'fakes.dart';
 
@@ -54,6 +55,8 @@ Future<(ProviderContainer, FakeTrackLauncher, RecordingQueueBridge)>
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const Scaffold(body: AllTracksTab()),
       ),
