@@ -162,7 +162,7 @@ class LibraryScreen extends ConsumerWidget {
                       horizontal: Spacing.lg,
                     ),
                     child: Align(
-                      alignment: Alignment.centerLeft,
+                      alignment: AlignmentDirectional.centerStart,
                       child: Text(
                         'Drag to reorder. Toggle to show or hide a tab.',
                         style: WavelyTypography.caption12(

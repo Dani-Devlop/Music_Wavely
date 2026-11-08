@@ -180,6 +180,12 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
       return const SizedBox(height: _emptyLineGap);
     }
     final key = _lineKeys.putIfAbsent(index, GlobalKey.new);
+    // AnimatedScale.alignment is a concrete Alignment (no geometry), so the
+    // start-edge anchor is resolved from the ambient Directionality — the
+    // scale then grows from the reading edge in both LTR and RTL.
+    final startAlignment = Directionality.of(context) == TextDirection.rtl
+        ? Alignment.centerRight
+        : Alignment.centerLeft;
     return GestureDetector(
       key: key,
       behavior: HitTestBehavior.opaque,
@@ -193,7 +199,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
               isCurrent ? 1 : AppConstants.lyricsNeighborOpacity,
           child: AnimatedScale(
             duration: WavelyDurations.normal,
-            alignment: Alignment.centerLeft,
+            alignment: startAlignment,
             scale:
                 isCurrent ? AppConstants.lyricsCurrentLineScale : 1,
             child: Padding(

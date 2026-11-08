@@ -21,6 +21,7 @@ import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/settings/presentation/screens/audio_settings_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 import 'package:wavely/playback/profiles/audio_engine_controller.dart';
 import 'package:wavely/playback/replaygain/replay_gain_math.dart';
 
@@ -47,6 +48,8 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: WavelyThemes.dark(WavelyAccent.purple.colors),
           home: const AudioSettingsScreen(),
         ),
@@ -97,6 +100,8 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: WavelyThemes.dark(WavelyAccent.purple.colors),
           home: const AudioSettingsScreen(),
         ),
@@ -133,6 +138,8 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: WavelyThemes.dark(WavelyAccent.purple.colors),
           home: const AudioSettingsScreen(),
         ),

@@ -16,6 +16,7 @@ import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/library/presentation/all_tracks_tab.dart';
 import 'package:wavely/features/library/presentation/quick_search_box.dart';
 import 'package:wavely/features/library/presentation/sort_menu.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 import 'fakes.dart';
 
@@ -36,6 +37,8 @@ Future<ProviderContainer> _pumpTab(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const Scaffold(body: AllTracksTab()),
       ),
@@ -121,6 +124,8 @@ void main() {
     var queries = <String>[];
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: QuickSearchBox(
             onQueryChanged: queries.add,

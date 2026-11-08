@@ -23,6 +23,7 @@ import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/settings/domain/settings.dart';
 import 'package:wavely/features/settings/presentation/settings_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 String _key(String suffix) => '${AppConstants.settingsKeyPrefix}$suffix';
 
@@ -70,6 +71,8 @@ Future<ProviderContainer> _pumpScreen(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const SettingsScreen(),
       ),

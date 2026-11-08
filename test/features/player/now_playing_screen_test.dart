@@ -18,6 +18,7 @@ import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
@@ -42,6 +43,8 @@ Future<(ProviderContainer, FakePlaybackEngine)> _pumpScreen(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const NowPlayingScreen(),
       ),

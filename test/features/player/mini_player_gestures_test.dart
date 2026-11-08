@@ -13,6 +13,7 @@ import 'package:wavely/app/providers.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/features/player/presentation/mini_player_host.dart';
 import 'package:wavely/features/player/presentation/mini_player_widget.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
 import 'package:wavely/features/settings/presentation/whats_new.dart';
@@ -186,6 +187,8 @@ void main() {
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
               body: Center(

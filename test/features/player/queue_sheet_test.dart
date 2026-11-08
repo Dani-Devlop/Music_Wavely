@@ -16,6 +16,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/player/presentation/queue_sheet.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
 
@@ -37,6 +38,8 @@ Future<(ProviderContainer, FakePlaybackEngine)> _pumpSheet(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: Scaffold(
           body: SafeArea(

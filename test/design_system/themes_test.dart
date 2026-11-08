@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wavely/design_system/design_system.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 void main() {
   group('WavelyThemes factories', () {
@@ -79,6 +80,8 @@ void main() {
       WavelySemanticColors? probed;
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: dark
               ? WavelyThemes.dark(accent.colors)
               : WavelyThemes.light(accent.colors),

@@ -15,6 +15,7 @@ import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/settings/data/update_providers.dart';
 import 'package:wavely/features/settings/data/update_service.dart';
 import 'package:wavely/features/settings/presentation/screens/update_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 import '../../support/fake_update_service.dart';
 
@@ -51,6 +52,8 @@ Future<void> _pumpScreen(WidgetTester tester, UpdateService service) async {
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const UpdateScreen(),
       ),

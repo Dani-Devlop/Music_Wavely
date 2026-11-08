@@ -35,6 +35,7 @@
 /// ever touches supabase_flutter initialization.
 
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -42,6 +43,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/app/providers.dart';
 import 'package:wavely/app/wavely_app.dart';
+import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/core/settings/settings_store.dart';
 import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/sync/sync_providers.dart';
@@ -89,6 +91,11 @@ class WavelyTestHarness {
 /// - [onboardingCompleted]: when true, the `wavely.onboarding.completed`
 ///   prefs key is pre-seeded so the router redirect lets the shell through
 ///   (otherwise the app boots into OnboardingFlow).
+/// - [locale]: Phase 11 — seeds the settings `localeCode` so `WavelyApp`
+///   resolves `AppLocalizations` for the given locale ('en' | 'fa'; pass
+///   `Locale('fa')` to drive the full RTL pipeline through the REAL app
+///   MaterialApp). Delegates themselves flow from `WavelyApp` — the real
+///   root widget already mounts `AppLocalizations.localizationsDelegates`.
 /// - [prefsSeed]: additional SharedPreferences values to mock.
 /// - [engine]: a custom [FakePlaybackEngine]; a fresh one is created when
 ///   omitted.
@@ -104,6 +111,7 @@ class WavelyTestHarness {
 Future<WavelyTestHarness> pumpWavelyApp(
   WidgetTester tester, {
   bool onboardingCompleted = false,
+  Locale? locale,
   Map<String, Object> prefsSeed = const <String, Object>{},
   FakePlaybackEngine? engine,
   List<Override> extraOverrides = const <Override>[],
@@ -117,6 +125,10 @@ Future<WavelyTestHarness> pumpWavelyApp(
   SharedPreferences.setMockInitialValues(<String, Object>{
     ...prefsSeed,
     if (onboardingCompleted) OnboardingDraft.prefsCompletedKey: 'true',
+    // Phase 11: seed the locale through the canonical settings key so
+    // `localeProvider` (and thus WavelyApp's MaterialApp) picks it up.
+    if (locale != null)
+      '${AppConstants.settingsKeyPrefix}localeCode': locale.languageCode,
   });
   final prefs = await SharedPreferences.getInstance();
 

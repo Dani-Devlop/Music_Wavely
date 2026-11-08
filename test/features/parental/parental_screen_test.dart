@@ -18,6 +18,7 @@ import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/parental/data/pin_hash.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 Future<AppDatabase> _pumpWithSeed(WidgetTester tester) async {
   final db = AppDatabase(NativeDatabase.memory());
@@ -31,6 +32,8 @@ Future<AppDatabase> _pumpWithSeed(WidgetTester tester) async {
         databaseProvider.overrideWithValue(db),
       ],
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         // The PIN gate + cards read context.wavelyColors — pump the real
         // Wavely theme so the semantic extension is present.
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),

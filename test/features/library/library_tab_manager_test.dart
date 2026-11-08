@@ -18,6 +18,7 @@ import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/library/presentation/library_screen.dart';
 import 'package:wavely/features/library/presentation/library_tab_manager.dart';
 import 'package:wavely/features/library/presentation/sort_menu.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 import 'fakes.dart';
 
@@ -43,6 +44,8 @@ Future<(ProviderContainer, LibraryViewConfigStore)> _pumpLibrary(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const Scaffold(body: LibraryScreen()),
       ),

@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:wavely/design_system/design_system.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 /// Pumps [child] under the real Wavely theme (light/dark × accent).
 Future<void> pumpThemed(
@@ -23,6 +24,11 @@ Future<void> pumpThemed(
 }) async {
   Widget app = MaterialApp(
     theme: dark ? WavelyThemes.dark(accent.colors) : WavelyThemes.light(accent.colors),
+    // Phase 11: every harness resolves AppLocalizations — screens pulled
+    // into component tests may read localized strings, and the fa locale
+    // flips Directionality to RTL inside these pumps too.
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(body: Center(child: child)),
   );
   if (overrides.isNotEmpty) {

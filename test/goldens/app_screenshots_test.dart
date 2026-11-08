@@ -48,6 +48,7 @@ import 'package:wavely/features/library/data/library_scanner_provider.dart';
 import 'package:wavely/features/library/data/track_launcher.dart'
     show trackLauncherProvider;
 import 'package:wavely/features/onboarding/data/onboarding_state.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
@@ -448,6 +449,9 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: WavelyThemes.light(WavelyAccent.purple.colors),
+            // Phase 11: delegates so localized screens resolve under test.
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: const AiChatScreen(),
           ),
         ),

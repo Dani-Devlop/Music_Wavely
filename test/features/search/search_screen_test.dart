@@ -16,6 +16,7 @@ import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 import '../library/fakes.dart';
 
@@ -35,6 +36,8 @@ Future<(ProviderContainer, FakeTrackLauncher)> _pumpScreen(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const Scaffold(body: SafeArea(child: SearchScreen())),
       ),

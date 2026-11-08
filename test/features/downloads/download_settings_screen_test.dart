@@ -13,6 +13,7 @@ import 'package:wavely/features/downloads/data/download_prefs.dart';
 import 'package:wavely/features/downloads/data/downloads_providers.dart';
 import 'package:wavely/features/downloads/presentation/download_settings_screen.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
 Future<ProviderContainer> _pump(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -26,7 +27,11 @@ Future<ProviderContainer> _pump(WidgetTester tester) async {
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: DownloadSettingsScreen()),
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: DownloadSettingsScreen(),
+      ),
     ),
   );
   await tester.pump();
