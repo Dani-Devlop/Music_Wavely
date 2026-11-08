@@ -3,7 +3,8 @@
 /// [TrackTile] smoke test (plus the shared [WavelyCoverFallback]): renders
 /// title/artist/duration, the explicit badge, the source badge, the
 /// selection highlight, an optional trailing slot and the gradient cover
-/// fallback initial; tap and long-press callbacks fire; renders under BOTH
+/// premium music-note fallback (never a letter); tap and long-press
+/// callbacks fire; renders under BOTH
 /// the light and dark Wavely themes.
 library;
 
@@ -37,7 +38,7 @@ void main() {
   for (final dark in <bool>[false, true]) {
     String label(bool d) => d ? 'dark' : 'light';
 
-    testWidgets('basic tile: text content + cover fallback initial '
+    testWidgets('basic tile: text content + music-note fallback '
         '(${label(dark)} theme)', (tester) async {
       await pumpThemed(
         tester,
@@ -47,8 +48,10 @@ void main() {
       expect(find.text('Neon Rivers'), findsOneWidget);
       expect(find.text('Velvet Echo'), findsOneWidget);
       expect(find.text('03:23'), findsOneWidget);
-      // Gradient fallback shows the title initial (no coverPath).
-      expect(find.text('N'), findsOneWidget);
+      // Premium fallback shows the glowing white note (owner spec:
+      // hash-gradient art tile, never a letter).
+      expect(find.byIcon(Icons.music_note_rounded), findsOneWidget);
+      expect(find.text('N'), findsNothing);
       expect(find.byType(ExplicitBadge), findsNothing);
     });
 
@@ -65,7 +68,8 @@ void main() {
         ),
       );
       expect(find.byType(ExplicitBadge), findsOneWidget);
-      expect(find.byIcon(Icons.music_note_rounded), findsOneWidget);
+      // The cover fallback note + the source badge's note glyph both render.
+      expect(find.byIcon(Icons.music_note_rounded), findsWidgets);
       expect(
         find.byKey(const ValueKey<String>('wavely.trackTile.selected')),
         findsOneWidget,

@@ -1,8 +1,8 @@
 /// Authored, awaiting local run (Task 2-f).
 ///
-/// [AlbumCard] smoke test: renders title/artist captions and the gradient
-/// fallback initial, fires [AlbumCard.onTap], and renders under BOTH the
-/// light and dark Wavely themes.
+/// [AlbumCard] smoke test: renders title/artist captions and the premium
+/// music-note fallback (v1.0.1-beta3: never a letter tile), fires
+/// [AlbumCard.onTap], and renders under BOTH the light and dark themes.
 library;
 
 import 'package:flutter/material.dart';
@@ -31,13 +31,15 @@ void main() {
       );
 
   for (final dark in <bool>[false, true]) {
-    testWidgets('renders captions + fallback initial '
+    testWidgets('renders captions + music-note fallback '
         '(${dark ? 'dark' : 'light'} theme)', (tester) async {
       await pump(tester, dark: dark);
       expect(find.text('Neon Rivers'), findsOneWidget);
       expect(find.text('Velvet Echo'), findsOneWidget);
-      // No coverPath → WavelyCoverFallback renders the initial.
-      expect(find.text('N'), findsOneWidget);
+      // No coverPath → WavelyCoverFallback renders the premium glyph
+      // (owner spec: a hash-gradient art tile, never a letter).
+      expect(find.byIcon(Icons.music_note_rounded), findsOneWidget);
+      expect(find.text('N'), findsNothing);
     });
 
     testWidgets('onTap fires (${dark ? 'dark' : 'light'} theme)',

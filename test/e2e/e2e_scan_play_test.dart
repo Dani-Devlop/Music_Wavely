@@ -96,9 +96,12 @@ void main() {
     addTearDown(harness.tearDown);
 
     // ── 1. Add a music folder from the Folders tab ───────────────────────
-    // The app boots into the Home branch; switch to the Local branch, then
-    // to the Folders tab (Phase 6 opens the library on Songs).
-    await tester.tap(find.text('Local'));
+    // The app boots into the Playlist branch; the library lives inside the
+    // Search branch (v1.0.1-beta3 hub chips). Switch to Search → Library,
+    // then to the Folders tab (Phase 6 opens the library on Songs).
+    await tester.tap(find.text('Search'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('hub-chip-local')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Folders'));
     await tester.pumpAndSettle();

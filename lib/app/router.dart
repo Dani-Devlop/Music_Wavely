@@ -13,9 +13,9 @@ import 'package:wavely/features/auth/presentation/signup_screen.dart';
 import 'package:wavely/features/auth/presentation/telegram_login_screen.dart';
 import 'package:wavely/features/auth/presentation/welcome_screen.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
+import 'package:wavely/features/audio_cutter/presentation/audio_cutter_screen.dart';
 import 'package:wavely/features/downloads/presentation/download_settings_screen.dart';
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
-import 'package:wavely/features/audio_cutter/presentation/audio_cutter_screen.dart';
 import 'package:wavely/features/home/presentation/home_screen.dart';
 import 'package:wavely/features/library/presentation/album_detail_screen.dart';
 import 'package:wavely/features/library/presentation/artist_detail_screen.dart';
@@ -27,6 +27,8 @@ import 'package:wavely/features/onboarding/presentation/onboarding_flow.dart';
 import 'package:wavely/features/online/presentation/online_screen.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
+import 'package:wavely/features/player/presentation/now_playing_tab.dart';
+import 'package:wavely/features/search/presentation/search_hub_shell.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/settings/presentation/screens/audio_settings_screen.dart';
@@ -39,10 +41,16 @@ import 'package:wavely/features/settings/presentation/settings_screen.dart';
 final GlobalKey<NavigatorState> rootNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'rootNavigator');
 
-/// App router: 5-branch stateful shell (home, local library incl. nested
-/// artist/album details, online sources, search, settings) plus fullscreen
-/// routes pushed on the ROOT navigator (now-playing with a fade; Stage 1.2
-/// feature screens).
+/// App router: 4-branch stateful shell (playlist home, now playing,
+/// search hub hosting the local library + online discovery, settings) plus
+/// fullscreen routes pushed on the ROOT navigator (now-playing with a
+/// fade; Stage 1.2 feature screens).
+///
+/// v1.0.1-beta3 parity spec: exactly four bottom tabs. The former Local
+/// and Online branches live inside the Search branch under a
+/// [SearchHubShell] (persistent Search · Library · Online chip row) — the
+/// `/local`, `/local/artist/:name`, `/local/album/:artist/:album` and
+/// `/online` paths are unchanged for deep links and tests.
 // Manual Provider on purpose: the GoRouter must be constructed once and its
 // lifecycle tied to the container; codegen adds nothing here.
 final routerProvider = Provider<GoRouter>((ref) {
@@ -79,6 +87,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, navigationShell) =>
             MainShell(navigationShell: navigationShell),
         branches: <StatefulShellBranch>[
+          // ── Tab 1 · Playlist (Home) ────────────────────────────────────
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
@@ -87,45 +96,56 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          // ── Tab 2 · Now Playing (full player, embedded) ────────────────
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: LibraryScreen.libraryRoute,
-                builder: (context, state) => const LibraryScreen(),
+                path: NowPlayingTab.route,
+                builder: (context, state) => const NowPlayingTab(),
+              ),
+            ],
+          ),
+          // ── Tab 3 · Search (hub: unified search + Library + Online) ────
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              ShellRoute(
+                builder: (context, state, child) => SearchHubShell(
+                  location: state.matchedLocation,
+                  child: child,
+                ),
                 routes: <RouteBase>[
                   GoRoute(
-                    path: 'artist/:name',
-                    builder: (context, state) => ArtistDetailScreen(
-                      artistName: state.pathParameters['name']!,
-                    ),
+                    path: SearchScreen.route,
+                    builder: (context, state) => const SearchScreen(),
                   ),
                   GoRoute(
-                    path: 'album/:artist/:album',
-                    builder: (context, state) => AlbumDetailScreen(
-                      artistName: state.pathParameters['artist']!,
-                      albumTitle: state.pathParameters['album']!,
-                    ),
+                    path: LibraryScreen.libraryRoute,
+                    builder: (context, state) => const LibraryScreen(),
+                    routes: <RouteBase>[
+                      GoRoute(
+                        path: 'artist/:name',
+                        builder: (context, state) => ArtistDetailScreen(
+                          artistName: state.pathParameters['name']!,
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'album/:artist/:album',
+                        builder: (context, state) => AlbumDetailScreen(
+                          artistName: state.pathParameters['artist']!,
+                          albumTitle: state.pathParameters['album']!,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: OnlineScreen.route,
+                    builder: (context, state) => const OnlineScreen(),
                   ),
                 ],
               ),
             ],
           ),
-          StatefulShellBranch(
-            routes: <RouteBase>[
-              GoRoute(
-                path: OnlineScreen.route,
-                builder: (context, state) => const OnlineScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: <RouteBase>[
-              GoRoute(
-                path: SearchScreen.route,
-                builder: (context, state) => const SearchScreen(),
-              ),
-            ],
-          ),
+          // ── Tab 4 · Settings ───────────────────────────────────────────
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
