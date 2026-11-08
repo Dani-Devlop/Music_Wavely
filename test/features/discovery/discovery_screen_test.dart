@@ -108,7 +108,7 @@ Widget _wrap(_FakeDiscoveryService service) => ProviderScope(
         discoveryServiceProvider.overrideWithValue(service),
       ],
       child: MaterialApp(
-        theme: WavelyThemes.dark(WavelyAccent.purple),
+        theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const DiscoveryScreen(),
       ),
     );

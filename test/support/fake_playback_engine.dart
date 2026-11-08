@@ -268,6 +268,44 @@ class FakePlaybackEngine implements PlaybackEngine, EqualizerControl {
     await _positionController.close();
   }
 
+  // -- Phase 9 base-contract defaults (no-ops in the fake) -------------------
+
+  /// Number of `setTransportCallbacks()` calls.
+  int setTransportCallbacksCalls = 0;
+
+  /// Callbacks captured by the last [setTransportCallbacks].
+  void Function()? lastOnNext;
+  void Function()? lastOnPrevious;
+  void Function()? lastOnTogglePlayPause;
+
+  @override
+  void setTransportCallbacks({
+    void Function()? onNext,
+    void Function()? onPrevious,
+    void Function()? onTogglePlayPause,
+  }) {
+    setTransportCallbacksCalls += 1;
+    lastOnNext = onNext;
+    lastOnPrevious = onPrevious;
+    lastOnTogglePlayPause = onTogglePlayPause;
+  }
+
+  /// Offsets recorded by [seekBy].
+  final List<Duration> seekBys = <Duration>[];
+
+  @override
+  Future<void> seekBy(Duration offset) async {
+    seekBys.add(offset);
+  }
+
+  /// Lyrics passed to the last [setLyrics] call.
+  String? lastLyrics;
+
+  @override
+  Future<void> setLyrics(String? lyrics) async {
+    lastLyrics = lyrics;
+  }
+
   // -- scripting helpers ------------------------------------------------------
 
   /// Pushes [s] onto [stateStream] and records it.

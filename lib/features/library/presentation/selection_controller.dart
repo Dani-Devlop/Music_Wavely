@@ -573,7 +573,7 @@ class _ActionChip extends StatelessWidget {
             ? colors.error
             : colors.accentColors.accent;
     return Padding(
-      padding: const EdgeInsets.only(right: Spacing.sm),
+      padding: const EdgeInsetsDirectional.only(end: Spacing.sm),
       child: InkWell(
         borderRadius: AppRadii.bMd,
         onTap: enabled ? onTap : null,

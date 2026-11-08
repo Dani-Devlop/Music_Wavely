@@ -447,7 +447,7 @@ void main() {
           key: _kBoundaryKey,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: WavelyThemes.light(WavelyAccent.purple),
+            theme: WavelyThemes.light(WavelyAccent.purple.colors),
             home: const AiChatScreen(),
           ),
         ),

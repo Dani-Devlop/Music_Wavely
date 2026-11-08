@@ -227,7 +227,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             children: <Widget>[
               for (final mood in Mood.values)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsetsDirectional.only(end: 8),
                   child: ChoiceChip(
                     label: Text(mood.label),
                     selected: _selectedMood == mood,

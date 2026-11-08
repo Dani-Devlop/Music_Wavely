@@ -115,6 +115,13 @@ class QueueManager extends StateNotifier<QueueState> {
       }
       state = state.copyWith(position: p);
     });
+    // Phase 9: expose queue transport to the system media surfaces (lock
+    // screen buttons, headset multi-click, QS tile) through the engine.
+    engine.setTransportCallbacks(
+      onNext: next,
+      onPrevious: previous,
+      onTogglePlayPause: togglePlayPause,
+    );
   }
 
   /// Positions beyond this point restart the track instead of skipping back.

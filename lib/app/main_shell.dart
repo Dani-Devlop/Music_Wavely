@@ -8,9 +8,14 @@ import 'package:wavely/core/constants/app_constants.dart' show AppConstants;
 import 'package:wavely/data/sync/sync_providers.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/player/presentation/mini_player_widget.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wavely/features/player/data/adaptive_accent_service.dart';
 import 'package:wavely/features/settings/data/update_providers.dart';
+import 'package:wavely/features/settings/presentation/whats_new.dart';
 import 'package:wavely/features/web/ios_guidance_banner.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
+import 'package:wavely/playback/widgets/widget_sync.dart';
 
 /// One bottom-navigation destination of the app shell.
 class _NavDestination {
@@ -72,6 +77,35 @@ class _MainShellState extends ConsumerState<MainShell> {
         unawaited(maybeShowIosGuidanceBanner(context, ref));
       }
     });
+    // Phase 9: activate the home-widget / QS-tile state publisher (Android
+    // only — the provider no-ops elsewhere). Reading it once keeps the
+    // keepAlive subscription alive for the process lifetime.
+    ref.read(widgetSyncProvider);
+    // Phase 10.1: adaptive accent extraction (no-op unless enabled).
+    ref.read(adaptiveAccentServiceProvider);
+    // Phase 10.4: What's New sheet on version change (post-frame so the
+    // context is attached; hermetic under flutter test — the sheet is a
+    // plain modal, but package_info resolves from the static mock).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(_maybeShowWhatsNew(context));
+    });
+  }
+
+  /// Phase 10.4: shows the changelog sheet once per version.
+  Future<void> _maybeShowWhatsNew(BuildContext context) async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) {
+        return;
+      }
+      await maybeShowWhatsNew(context, prefs, info.version);
+    } on Object {
+      // package_info unavailable (tests / exotic platforms) — skip.
+    }
   }
 
   @override

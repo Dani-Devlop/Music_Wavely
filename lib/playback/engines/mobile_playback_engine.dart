@@ -5,29 +5,73 @@ import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:wavely/core/utils/platform_utils.dart';
 import 'package:wavely/domain/entities/entities.dart';
+import 'package:wavely/playback/engines/headset_rules.dart';
 import 'package:wavely/playback/engines/playback_engine.dart';
 import 'package:wavely/playback/equalizer/eq_presets.dart';
 import 'package:wavely/playback/equalizer/equalizer_control.dart';
+
+/// Media-session button offsets for the headset long-press FF/RW rule and
+/// the lock-screen press-and-hold seek (Musicolet parity, Phase 9.4).
+const Duration _seekStep = Duration(seconds: 10);
 
 /// audio_service handler owned by [MobilePlaybackEngine] so the Android
 /// notification / lock screen / iOS now-playing info reflect queue state.
 ///
 /// Transport button presses are forwarded to the callbacks the engine wires
-/// in its constructor. `AudioService.init` is NOT called by the composition
-/// root: [MobilePlaybackEngine] initializes the service lazily and
-/// idempotently on first playback (see `_ensureAudioService`).
+/// in its constructor; skip-to-next/previous and play/pause toggling come
+/// from the queue layer via [MobilePlaybackEngine.setTransportCallbacks].
+///
+/// Phase 9.1 (lock screen): the handler publishes the full queue, album
+/// art, a live seekbar (`systemActions: seek + seekForward/seekBackward`)
+/// and optional lyrics (MediaItem extras) so lock screen / Android Auto
+/// surfaces show the same state as the in-app player.
+///
+/// Phase 9.4 (headset): `onSeekForward`/`onSeekBackward` implement the
+/// press-and-hold fast-forward/rewind rule (+/- 10s steps).
+///
+/// `AudioService.init` is NOT called by the composition root:
+/// [MobilePlaybackEngine] initializes the service lazily and idempotently
+/// on first playback (see `_ensureAudioService`).
 class WavelyAudioHandler extends asv.BaseAudioHandler {
   WavelyAudioHandler({
     void Function()? onPlay,
     void Function()? onPause,
-    void Function(Duration position)? onSeek,
+    Future<void> Function(Duration position)? onSeek,
+    void Function()? onNext,
+    void Function()? onPrevious,
+    void Function()? onTogglePlayPause,
   })  : _onPlay = onPlay,
         _onPause = onPause,
-        _onSeek = onSeek;
+        _onSeek = onSeek,
+        _onNext = onNext,
+        _onPrevious = onPrevious,
+        _onTogglePlayPause = onTogglePlayPause;
 
   final void Function()? _onPlay;
   final void Function()? _onPause;
-  final void Function(Duration position)? _onSeek;
+  final Future<void> Function(Duration position)? _onSeek;
+  void Function()? _onNext;
+  void Function()? _onPrevious;
+  final void Function()? _onTogglePlayPause;
+
+  /// Live position snapshot used by the relative-seek rules.
+  Duration position = Duration.zero;
+
+  /// Live duration snapshot used to clamp relative seeks.
+  Duration duration = Duration.zero;
+
+  /// True while the handler should advertise play (vs pause) as the
+  /// primary button — mirrors the last synced playback state.
+  bool playing = false;
+
+  /// Registers the queue-layer transport callbacks (QueueManager).
+  void setQueueCallbacks({
+    void Function()? onNext,
+    void Function()? onPrevious,
+  }) {
+    _onNext = onNext;
+    _onPrevious = onPrevious;
+  }
 
   @override
   Future<void> play() async => _onPlay?.call();
@@ -37,6 +81,152 @@ class WavelyAudioHandler extends asv.BaseAudioHandler {
 
   @override
   Future<void> seek(Duration position) async => _onSeek?.call(position);
+
+  @override
+  Future<void> skipToNext() async => _onNext?.call();
+
+  @override
+  Future<void> skipToPrevious() async => _onPrevious?.call();
+
+  /// Headset / lock-screen press-and-hold fast-forward (+10s).
+  @override
+  Future<void> seekForward(bool begin) async => seekBy(_seekStep);
+
+  /// Headset / lock-screen press-and-hold rewind (-10s).
+  @override
+  Future<void> seekBackward(bool begin) async => seekBy(-_seekStep);
+
+  /// Some platforms deliver the discrete fast-forward/rewind buttons
+  /// instead of the press-and-hold events.
+  @override
+  Future<void> fastForward() async => seekBy(_seekStep);
+
+  @override
+  Future<void> rewind() async => seekBy(-_seekStep);
+
+  /// Maps headset multi-click gestures: single click toggles play/pause,
+  /// double click next, triple click previous (audio_service routes the
+  /// counting on Android and delivers the resolved [asv.MediaButton]).
+  @override
+  Future<void> click([asv.MediaButton button = asv.MediaButton.media]) async {
+    switch (button) {
+      case asv.MediaButton.next:
+        await skipToNext();
+      case asv.MediaButton.previous:
+        await skipToPrevious();
+      case _:
+        _onTogglePlayPause?.call();
+    }
+  }
+
+  /// Applies a relative seek clamped to `[0, duration]` (FF/RW rule).
+  Future<void> seekBy(Duration offset) async {
+    final onSeek = _onSeek;
+    if (onSeek == null) {
+      return;
+    }
+    final target = position + offset;
+    if (target < Duration.zero) {
+      unawaited(onSeek(Duration.zero));
+      return;
+    }
+    if (duration > Duration.zero && target > duration) {
+      unawaited(onSeek(duration));
+      return;
+    }
+    unawaited(onSeek(target));
+  }
+
+  /// Rebuilds the media item for the current track (lock screen art /
+  /// seekbar / lyrics) and pushes the queue for lock screen / Android Auto
+  /// browsing surfaces.
+  void syncTrack(Track? track, {String? lyrics, List<Track>? queue}) {
+    if (track == null) {
+      mediaItem.add(null);
+      return;
+    }
+    mediaItem.add(_mediaItemFor(track, lyrics));
+    if (queue != null && queue.isNotEmpty) {
+      this.queue.add(
+            queue.map(_mediaItemFor).toList(growable: false),
+          );
+    }
+  }
+
+  /// Publishes the playback state (controls, seekbar position, speed).
+  void syncState(
+    PlaybackState state, {
+    required Duration position,
+    required Duration duration,
+  }) {
+    this.position = position;
+    this.duration = duration;
+    playing = state == PlaybackState.playing;
+    final processing = switch (state) {
+      PlaybackState.stopped => asv.AudioProcessingState.idle,
+      PlaybackState.loading => asv.AudioProcessingState.loading,
+      PlaybackState.buffering => asv.AudioProcessingState.buffering,
+      PlaybackState.playing ||
+      PlaybackState.paused =>
+        asv.AudioProcessingState.ready,
+      PlaybackState.completed => asv.AudioProcessingState.completed,
+      PlaybackState.error => asv.AudioProcessingState.error,
+    };
+    playbackState.add(asv.PlaybackState(
+      processingState: processing,
+      playing: playing,
+      controls: _controls(state),
+      systemActions: const <asv.MediaAction>{
+        asv.MediaAction.seek,
+        asv.MediaAction.seekForward,
+        asv.MediaAction.seekBackward,
+      },
+      updatePosition: position,
+      bufferedPosition: duration > position ? duration : position,
+      speed: playing ? 1.0 : 0.0,
+    ));
+  }
+
+  /// Full control strip: prev | play/pause | next (Musicolet parity).
+  List<asv.MediaControl> _controls(PlaybackState state) {
+    switch (state) {
+      case PlaybackState.playing:
+        return const <asv.MediaControl>[
+          asv.MediaControl.skipToPrevious,
+          asv.MediaControl.pause,
+          asv.MediaControl.skipToNext,
+        ];
+      case PlaybackState.paused:
+        return const <asv.MediaControl>[
+          asv.MediaControl.skipToPrevious,
+          asv.MediaControl.play,
+          asv.MediaControl.skipToNext,
+        ];
+      case PlaybackState.loading:
+      case PlaybackState.buffering:
+        return const <asv.MediaControl>[];
+      case PlaybackState.stopped:
+      case PlaybackState.completed:
+      case PlaybackState.error:
+        return const <asv.MediaControl>[
+          asv.MediaControl.play,
+        ];
+    }
+  }
+
+  asv.MediaItem _mediaItemFor(Track track, [String? lyrics]) => asv.MediaItem(
+        id: '${track.id ?? track.sourceTrackId}',
+        title: track.title,
+        artist: track.artistOrUnknown,
+        album: track.album,
+        duration: Duration(milliseconds: track.durationMs),
+        artUri: (track.coverPath != null && track.coverPath!.isNotEmpty)
+            ? Uri.file(track.coverPath!)
+            : null,
+        // Lyrics ride the extras map: Android Auto / wear targets that
+        // support it read them, everything else ignores the extra.
+        extras: lyrics == null ? null : <String, dynamic>{'lyrics': lyrics},
+      );
 }
 
 /// Mobile (Android / iOS) engine backed by just_audio, with the system
@@ -72,7 +262,12 @@ class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
                 ),
         ) {
     _handler = notificationHandler ??
-        WavelyAudioHandler(onPlay: play, onPause: pause, onSeek: seek);
+        WavelyAudioHandler(
+          onPlay: play,
+          onPause: pause,
+          onSeek: seek,
+          onTogglePlayPause: () => _handlerProxyToggle?.call(),
+        );
     _stateSub = _player.playerStateStream.listen(
       _onPlayerState,
       onError: (Object e, StackTrace st) => _emit(PlaybackState.error),
@@ -87,6 +282,9 @@ class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
         _positionController.add(p);
       }
     });
+    // Phase 9.4: headset unplug / BT disconnect pause (becoming-noisy) is
+    // bound together with the focus-interruption rules on first load — see
+    // _bindSystemEventsOnce (the audio session instance must exist first).
   }
 
   static bool _audioSessionConfigured = false;
@@ -98,10 +296,16 @@ class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
 
   final ja.AudioPlayer _player;
   final _AndroidEqualizerBundle? _eq;
+  late final HeadsetPlaybackRules _rules = HeadsetPlaybackRules(
+    pause: pause,
+    play: play,
+    isPlaying: () => _lastState == PlaybackState.playing,
+  );
   late final WavelyAudioHandler _handler;
   StreamSubscription<ja.PlayerState>? _stateSub;
   StreamSubscription<ja.PlaybackEvent>? _eventSub;
   StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<AudioInterruptionEvent>? _interruptionSub;
   final StreamController<Duration> _positionController =
       StreamController<Duration>.broadcast();
   final StreamController<PlaybackState> _stateController =
@@ -109,6 +313,7 @@ class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
   List<Track> _queueTracks = const <Track>[];
   Track? _current;
   Duration _position = Duration.zero;
+  String? _lyrics;
   PlaybackState _lastState = PlaybackState.stopped;
   bool _disposed = false;
 
@@ -148,6 +353,79 @@ class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
 
   /// Handler instance to pass into `AudioService.init` (see class doc).
   WavelyAudioHandler get audioHandler => _handler;
+
+  // --- Phase 9: transport callbacks / relative seek / lyrics ----------------
+
+  @override
+  void setTransportCallbacks({
+    void Function()? onNext,
+    void Function()? onPrevious,
+    void Function()? onTogglePlayPause,
+  }) {
+    _handler.setQueueCallbacks(onNext: onNext, onPrevious: onPrevious);
+    _handlerProxyToggle = onTogglePlayPause;
+  }
+
+  /// Toggle callback bridging the handler (assigned through
+  /// [setTransportCallbacks]; the handler was constructed before the queue
+  /// layer existed so the indirection goes through this mutable slot).
+  void Function()? _handlerProxyToggle;
+
+  /// Whether the system-event bindings (becoming-noisy + focus
+  /// interruptions) are already attached — bound once, on first load.
+  bool _systemEventsBound = false;
+
+  /// Binds the headset/BT rules to the audio session's becoming-noisy and
+  /// focus-interruption streams (Phase 9.4: unplug pause, BT/call rules,
+  /// auto-resume). Called after [ensureAudioSession] — the session instance
+  /// is only safe to touch once configured.
+  Future<void> _bindSystemEventsOnce() async {
+    if (_systemEventsBound) {
+      return;
+    }
+    _systemEventsBound = true;
+    try {
+      final session = await AudioSession.instance;
+      _rules.bindBecomingNoisy(session.becomingNoisyEventStream);
+      _interruptionSub = session.interruptionEventStream.listen(
+        _rules.handleInterruption,
+        onError: (Object e, StackTrace st) {},
+      );
+    } on Object {
+      // audio_session unavailable (tests / exotic platforms) — the rules
+      // stay inert and playback keeps working.
+      _systemEventsBound = false;
+    }
+  }
+
+  @override
+  Future<void> seekBy(Duration offset) async {
+    if (_disposed) {
+      return;
+    }
+    final target = _position + offset;
+    if (target < Duration.zero) {
+      await seek(Duration.zero);
+      return;
+    }
+    final total = _current != null
+        ? Duration(milliseconds: _current!.durationMs)
+        : Duration.zero;
+    if (total > Duration.zero && target > total) {
+      await seek(total);
+      return;
+    }
+    await seek(target);
+  }
+
+  @override
+  Future<void> setLyrics(String? lyrics) async {
+    _lyrics = lyrics;
+    final track = _current;
+    if (track != null) {
+      _handler.syncTrack(track, lyrics: _lyrics, queue: _queueTracks);
+    }
+  }
 
   // --- Stage 4: equalizer capability (EqualizerControl) ---------------------
 
@@ -236,6 +514,7 @@ class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
       throw ArgumentError.value(t, 't', 'Track has no local filePath');
     }
     await ensureAudioSession();
+    await _bindSystemEventsOnce();
     _current = t;
     _position = Duration.zero;
     _emit(PlaybackState.loading);
@@ -315,6 +594,8 @@ class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
       return;
     }
     _disposed = true;
+    await _rules.dispose();
+    await _interruptionSub?.cancel();
     await _stateSub?.cancel();
     await _eventSub?.cancel();
     await _positionSub?.cancel();
@@ -353,36 +634,12 @@ class MobilePlaybackEngine implements PlaybackEngine, EqualizerControl {
     if (track == null) {
       return;
     }
-    _handler.mediaItem.add(asv.MediaItem(
-      id: '${track.id ?? track.sourceTrackId}',
-      title: track.title,
-      artist: track.artistOrUnknown,
-      album: track.album,
+    _handler.syncTrack(track, lyrics: _lyrics, queue: _queueTracks);
+    _handler.syncState(
+      state,
+      position: _position,
       duration: Duration(milliseconds: track.durationMs),
-      artUri: (track.coverPath != null && track.coverPath!.isNotEmpty)
-          ? Uri.file(track.coverPath!)
-          : null,
-    ));
-    final playing = state == PlaybackState.playing;
-    final processing = switch (state) {
-      PlaybackState.stopped => asv.AudioProcessingState.idle,
-      PlaybackState.loading => asv.AudioProcessingState.loading,
-      PlaybackState.buffering => asv.AudioProcessingState.buffering,
-      PlaybackState.playing ||
-      PlaybackState.paused =>
-        asv.AudioProcessingState.ready,
-      PlaybackState.completed => asv.AudioProcessingState.completed,
-      PlaybackState.error => asv.AudioProcessingState.error,
-    };
-    _handler.playbackState.add(asv.PlaybackState(
-      processingState: processing,
-      playing: playing,
-      controls: playing
-          ? const <asv.MediaControl>[asv.MediaControl.pause]
-          : const <asv.MediaControl>[asv.MediaControl.play],
-      systemActions: const <asv.MediaAction>{asv.MediaAction.seek},
-      updatePosition: _position,
-    ));
+    );
   }
 }
 

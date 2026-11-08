@@ -71,8 +71,14 @@ jobs:
       # The repo does not commit platform runner folders (same as
       # release.yml): scaffold the Android runner, then apply the
       # core-library-desugaring patch the local_notifications dep needs.
+      # NOTE: flutter create (even with --no-pub) REPLACES pubspec.lock with
+      # the template lockfile — restore the committed one so the lock stays
+      # authoritative (sqlite3 3.9.0's Android x64 prebuilt fails its hash
+      # check when create's template lock forces a fresh resolve).
       - name: Scaffold Android runner
-        run: flutter create . --platforms=android --org app.wavely --project-name wavely
+        run: flutter create . --no-pub --platforms=android --org app.wavely --project-name wavely
+      - name: Restore committed lockfile
+        run: git checkout -- pubspec.lock
       - name: Patch Android desugaring
         run: python3 tools/patch_android_desugaring.py
       - name: Patch Android MediaStore bridge

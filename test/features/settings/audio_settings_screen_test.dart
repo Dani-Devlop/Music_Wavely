@@ -47,7 +47,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          theme: WavelyThemes.dark(WavelyAccent.purple),
+          theme: WavelyThemes.dark(WavelyAccent.purple.colors),
           home: const AudioSettingsScreen(),
         ),
       ),
@@ -97,7 +97,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          theme: WavelyThemes.dark(WavelyAccent.purple),
+          theme: WavelyThemes.dark(WavelyAccent.purple.colors),
           home: const AudioSettingsScreen(),
         ),
       ),
@@ -133,7 +133,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          theme: WavelyThemes.dark(WavelyAccent.purple),
+          theme: WavelyThemes.dark(WavelyAccent.purple.colors),
           home: const AudioSettingsScreen(),
         ),
       ),

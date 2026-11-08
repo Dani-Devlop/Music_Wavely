@@ -31,6 +31,19 @@ final class AccentColors {
     gradientStart: Color(0xFF0FA34A),
   );
 
+  /// Phase 10: builds a token set from the adaptive accent extracted from
+  /// the album art. [hover] lightens, [gradientStart] darkens — same
+  /// relationships as the named palettes.
+  factory AccentColors.custom(Color accent) {
+    final hsl = HSLColor.fromColor(accent);
+    return AccentColors(
+      accent: accent,
+      hover: hsl.withLightness((hsl.lightness + 0.1).clamp(0.0, 1.0)).toColor(),
+      gradientStart:
+          hsl.withLightness((hsl.lightness - 0.15).clamp(0.0, 1.0)).toColor(),
+    );
+  }
+
   final Color accent;
   final Color hover;
   final Color gradientStart;

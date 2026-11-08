@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Wavely logo">
+  <defs>
+    <!-- Neon accent gradient (purple → magenta → teal) -->
+    <linearGradient id="waveGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7C5CFF"/>
+      <stop offset="55%" stop-color="#B15CFF"/>
+      <stop offset="100%" stop-color="#1ED7A4"/>
+    </linearGradient>
+    <!-- Glass stroke gradient for the W -->
+    <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#C9D4FF" stop-opacity="0.62"/>
+    </linearGradient>
+    <!-- Inner glow -->
+    <radialGradient id="glow" cx="50%" cy="42%" r="62%">
+      <stop offset="0%" stop-color="#7C5CFF" stop-opacity="0.34"/>
+      <stop offset="70%" stop-color="#7C5CFF" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Frosted-glass rounded tile -->
+  <rect x="16" y="16" width="480" height="480" rx="116" fill="#12131A"/>
+  <rect x="16" y="16" width="480" height="480" rx="116" fill="url(#glow)"/>
+  <rect x="20" y="20" width="472" height="472" rx="112" fill="none"
+        stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="3"/>
+
+  <!-- Soundwave behind the W (neon glow via layered translucent copies) -->
+  <g opacity="0.28">
+    <rect x="112" y="210" width="32" height="92" rx="16" fill="#7C5CFF"/>
+    <rect x="160" y="182" width="32" height="148" rx="16" fill="#8A6AFF"/>
+    <rect x="240" y="144" width="32" height="224" rx="16" fill="#A963FF"/>
+    <rect x="320" y="182" width="32" height="148" rx="16" fill="#8A6AFF"/>
+    <rect x="368" y="210" width="32" height="92" rx="16" fill="#1ED7A4"/>
+  </g>
+  <g opacity="0.95">
+    <rect x="118" y="216" width="20" height="80" rx="10" fill="url(#waveGradient)" transform="rotate(-8 128 256)"/>
+    <rect x="166" y="188" width="20" height="136" rx="10" fill="url(#waveGradient)" transform="rotate(-4 176 256)"/>
+    <rect x="246" y="150" width="20" height="212" rx="10" fill="url(#waveGradient)"/>
+    <rect x="326" y="188" width="20" height="136" rx="10" fill="url(#waveGradient)" transform="rotate(4 336 256)"/>
+    <rect x="374" y="216" width="20" height="80" rx="10" fill="url(#waveGradient)" transform="rotate(8 384 256)"/>
+  </g>
+
+  <!-- Stylized glass W (glow underlay + crisp overlay) -->
+  <path d="M132 168 L188 344 Q193 360 208 360 Q223 360 228 344 L256 258 L284 344 Q289 360 304 360 Q319 360 324 344 L380 168"
+        fill="none" stroke="#7C5CFF" stroke-opacity="0.5" stroke-width="44"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M132 168 L188 344 Q193 360 208 360 Q223 360 228 344 L256 258 L284 344 Q289 360 304 360 Q319 360 324 344 L380 168"
+        fill="none" stroke="url(#glassGradient)" stroke-width="26"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Glass highlight sweep -->
+  <path d="M132 168 L188 344" stroke="#FFFFFF" stroke-opacity="0.55"
+        stroke-width="8" stroke-linecap="round"/>
+</svg>

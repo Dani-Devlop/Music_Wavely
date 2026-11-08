@@ -76,6 +76,21 @@ class _RecordingEngine implements PlaybackEngine {
     lastVolume = volume;
   }
 
+  // --- Phase 9 base-contract defaults (no-ops in fakes) --------------------
+
+  @override
+  void setTransportCallbacks({
+    void Function()? onNext,
+    void Function()? onPrevious,
+    void Function()? onTogglePlayPause,
+  }) {}
+
+  @override
+  Future<void> seekBy(Duration offset) async {}
+
+  @override
+  Future<void> setLyrics(String? lyrics) async {}
+
 @override
   Future<void> dispose() async {
     await _states.close();
