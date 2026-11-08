@@ -3,6 +3,38 @@
 All notable changes to Wavely. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta3] - 2026-11-08
+
+### Changed — Ultimate UI/UX & Musicolet-parity overhaul
+
+- **Album art everywhere**: the Android scanner now extracts embedded
+  covers to the app documents dir on every scan path (MediaStore and
+  filesystem — the previous build dropped `coversDir`, so rows degraded to
+  letter tiles). TrackTile, MiniPlayer, the Now-Playing screen, home cards
+  and library lists all render the real embedded artwork.
+- **Premium fallback art**: tracks without a cover render a stable
+  FNV-1a-hash duotone gradient with a glowing white music note — letter
+  boxes are gone.
+- **Exactly four bottom tabs** (Playlist · Now Playing · Search · Settings):
+  the Now-Playing tab hosts the full player inline; the former Local and
+  Online tabs live inside the Search branch behind a persistent
+  Search · Library · Online chip row (deep links `/local`, `/online`
+  unchanged).
+- **Musicolet-style settings tree**: search bar + expandable categories
+  (Language, Interface, Audio, Song Library & Tags, Headset/Bluetooth &
+  Speakers, Notifications, HomeScreen Widgets, Lock Screen, Advanced,
+  Backup & Restore, About) — every row backed by a real feature.
+- **Spotify-style home**: Wavely logo in the app bar, time-aware greeting,
+  a 2×N "Your top albums" grid with real covers, "Made for you" (most
+  played) and "Jump back in" (recently played) carousels.
+- README rebuilt around a centered logo and a Shields.io download table for
+  the v1.0.1-beta3 assets.
+
+### Fixed
+
+- Android scans produced no `coverPath` (no embedded-art extraction) — the
+  root cause of the "purple letter box" covers.
+
 ## [1.0.1] - 2026-11-04
 
 ### Added — Stage 7: complete auto-update system

@@ -4,13 +4,13 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/core/constants/app_constants.dart' show AppConstants;
 import 'package:wavely/data/sync/sync_providers.dart';
 import 'package:wavely/design_system/design_system.dart';
-import 'package:wavely/features/player/presentation/mini_player_widget.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wavely/features/player/data/adaptive_accent_service.dart';
+import 'package:wavely/features/player/presentation/mini_player_widget.dart';
 import 'package:wavely/features/settings/data/update_providers.dart';
 import 'package:wavely/features/settings/presentation/whats_new.dart';
 import 'package:wavely/features/web/ios_guidance_banner.dart';
@@ -35,8 +35,11 @@ const double _navButtonHeight = 56;
 const double _navBlurSigma = 26;
 
 /// Main app shell: body (stateful shell branch) + mini player + floating
-/// glass bottom navigation with five destinations (Home | Local | Online |
-/// Search | Settings) and a glowing active icon.
+/// glass bottom navigation with exactly FOUR destinations
+/// (Playlist | Now Playing | Search | Settings) and a glowing active icon.
+///
+/// v1.0.1-beta3 owner spec: the former Local and Online tabs moved inside
+/// the Search tab (see SearchHubShell); the second tab is the full player.
 ///
 /// Backdrop-filter budget: one GlassCard for the bar plus the mini player's
 /// own card — within [AppConstants.maxBackdropFiltersPerScreen].
@@ -127,20 +130,20 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 }
 
-/// The floating, heavily-blurred glass bottom navigation bar.
+/// The floating, heavily-blurred glass bottom navigation bar — exactly
+/// four destinations (owner parity spec).
 class _FloatingGlassNav extends ConsumerWidget {
   const _FloatingGlassNav({required this.navigationShell});
 
   static const List<_NavDestination> _destinations = <_NavDestination>[
-    _NavDestination(label: 'Home', icon: Icons.home_rounded),
-    _NavDestination(label: 'Local', icon: Icons.library_music_rounded),
-    _NavDestination(label: 'Online', icon: Icons.explore_rounded),
+    _NavDestination(label: 'Playlist', icon: Icons.playlist_play_rounded),
+    _NavDestination(label: 'Now Playing', icon: Icons.album_rounded),
     _NavDestination(label: 'Search', icon: Icons.search_rounded),
     _NavDestination(label: 'Settings', icon: Icons.settings_rounded),
   ];
 
   /// Index of the Settings destination (badge host for update notices).
-  static const int _settingsTabIndex = 4;
+  static const int _settingsTabIndex = 3;
 
   final StatefulNavigationShell navigationShell;
 

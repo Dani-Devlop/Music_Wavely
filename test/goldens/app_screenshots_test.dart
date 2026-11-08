@@ -298,10 +298,13 @@ void main() {
     );
     addTearDown(() => _dispose(harness));
 
-    // The app boots into the Home branch; the Local branch owns the
-    // library. Populate the library through the app's REAL scan flow
-    // (Local tab → Add folder → scan → invalidate → list refresh).
-    await tester.tap(find.text('Local'));
+    // The app boots into the Playlist branch; the library lives inside the
+    // Search branch (v1.0.1-beta3: hub chips). Populate the library through
+    // the app's REAL scan flow (Search → Library chip → Add folder → scan
+    // → invalidate → list refresh).
+    await tester.tap(find.text('Search'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('hub-chip-local')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Folders'));
     await tester.pumpAndSettle();
@@ -329,7 +332,7 @@ void main() {
 
     // Home capture: the same session, now with "Jump back in" populated by
     // the real play + the mini-player still live.
-    await tester.tap(find.text('Home'));
+    await tester.tap(find.text('Playlist'));
     await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);
     // At least the "Jump back in" card shows the playing track (the mini
@@ -476,7 +479,8 @@ void main() {
     harness.container.read(routerProvider).go('/settings');
     await tester.pumpAndSettle();
 
-    expect(find.text('Appearance'), findsOneWidget);
+    // v1.0.1-beta3 tree: the Interface category tile opens by default.
+    expect(find.text('Interface'), findsOneWidget);
 
     await _capture(tester, 'settings.png');
   });

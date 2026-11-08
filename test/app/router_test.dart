@@ -6,7 +6,7 @@
 /// 1. CONFIGURATION — the [routerProvider] is built exactly as the app
 ///    does (inside a ProviderContainer with `sharedPrefsProvider` pointed
 ///    at mock prefs) and its `GoRouter.configuration` is walked to assert
-///    the full path table, the initial location and the 5-branch shell.
+///    the full path table, the initial location and the 4-branch shell.
 /// 2. BEHAVIOR — the REAL WavelyApp is pumped through the pump_app harness
 ///    and the onboarding redirect (`wavely.onboarding.completed` → wizard
 ///    vs home) plus the no-Supabase auth-guard bounce (`/ai-chat` →
@@ -41,6 +41,7 @@ import 'package:wavely/features/onboarding/presentation/onboarding_flow.dart';
 import 'package:wavely/features/online/presentation/online_screen.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
+import 'package:wavely/features/player/presentation/now_playing_tab.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
 import 'package:wavely/features/settings/presentation/screens/audio_settings_screen.dart';
@@ -100,13 +101,14 @@ void main() {
       final router = container.read(routerProvider);
 
       final expected = <String>{
-        // Shell branches.
+        // Shell branches (Playlist · Now Playing · Search hub · Settings).
         HomeScreen.route,
+        NowPlayingTab.route,
+        SearchScreen.route,
         LibraryScreen.libraryRoute,
         '${LibraryScreen.libraryRoute}/artist/:name',
         '${LibraryScreen.libraryRoute}/album/:artist/:album',
         OnlineScreen.route,
-        SearchScreen.route,
         SettingsScreen.route,
         // Root-navigator fullscreen routes.
         NowPlayingScreen.route,
@@ -138,7 +140,7 @@ void main() {
       expect(actual, equals(expected));
     });
 
-    test('the stateful shell owns exactly five branches', () async {
+    test('the stateful shell owns exactly four branches', () async {
       final container = await configContainer();
       addTearDown(container.dispose);
       final router = container.read(routerProvider);
@@ -147,7 +149,32 @@ void main() {
           .whereType<StatefulShellRoute>()
           .toList();
       expect(shells, hasLength(1));
-      expect(shells.single.branches, hasLength(5));
+      expect(shells.single.branches, hasLength(4));
+    });
+
+    test('library and online routes live inside the search branch',
+        () async {
+      final container = await configContainer();
+      addTearDown(container.dispose);
+      final router = container.read(routerProvider);
+
+      final shell = router.configuration.routes
+          .whereType<StatefulShellRoute>()
+          .single;
+      final searchBranch = shell.branches[2];
+      final branchPaths = collectPaths(searchBranch.routes);
+      // The hub hosts the unified search, the local library (with its
+      // nested detail routes) and the online pane under one branch.
+      expect(
+        branchPaths,
+        containsAll(<String>[
+          SearchScreen.route,
+          LibraryScreen.libraryRoute,
+          '${LibraryScreen.libraryRoute}/artist/:name',
+          '${LibraryScreen.libraryRoute}/album/:artist/:album',
+          OnlineScreen.route,
+        ]),
+      );
     });
 
     test('library detail routes are nested under the library branch',

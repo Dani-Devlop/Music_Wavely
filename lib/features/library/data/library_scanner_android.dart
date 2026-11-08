@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:wavely/core/constants/app_constants.dart';
 import 'package:wavely/core/settings/settings_store.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/domain/usecases/scan_library.dart';
@@ -98,6 +101,11 @@ class MobileLibraryScanner extends LibraryScanner {
 
   @override
   Stream<ScanEvent> scan(List<String> folders) async* {
+    // v1.0.1-beta3 fix (owner report: "NO ALBUM ART"): embedded covers are
+    // extracted to the app documents covers dir on EVERY mobile scan path.
+    // The previous build dropped [coversDir] here, so [Track.coverPath]
+    // stayed null on Android and every row degraded to the fallback art.
+    final coversDir = await _safeCoversDir();
     if (Platform.isAndroid) {
       final mediaStore = await _queryMediaStore();
       if (mediaStore != null) {
@@ -112,16 +120,32 @@ class MobileLibraryScanner extends LibraryScanner {
         }
         yield* _scanLibrary.scanFilePaths(
           paths: androidMediaStorePathsUnderFolders(mediaStore.paths, folders),
+          coversDir: coversDir,
         );
         return;
       }
       // No native bridge (un-patched shell / tests): fall through to the
       // filesystem walk below.
     }
-    // The usecase handles cover extraction internally; on mobile covers go
-    // to the app documents directory (resolved there in Task 4's
-    // composition root when path availability is guaranteed).
-    yield* _scanLibrary.scan(folders: folders);
+    // The usecase handles cover extraction internally; covers go to the app
+    // documents directory (resolved above).
+    yield* _scanLibrary.scan(folders: folders, coversDir: coversDir);
+  }
+
+  /// App-documents `covers/` directory (created on demand); null when the
+  /// platform does not expose a documents dir (web) so the usecase skips
+  /// cover writing entirely.
+  Future<String?> _safeCoversDir() async {
+    try {
+      final docs = await getApplicationDocumentsDirectory();
+      final dir = Directory(p.join(docs.path, AppConstants.coversDirName));
+      if (!dir.existsSync()) {
+        dir.createSync(recursive: true);
+      }
+      return dir.path;
+    } on Object {
+      return null;
+    }
   }
 
   @override

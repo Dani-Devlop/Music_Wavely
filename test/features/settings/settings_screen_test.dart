@@ -40,6 +40,14 @@ Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
+/// Expands a Musicolet-style category tile (v1.0.1-beta3 tree): category
+/// rows only exist in the tree while their tile is expanded.
+Future<void> _expand(WidgetTester tester, String category) async {
+  await _scrollTo(tester, find.text(category));
+  await tester.tap(find.text(category));
+  await tester.pumpAndSettle();
+}
+
 /// Makes the path_provider plugin deterministically ABSENT for the test.
 ///
 /// A widget test runs in a fake-async zone: the reply of an UNMOCKED
@@ -83,31 +91,61 @@ Future<ProviderContainer> _pumpScreen(
 }
 
 void main() {
-  testWidgets('renders the documented section groups', (tester) async {
+  testWidgets('renders the documented category tree', (tester) async {
     await _pumpScreen(tester);
 
-    expect(find.text('Appearance'), findsOneWidget);
-    // Phase 10 grew the Appearance section (AMOLED/adaptive/language/
-    // sliders) — Playback may fall below the fold, so scroll to it.
-    await _scrollTo(tester, find.text('Playback'));
-    expect(find.text('Playback'), findsOneWidget);
-    // The lazy ListView builds below-the-fold sections on demand — scroll
-    // to Storage before asserting (the group's existence is the contract,
-    // not its first-viewport position).
-    await _scrollTo(tester, find.text('Storage'));
-    expect(find.text('Storage'), findsOneWidget);
+    // Language + Interface start expanded (first-run discoverability).
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('Interface'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
 
-    await tester.dragUntilVisible(
-      find.text('GitHub'),
-      find.byType(ListView).first,
-      const Offset(0, -250),
-    );
-    await tester.pump();
+    // The remaining categories render collapsed; their titles exist.
+    for (final category in <String>[
+      'Audio',
+      'Song Library & Tags',
+      'Headset, Bluetooth & Speakers',
+      'Notifications',
+      'HomeScreen Widgets',
+      'Lock Screen',
+      'Advanced',
+      'Backup & Restore',
+      'About',
+    ]) {
+      await _scrollTo(tester, find.text(category));
+      expect(find.text(category), findsOneWidget);
+    }
 
-    expect(find.text('More'), findsOneWidget);
-    expect(find.text('About'), findsOneWidget);
+    // About holds the GitHub row — expand it before asserting.
+    await _expand(tester, 'About');
     expect(find.text('GitHub'), findsOneWidget);
+  });
+
+  testWidgets('the tree search bar filters categories and rows',
+      (tester) async {
+    await _pumpScreen(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('settings-search-field')),
+      'amoled',
+    );
+    await tester.pumpAndSettle();
+
+    // Only the Interface category matches, force-expanded with the row.
+    expect(find.text('Interface'), findsOneWidget);
+    expect(find.text('AMOLED black'), findsOneWidget);
+    expect(find.text('Audio'), findsNothing);
+    expect(find.text('About'), findsNothing);
+
+    // Clearing the search restores the full tree (collapsed categories
+    // below the fold are lazy — scroll to Audio before asserting).
+    await tester.enterText(
+      find.byKey(const Key('settings-search-field')),
+      '',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Language'), findsOneWidget);
+    await _scrollTo(tester, find.text('Audio'));
+    expect(find.text('Audio'), findsOneWidget);
   });
 
   testWidgets('cache-size row degrades to 0 MB without path_provider',
@@ -115,6 +153,7 @@ void main() {
     _mockPathProviderUnavailable();
     await _pumpScreen(tester);
 
+    await _expand(tester, 'Advanced');
     await _scrollTo(tester, find.text('Cache size'));
 
     expect(find.text('0 MB'), findsOneWidget);
@@ -124,6 +163,7 @@ void main() {
     final ProviderContainer container = await _pumpScreen(tester);
 
     expect(container.read(settingsProvider).themeMode, ThemeMode.system);
+    await _scrollTo(tester, find.text('Dark'));
     await tester.tap(find.text('Dark'));
     await tester.pump();
 
@@ -135,6 +175,7 @@ void main() {
   testWidgets('accent segment flips state and persists', (tester) async {
     final ProviderContainer container = await _pumpScreen(tester);
 
+    await _scrollTo(tester, find.text('Green'));
     await tester.tap(find.text('Green'));
     await tester.pump();
 
@@ -147,6 +188,7 @@ void main() {
       (tester) async {
     final ProviderContainer container = await _pumpScreen(tester);
 
+    // Interface starts expanded — the row is present without scrolling.
     await _scrollTo(tester, find.text('Reduce transparency'));
     await tester.tap(find.text('Reduce transparency'));
     await tester.pump();
@@ -160,6 +202,7 @@ void main() {
   testWidgets('gapless switch flips state and persists', (tester) async {
     final ProviderContainer container = await _pumpScreen(tester);
 
+    await _expand(tester, 'Audio');
     await _scrollTo(tester, find.text('Gapless playback'));
     await tester.tap(find.text('Gapless playback'));
     await tester.pump();
@@ -173,12 +216,13 @@ void main() {
       (tester) async {
     final ProviderContainer container = await _pumpScreen(tester);
 
-    // Keyed sliders (Phase 10 added two more sliders to the Appearance
-    // group — index-based finders are fragile). Tapping the center of the
-    // 0.5..2.0 slider with 6 divisions snaps to 1.25x.
+    // Keyed sliders (Phase 10 added two more sliders to the Interface
+    // category — index-based finders are fragile). Tapping the center of
+    // the 0.5..2.0 slider with 6 divisions snaps to 1.25x.
     final Finder speedSlider = find.byKey(
       const ValueKey<String>('settings-speed-slider'),
     );
+    await _expand(tester, 'Audio');
     await _scrollTo(tester, speedSlider);
     await tester.tap(speedSlider, warnIfMissed: false);
     await tester.pump();
@@ -197,6 +241,7 @@ void main() {
       },
     );
 
+    await _expand(tester, 'Song Library & Tags');
     await _scrollTo(tester, find.text('/music/a'));
     expect(find.text('/music/a'), findsOneWidget);
     expect(find.text('/music/b'), findsOneWidget);
@@ -215,6 +260,7 @@ void main() {
     _mockPathProviderUnavailable();
     await _pumpScreen(tester);
 
+    await _expand(tester, 'Advanced');
     await _scrollTo(tester, find.text('Clear cache'));
     await tester.tap(find.text('Clear cache'));
     await tester.pumpAndSettle();

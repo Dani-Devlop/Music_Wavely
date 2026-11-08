@@ -4,23 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
+import 'package:wavely/design_system/components/wavely_cover.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/discovery/presentation/discovery_screen.dart';
 import 'package:wavely/features/downloads/presentation/downloads_screen.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
+import 'package:wavely/features/library/presentation/album_detail_screen.dart';
 import 'package:wavely/features/library/presentation/library_providers.dart';
-import 'package:wavely/features/library/presentation/library_screen.dart';
 import 'package:wavely/features/news/presentation/news_screen.dart'
     show newsRoute;
 
-/// Height of the "Jump back in" cover-card row.
+/// Height of the "Jump back in" / "Made for you" cover-card rows.
 const double _recentRowHeight = 172;
 
-/// Home tab: greeting, "Jump back in" (recently played), quick mixes built
-/// from the library's top genres and one-tap links into the online
-/// surfaces. Everything is local-first: the screen renders fully offline
-/// and only ever queues tracks the user already owns.
+/// Diameter of the small header logo tile (WavelyLogo in the app bar).
+const double _headerLogoSize = 30;
+
+/// Home (Playlist) tab — the Spotify-style main page.
+///
+/// v1.0.1-beta3 owner spec: a branded Wavely header (logo in the app bar),
+/// a time-aware greeting, a 2×N grid of recent albums rendered with their
+/// REAL album art (never a letter tile) and horizontal carousels for
+/// "Made for you" (most played) and "Jump back in" (recently played).
+/// Everything is local-first: the screen renders fully offline and only
+/// ever queues tracks the user already owns.
 class HomeScreen extends ConsumerWidget {
   /// Creates the home screen.
   const HomeScreen({super.key});
@@ -33,6 +41,18 @@ class HomeScreen extends ConsumerWidget {
       ref
           .read(trackLauncherProvider)
           .playTracks(List<Track>.of(tracks), startIndex: startIndex),
+    );
+  }
+
+  void _openAlbum(BuildContext context, Album album) {
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AlbumDetailScreen(
+          albumTitle: album.title,
+          artistName: album.artist,
+        ),
+      ),
     );
   }
 
@@ -73,6 +93,7 @@ class HomeScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(Spacing.lg),
       children: <Widget>[
+        _brandHeader(colors),
         _greeting(colors),
         const SizedBox(height: Spacing.huge),
         EmptyState(
@@ -81,7 +102,7 @@ class HomeScreen extends ConsumerWidget {
           subtitle: 'Scan a folder with your own audio files and your '
               'recently played tracks and mixes will appear here.',
           ctaLabel: 'Browse Local',
-          onCta: () => GoRouter.of(context).go(LibraryScreen.libraryRoute),
+          onCta: () => GoRouter.of(context).go('/local'),
         ),
         const SizedBox(height: Spacing.huge),
       ],
@@ -93,12 +114,38 @@ class HomeScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: Spacing.xxl),
       children: <Widget>[
+        _brandHeader(colors),
         _greeting(colors),
         const SizedBox(height: Spacing.lg),
         _quickLinks(context),
+        _albumsGrid(context, ref),
         _recentSection(context, ref),
+        _madeForYouSection(context, ref),
         _mixesSection(context, ref),
       ],
+    );
+  }
+
+  /// The Home app bar: the Wavely logo (Phase 12 brand SVG) beside the
+  /// wordmark — owner spec: the logo must be visible on the Home screen.
+  Widget _brandHeader(WavelySemanticColors colors) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        Spacing.lg,
+        Spacing.lg,
+        Spacing.lg,
+        0,
+      ),
+      child: Row(
+        children: <Widget>[
+          const WavelyLogo(size: _headerLogoSize),
+          const SizedBox(width: Spacing.sm),
+          Text(
+            'Wavely',
+            style: WavelyTypography.title20(color: colors.textPrimary),
+          ),
+        ],
+      ),
     );
   }
 
@@ -205,6 +252,134 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  /// "Your top albums": the newest six albums in a 2-per-row grid, each
+  /// rendered with its REAL cover art ([Album.coverPath] resolves to the
+  /// extracted embedded artwork) and opened in the album detail screen.
+  Widget _albumsGrid(BuildContext context, WidgetRef ref) {
+    final colors = context.wavelyColors;
+    final albumsAsync = ref.watch(albumsProvider);
+    return albumsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (error, stackTrace) => const SizedBox.shrink(),
+      data: (albums) {
+        if (albums.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final visible = albums.take(6).toList(growable: false);
+        // 2 columns × 3 rows of square covers — the Spotify "good evening"
+        // mosaic, with real art instead of letter tiles.
+        final rows = <Widget>[
+          for (var i = 0; i < visible.length; i += 2)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Spacing.sm),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: _albumTile(
+                      context,
+                      colors,
+                      visible[i],
+                      isLeading: true,
+                    ),
+                  ),
+                  const SizedBox(width: Spacing.sm),
+                  if (i + 1 < visible.length)
+                    Expanded(
+                      child: _albumTile(
+                        context,
+                        colors,
+                        visible[i + 1],
+                        isLeading: false,
+                      ),
+                    )
+                  else
+                    const Expanded(child: SizedBox.shrink()),
+                ],
+              ),
+            ),
+        ];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const SizedBox(height: Spacing.xl),
+            const SectionHeader(title: 'Your top albums'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: Column(children: rows),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _albumTile(
+    BuildContext context,
+    WavelySemanticColors colors,
+    Album album, {
+    required bool isLeading,
+  }) {
+    final keySuffix = isLeading ? 'l' : 'r';
+    return Semantics(
+      button: true,
+      label: 'Open album ${album.title}',
+      child: InkWell(
+        key: ValueKey<String>('home-album-$keySuffix-${album.key}'),
+        borderRadius: AppRadii.bMd,
+        onTap: () => _openAlbum(context, album),
+        child: Container(
+          height: 64,
+          padding: const EdgeInsetsDirectional.only(end: Spacing.xs),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: AppRadii.bMd,
+            border: Border.all(color: colors.borderGlass),
+          ),
+          child: Row(
+            children: <Widget>[
+              SizedBox(
+                width: 64,
+                height: 64,
+                child: ClipRRect(
+                  borderRadius: const BorderRadiusDirectional.only(
+                    topStart: Radius.circular(12),
+                    bottomStart: Radius.circular(12),
+                  ),
+                  child: _art(album.coverPath, album.title),
+                ),
+              ),
+              const SizedBox(width: Spacing.sm),
+              Expanded(
+                child: Text(
+                  album.title,
+                  style: WavelyTypography.body14Medium(
+                    color: colors.textPrimary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Real artwork when a cover file exists; hash-gradient + white note
+  /// otherwise (owner spec: never a letter box).
+  Widget _art(String? coverPath, String seed) {
+    final provider = wavelyCoverProvider(coverPath);
+    if (provider != null) {
+      return Image(
+        image: provider,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => WavelyCoverFallback(label: seed),
+      );
+    }
+    return WavelyCoverFallback(label: seed);
+  }
+
   Widget _recentSection(BuildContext context, WidgetRef ref) {
     final colors = context.wavelyColors;
     final recentAsync = ref.watch(recentlyPlayedProvider);
@@ -220,6 +395,50 @@ class HomeScreen extends ConsumerWidget {
           children: <Widget>[
             const SizedBox(height: Spacing.xl),
             const SectionHeader(title: 'Jump back in'),
+            SizedBox(
+              height: _recentRowHeight,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+                scrollDirection: Axis.horizontal,
+                itemCount: tracks.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(width: Spacing.sm),
+                itemBuilder: (context, index) {
+                  final track = tracks[index];
+                  return StaggeredAppear(
+                    index: index,
+                    child: _RecentCard(
+                      track: track,
+                      colors: colors,
+                      onTap: () => _play(ref, tracks, startIndex: index),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// "Made for you": the user's most-played tracks as a horizontal
+  /// carousel of real-art cards (Spotify-style shelf).
+  Widget _madeForYouSection(BuildContext context, WidgetRef ref) {
+    final colors = context.wavelyColors;
+    final mostPlayedAsync = ref.watch(mostPlayedPagedProvider(0));
+    return mostPlayedAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (error, stackTrace) => const SizedBox.shrink(),
+      data: (tracks) {
+        if (tracks.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const SizedBox(height: Spacing.xl),
+            const SectionHeader(title: 'Made for you'),
             SizedBox(
               height: _recentRowHeight,
               child: ListView.separated(
@@ -294,7 +513,7 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Vertical cover card for one recently played track.
+/// Vertical cover card for one track (real artwork + title/artist).
 class _RecentCard extends StatelessWidget {
   const _RecentCard({
     required this.track,
@@ -308,7 +527,6 @@ class _RecentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = colors.accentColors;
     return Semantics(
       button: true,
       label: 'Play ${track.title}',
@@ -320,25 +538,25 @@ class _RecentCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Container(
+              SizedBox(
                 width: 132,
                 height: 116,
-                decoration: BoxDecoration(
+                child: ClipRRect(
                   borderRadius: AppRadii.bLg,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: <Color>[
-                      accent.gradientStart.withValues(alpha: 0.85),
-                      accent.accent.withValues(alpha: 0.65),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      _art(track.coverPath, track.title),
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: colors.borderGlass),
+                            borderRadius: AppRadii.bLg,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                  border: Border.all(color: colors.borderGlass),
-                ),
-                child: Icon(
-                  Icons.music_note_rounded,
-                  size: 36,
-                  color: colors.textPrimary.withValues(alpha: 0.9),
                 ),
               ),
               const SizedBox(height: Spacing.xs),
@@ -363,6 +581,18 @@ class _RecentCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _art(String? coverPath, String seed) {
+    final provider = wavelyCoverProvider(coverPath);
+    if (provider != null) {
+      return Image(
+        image: provider,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => WavelyCoverFallback(label: seed),
+      );
+    }
+    return WavelyCoverFallback(label: seed);
   }
 }
 

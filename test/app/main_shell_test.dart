@@ -5,11 +5,17 @@
 /// stateful navigation shell, with the in-memory drift db, mock prefs and
 /// the fake playback engine.
 ///
+/// v1.0.1-beta3 parity spec: the shell has EXACTLY FOUR destinations
+/// (Playlist / Now Playing / Search / Settings); the local library and the
+/// online discovery live inside the Search branch (SearchHubShell).
+///
 /// Covered:
-/// - The five glass bottom-nav destinations (Home / Local / Online /
-///   Search / Settings) render with their labels.
+/// - The four glass bottom-nav destinations render with their labels.
 /// - Tapping a destination switches the branch (HomeScreen /
-///   LibraryScreen / OnlineScreen / SearchScreen / SettingsScreen).
+///   NowPlayingTab / SearchScreen / SettingsScreen).
+/// - The Search hub chips switch between the unified search, the local
+///   library (LibraryScreen) and the online pane (OnlineScreen) inside
+///   the same branch.
 /// - Once a track is queued through the real `queueManagerProvider`, the
 ///   mini player host slides in (`mini-player` key) and the fake engine
 ///   received the load call — wiring the shell → queue → engine chain
@@ -22,6 +28,7 @@ import 'package:wavely/features/home/presentation/home_screen.dart';
 import 'package:wavely/features/library/presentation/library_screen.dart';
 import 'package:wavely/features/online/presentation/online_screen.dart';
 import 'package:wavely/features/player/presentation/mini_player_widget.dart';
+import 'package:wavely/features/player/presentation/now_playing_tab.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
 import 'package:wavely/features/settings/presentation/settings_screen.dart';
 import 'package:wavely/playback/queue/queue_manager.dart';
@@ -31,47 +38,33 @@ import 'pump_app.dart';
 
 void main() {
   group('MainShell bottom navigation', () {
-    testWidgets('renders the five destinations over the home branch',
+    testWidgets('renders exactly the four destinations over the home branch',
         (tester) async {
       final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
       addTearDown(harness.tearDown);
 
-      // The app boots into the Home branch (empty library → empty state).
+      // The app boots into the Playlist branch (empty library → empty state).
       expect(find.byType(HomeScreen), findsOneWidget);
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Local'), findsOneWidget);
-      expect(find.text('Online'), findsOneWidget);
+      expect(find.text('Playlist'), findsOneWidget);
+      expect(find.text('Now Playing'), findsOneWidget);
       expect(find.text('Search'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);
       // No track queued → mini player collapsed.
       expect(find.byType(MiniPlayerWidget), findsNothing);
     });
 
-    testWidgets('tapping Local switches to the local library branch',
+    testWidgets('tapping Now Playing switches to the player branch',
         (tester) async {
       final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
       addTearDown(harness.tearDown);
 
-      await tester.tap(find.text('Local'));
+      await tester.tap(find.text('Now Playing'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(LibraryScreen), findsOneWidget);
+      expect(find.byType(NowPlayingTab), findsOneWidget);
       expect(find.byType(HomeScreen), findsNothing);
-      // The nav bar persists across branches; the Local header + the nav
-      // label both read "Local".
-      expect(find.text('Local'), findsNWidgets(2));
-    });
-
-    testWidgets('tapping Online switches to the online branch',
-        (tester) async {
-      final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
-      addTearDown(harness.tearDown);
-
-      await tester.tap(find.text('Online'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(OnlineScreen), findsOneWidget);
-      expect(find.byType(HomeScreen), findsNothing);
+      // Empty queue → the branded empty state with the funnel CTA.
+      expect(find.text('Nothing playing'), findsOneWidget);
     });
 
     testWidgets('tapping Search switches to the search branch',
@@ -101,7 +94,31 @@ void main() {
       expect(find.byType(SettingsScreen), findsOneWidget);
     });
 
-    testWidgets('tapping Home returns to the home branch', (tester) async {
+    testWidgets('the Search hub chips host Library and Online in-branch',
+        (tester) async {
+      final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
+      addTearDown(harness.tearDown);
+
+      await tester.tap(find.text('Search'));
+      await tester.pumpAndSettle();
+
+      // Hub chip → the local library (former Local tab).
+      await tester.tap(find.byKey(const Key('hub-chip-local')));
+      await tester.pumpAndSettle();
+      expect(find.byType(LibraryScreen), findsOneWidget);
+
+      // Hub chip → the online pane (former Online tab).
+      await tester.tap(find.byKey(const Key('hub-chip-online')));
+      await tester.pumpAndSettle();
+      expect(find.byType(OnlineScreen), findsOneWidget);
+
+      // Back to the unified search.
+      await tester.tap(find.byKey(const Key('hub-chip-search')));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchScreen), findsOneWidget);
+    });
+
+    testWidgets('tapping Playlist returns to the home branch', (tester) async {
       final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
       addTearDown(harness.tearDown);
 
@@ -109,7 +126,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SearchScreen), findsOneWidget);
 
-      await tester.tap(find.text('Home'));
+      await tester.tap(find.text('Playlist'));
       await tester.pumpAndSettle();
       expect(find.byType(HomeScreen), findsOneWidget);
       expect(find.byType(SearchScreen), findsNothing);
@@ -155,6 +172,25 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(harness.engine.playCalls, 1);
+    });
+
+    testWidgets('the Now Playing tab shows the queued track',
+        (tester) async {
+      final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
+      addTearDown(harness.tearDown);
+
+      await harness.container
+          .read(queueManagerProvider.notifier)
+          .setQueue(seedTracks(1));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Now Playing'));
+      await tester.pumpAndSettle();
+
+      // The full player renders inline in the tab for the queued track
+      // (the mini player below the bar shows the same title).
+      expect(find.byType(NowPlayingTab), findsOneWidget);
+      expect(find.text('Track 1'), findsWidgets);
     });
   });
 }

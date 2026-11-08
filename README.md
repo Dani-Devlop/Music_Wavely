@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🎵 Wavely
+<img src="assets/brand/wavely_logo.svg" width="180" alt="Wavely logo — a neon-glass W over a soundwave" />
+
+# Wavely
 
 **Your music, your way. Cross-platform, offline-first, and AI-powered.**
 
@@ -10,10 +12,10 @@ your local files, your own Subsonic/Navidrome server, and free catalogs
 tracking.
 
 [![CI — Full Verification](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml/badge.svg)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
-[![Release — v1.0.1-beta](https://img.shields.io/badge/version-1.0.1--beta-8b5cf6)](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.1-beta)
-[![Tests](https://img.shields.io/badge/tests-1544%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
+[![Release — v1.0.1-beta3](https://img.shields.io/badge/release-v1.0.1--beta3-8b5cf6)](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.1-beta3)
+[![Tests](https://img.shields.io/badge/tests-1547%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
 [![E2E](https://img.shields.io/badge/E2E-verified-10b981)](.github/workflows/e2e.yml)
-[![Platforms](https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-informational)](#getting-started)
+[![Platforms](https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-informational)](#-download-v101-beta3)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 </div>
@@ -32,23 +34,22 @@ drive the real app — library scan → playback, synced lyrics, AI queue
 building, parental censoring, download → offline playback — and the
 screenshots below are rendered live from those runs.
 
-## 📥 Download v1.0.1-Beta
+## 📥 Download v1.0.1-beta3
 
 Grab the latest build straight from the
-[v1.0.1-beta release page](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.1-beta):
+[v1.0.1-beta3 release page](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.1-beta3):
 
-| Platform | Download | Requirements |
+| Platform | Downloads | Requirements |
 | --- | --- | --- |
-| 🤖 **Android** | [**Universal APK**](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-android-universal.apk) — all ABIs | Android 8.0+ |
-| | Slim per-device APKs: [arm64-v8a](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-android-arm64-v8a.apk) · [armeabi-v7a](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-android-armeabi-v7a.apk) · [x86_64](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-android-x86_64.apk) | |
-| 🪟 **Windows** | [**Windows x64 (.zip)**](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-windows-x64.zip) — unzip and run `wavely.exe` | Windows 10 / 11, 64-bit |
-| 🐧 **Linux** | [**AppImage**](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-linux-x64.AppImage) — chmod +x and run · [tar.gz](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-linux-x64.tar.gz) | glibc 2.31+ (Ubuntu 20.04+) |
-| 🌐 **Web / other** | Build from source — see [🚀 Getting Started](#getting-started) | Flutter stable ≥ 3.35 |
+| 🤖 **Android** | [![Universal APK](https://img.shields.io/badge/Android-universal_APK-3DDC84?logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-android-universal.apk) — all ABIs | Android 8.0+ |
+| 🤖 **Android (slim)** | [![arm64](https://img.shields.io/badge/APK-arm64__v8a-3DDC84?logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-android-arm64-v8a.apk) [![v7a](https://img.shields.io/badge/APK-armeabi__v7a-3DDC84?logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-android-armeabi-v7a.apk) [![x64](https://img.shields.io/badge/APK-x86__64-3DDC84?logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-android-x86_64.apk) | Android 8.0+ |
+| 🪟 **Windows** | [![Zip](https://img.shields.io/badge/Windows-x64_zip-0078D4?logo=windows95&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-windows-x64.zip) · [![MSIX](https://img.shields.io/badge/Windows-MSIX_installer-0078D4?logo=windows95&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely.msix) | Windows 10 / 11, 64-bit |
+| 🐧 **Linux** | [![AppImage](https://img.shields.io/badge/Linux-AppImage-FCC624?logo=linux&logoColor=black)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-linux-x64.AppImage) · [![tar.gz](https://img.shields.io/badge/Linux-tar.gz-FCC624?logo=linux&logoColor=black)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-linux-x64.tar.gz) | glibc 2.31+ (Ubuntu 20.04+) |
+| 🌐 **Web / other** | Build from source — see [🚀 Getting Started](#-getting-started) | Flutter stable ≥ 3.35 |
 
 > ℹ️ Android picks the right architecture automatically when you install the
-> universal APK. The MSIX installer and Flatpak bundle are included in the
-> release when their optional packaging steps succeed; AppImage/MSIX are
-> unsigned unless signing secrets are configured
+> universal APK. The MSIX installer ships when its optional packaging step
+> succeeds; AppImage/MSIX are unsigned unless signing secrets are configured
 > ([docs/PACKAGING.md](docs/PACKAGING.md)).
 
 ## 📸 Screenshots
@@ -88,7 +89,9 @@ Grab the latest build straight from the
   ([docs/DAP_FEATURES.md](docs/DAP_FEATURES.md)).
 
 ### 📚 Library & Sources
-- **FLAC / MP3 / WAV / M4A / OGG** support with metadata and embedded artwork.
+- **FLAC / MP3 / WAV / M4A / OGG** support with metadata and **embedded
+  album artwork** (covers are extracted during the scan and shown on every
+  row, card and the full-screen player).
 - **Folder scanning** with an FTS5-backed index for instant search.
 - **Legal online sources only**: your own **Subsonic / Navidrome**,
   **Jamendo**, **Free Music Archive**, **archive.org**.
@@ -112,10 +115,20 @@ Grab the latest build straight from the
   (block · mute · allow).
 
 ### 🎨 UI/UX
+- **Exactly four bottom tabs** — Playlist (Spotify-style home with greeting,
+  top-albums grid and "Made for you" / "Jump back in" carousels), Now
+  Playing (full player), Search (unified search with the Musicolet library
+  and online discovery one chip away), and Settings.
+- **Musicolet-style deep settings tree** — a search bar over expandable
+  categories (Language, Interface, Audio, Song Library & Tags, Headset /
+  Bluetooth, Notifications, Widgets, Lock Screen, Advanced, Backup, About).
+- **Album art everywhere** — embedded covers on tiles, mini-player, home
+  cards and the full-screen player; a premium hash-gradient + white-note
+  fallback for tracks without artwork (never a letter box).
 - **Glassmorphism** design system with 13 reusable glass components.
-- **Light/Dark themes** with purple/green accent pairs and reduce-
-  transparency support.
-- Responsive shell: mini player, now-playing screen, bottom navigation.
+- **Light / Dark / AMOLED** themes with purple/green accent pairs,
+  adaptive accent from album art, blur-strength and corner-radius controls,
+  plus full **Persian / RTL** localization.
 - Typography: **Sora** (headings) + **Inter** (body), bundled under the
   SIL Open Font License.
 
@@ -221,7 +234,7 @@ flutter run -d linux            # or -d windows, or an Android device id
 
 ```bash
 flutter analyze                                            # 0 errors required
-flutter test --coverage                                    # 1544 tests passing
+flutter test --coverage                                    # 1547 tests passing
 
 # E2E scenarios + real-UI screenshots (the ARTEMIS-mirror suite):
 flutter test test/e2e test/goldens
@@ -243,10 +256,10 @@ Pushing a `v*.*.*` tag triggers the release workflow, which builds:
 | Platform | Artifacts |
 | --- | --- |
 | Android | `wavely-<tag>-android-universal.apk` + `armeabi-v7a` / `arm64-v8a` / `x86_64` ABI splits |
-| Windows | `wavely-<tag>-windows-x64.zip` (+ signed MSIX when signing secrets are set) |
-| Linux | `wavely-<tag>-linux-x64.tar.gz` (+ AppImage, + Flatpak when configured) |
+| Windows | `wavely-<tag>-windows-x64.zip` (+ MSIX when its optional packaging step succeeds) |
+| Linux | `wavely-<tag>-linux-x64.tar.gz` + AppImage (+ Flatpak when configured) |
 
-Every asset ships with a `SHA256SUMS.txt` — see
+AppImage/MSIX are unsigned unless signing secrets are configured — see
 [`docs/PACKAGING.md`](docs/PACKAGING.md) for local signing.
 
 ## 🗺️ Roadmap
@@ -268,6 +281,12 @@ Every asset ships with a `SHA256SUMS.txt` — see
       lock-screen queue & lyrics, 3 home widgets, QS tile, Android Auto
       browse, headset FF/rewind rules, AMOLED/blur/accent theming, mini-player
       gestures, Persian + RTL localization, neon-glass logo & splash
+- [x] **v1.0.1-beta3** — **UI overhaul**: real embedded album art on every
+      surface (scan-time cover extraction on Android included), premium
+      hash-gradient fallback art, logo in the Home app bar + splash,
+      exactly four bottom tabs (Playlist · Now Playing · Search · Settings),
+      Musicolet-style deep settings tree with search, Spotify-style home
+      (greeting, top-albums grid, "Made for you" carousel)
 - [ ] Plugin UI surface (management screen + declarative REST plugins)
 - [ ] DSP extension surface (crossfeed, loudness normalization)
 
