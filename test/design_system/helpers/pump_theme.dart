@@ -22,7 +22,7 @@ Future<void> pumpThemed(
   List<Override> overrides = const <Override>[],
 }) async {
   Widget app = MaterialApp(
-    theme: dark ? WavelyThemes.dark(accent) : WavelyThemes.light(accent),
+    theme: dark ? WavelyThemes.dark(accent.colors) : WavelyThemes.light(accent.colors),
     home: Scaffold(body: Center(child: child)),
   );
   if (overrides.isNotEmpty) {

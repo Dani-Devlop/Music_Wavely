@@ -24,7 +24,7 @@ void main() {
       ];
       for (final (accent, dark) in combos) {
         final theme =
-            dark ? WavelyThemes.dark(accent) : WavelyThemes.light(accent);
+            dark ? WavelyThemes.dark(accent.colors) : WavelyThemes.light(accent.colors);
         final semantic = theme.extension<WavelySemanticColors>()!;
         final tokens = accent.colors;
 
@@ -56,10 +56,10 @@ void main() {
 
     test('the semantic extension is a real ThemeExtension', () {
       final light =
-          WavelyThemes.light(WavelyAccent.purple)
+          WavelyThemes.light(WavelyAccent.purple.colors)
               .extension<WavelySemanticColors>();
       final dark =
-          WavelyThemes.dark(WavelyAccent.green)
+          WavelyThemes.dark(WavelyAccent.green.colors)
               .extension<WavelySemanticColors>();
       expect(light, isA<ThemeExtension<WavelySemanticColors>>());
       expect(dark, isA<ThemeExtension<WavelySemanticColors>>());
@@ -80,8 +80,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: dark
-              ? WavelyThemes.dark(accent)
-              : WavelyThemes.light(accent),
+              ? WavelyThemes.dark(accent.colors)
+              : WavelyThemes.light(accent.colors),
           // MaterialApp animates theme CHANGES over 200 ms by default and
           // the builder would then probe a lerp of the previous
           // iteration's theme (isDark still false at t≈0). The probe must

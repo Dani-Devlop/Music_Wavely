@@ -10,8 +10,8 @@ your local files, your own Subsonic/Navidrome server, and free catalogs
 tracking.
 
 [![CI — Full Verification](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml/badge.svg)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
-[![Release — v1.0.0](https://img.shields.io/badge/version-1.0.0-8b5cf6)](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.0)
-[![Tests](https://img.shields.io/badge/tests-1289%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
+[![Release — v1.0.1-beta](https://img.shields.io/badge/version-1.0.1--beta-8b5cf6)](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.1-beta)
+[![Tests](https://img.shields.io/badge/tests-1544%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
 [![E2E](https://img.shields.io/badge/E2E-verified-10b981)](.github/workflows/e2e.yml)
 [![Platforms](https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-informational)](#getting-started)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -31,6 +31,25 @@ Every release is **E2E-verified on CI**: instrumented end-to-end scenarios
 drive the real app — library scan → playback, synced lyrics, AI queue
 building, parental censoring, download → offline playback — and the
 screenshots below are rendered live from those runs.
+
+## 📥 Download v1.0.1-Beta
+
+Grab the latest build straight from the
+[v1.0.1-beta release page](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.1-beta):
+
+| Platform | Download | Requirements |
+| --- | --- | --- |
+| 🤖 **Android** | [**Universal APK**](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-android-universal.apk) — all ABIs | Android 8.0+ |
+| | Slim per-device APKs: [arm64-v8a](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-android-arm64-v8a.apk) · [armeabi-v7a](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-android-armeabi-v7a.apk) · [x86_64](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-android-x86_64.apk) | |
+| 🪟 **Windows** | [**Windows x64 (.zip)**](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-windows-x64.zip) — unzip and run `wavely.exe` | Windows 10 / 11, 64-bit |
+| 🐧 **Linux** | [**AppImage**](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-linux-x64.AppImage) — chmod +x and run · [tar.gz](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta/wavely-v1.0.1-beta-linux-x64.tar.gz) | glibc 2.31+ (Ubuntu 20.04+) |
+| 🌐 **Web / other** | Build from source — see [🚀 Getting Started](#getting-started) | Flutter stable ≥ 3.35 |
+
+> ℹ️ Android picks the right architecture automatically when you install the
+> universal APK. The MSIX installer and Flatpak bundle are included in the
+> release when their optional packaging steps succeed; AppImage/MSIX are
+> unsigned unless signing secrets are configured
+> ([docs/PACKAGING.md](docs/PACKAGING.md)).
 
 ## 📸 Screenshots
 
@@ -179,6 +198,9 @@ python3 tools/patch_android_desugaring.py
 
 # 3. Dependencies + code generation
 flutter pub get
+# 3b. home_widget ships jvmTarget 1.8 Kotlin that the compiler's inliner
+#     rejects — raise it in the pub cache (run AFTER pub get)
+python3 tools/patch_android_jvm_target.py
 dart run build_runner build --delete-conflicting-outputs
 
 # 4. Configuration — optional! The local player needs NO API keys at all.
@@ -199,7 +221,7 @@ flutter run -d linux            # or -d windows, or an Android device id
 
 ```bash
 flutter analyze                                            # 0 errors required
-flutter test --coverage                                    # 1289 tests passing
+flutter test --coverage                                    # 1544 tests passing
 
 # E2E scenarios + real-UI screenshots (the ARTEMIS-mirror suite):
 flutter test test/e2e test/goldens
@@ -238,6 +260,14 @@ Every asset ships with a `SHA256SUMS.txt` — see
       queue, parental censoring, download → offline play), real-UI
       screenshot capture on CI, bundled Sora/Inter typography, cloud
       debug-APK pipeline
+- [x] **v1.0.1-beta** — **Musicolet-parity beta**: 20 multi-queue system,
+      9-tab library with QuickSearch & multi-select, precise seek/bookmarks/
+      A-B repeat, sleep timer, 3-source lyrics + LRC editor, folder browser
+      with blacklist, 13-field tag editor, audio cutter & ringtone setter,
+      M3U + backup/restore, 5-band EQ + ReplayGain + crossfade/gapless/speed,
+      lock-screen queue & lyrics, 3 home widgets, QS tile, Android Auto
+      browse, headset FF/rewind rules, AMOLED/blur/accent theming, mini-player
+      gestures, Persian + RTL localization, neon-glass logo & splash
 - [ ] Plugin UI surface (management screen + declarative REST plugins)
 - [ ] DSP extension surface (crossfeed, loudness normalization)
 

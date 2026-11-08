@@ -51,7 +51,7 @@ Future<void> _pumpScreen(WidgetTester tester, UpdateService service) async {
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: WavelyThemes.dark(WavelyAccent.purple),
+        theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const UpdateScreen(),
       ),
     ),

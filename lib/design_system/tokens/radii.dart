@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 
 /// Corner radius tokens.
+///
+/// Phase 10: [scale] is the settings-driven radius multiplier (0.5..2,
+/// default 1). The theme provider keeps it in sync with the canonical
+/// [AppSettings.radiusScale]; every radius getter multiplies through it so
+/// the whole design system re-rounds without per-widget plumbing.
 abstract final class AppRadii {
-  static const double sm = 8;
-  static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 24;
+  /// Runtime radius multiplier (design tokens = 1). Mutable on purpose —
+  /// see WavelyBlur.scale for the rationale.
+  static double scale = 1;
+
+  static double get sm => 8 * scale;
+  static double get md => 12 * scale;
+  static double get lg => 16 * scale;
+  static double get xl => 24 * scale;
   static const double pill = 999;
 
   static BorderRadius get bSm => BorderRadius.circular(sm);

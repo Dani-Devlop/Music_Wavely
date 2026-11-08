@@ -76,6 +76,16 @@ class SettingsNotifier extends _$SettingsNotifier {
       playbackSpeed: (_prefs.getDouble(_keyPlaybackSpeed) ?? 1.0)
           .clamp(0.5, 2)
           .toDouble(),
+      amoled: _prefs.getBool(_keyAmoled) ?? false,
+      adaptiveAccent: _prefs.getBool(_keyAdaptiveAccent) ?? false,
+      adaptiveAccentValue: _prefs.getInt(_keyAdaptiveAccentValue) ?? 0,
+      blurScale: (_prefs.getDouble(_keyBlurScale) ?? 1.0)
+          .clamp(0, maxBlurScale)
+          .toDouble(),
+      radiusScale: (_prefs.getDouble(_keyRadiusScale) ?? 1.0)
+          .clamp(minRadiusScale, maxRadiusScale)
+          .toDouble(),
+      localeCode: _localeCodeFrom(_prefs.getString(_keyLocaleCode)),
     );
   }
 
@@ -153,6 +163,76 @@ class SettingsNotifier extends _$SettingsNotifier {
     state = state.copyWith(playbackSpeed: clamped);
     unawaited(_prefs.setDouble(_keyPlaybackSpeed, clamped));
   }
+
+  // --- Phase 10: AMOLED / adaptive accent / blur / radius -------------------
+
+  static const String _keyAmoled =
+      '${AppConstants.settingsKeyPrefix}amoled';
+  static const String _keyAdaptiveAccent =
+      '${AppConstants.settingsKeyPrefix}adaptiveAccent';
+  static const String _keyAdaptiveAccentValue =
+      '${AppConstants.settingsKeyPrefix}adaptiveAccentValue';
+  static const String _keyBlurScale =
+      '${AppConstants.settingsKeyPrefix}blurScale';
+  static const String _keyRadiusScale =
+      '${AppConstants.settingsKeyPrefix}radiusScale';
+  static const String _keyLocaleCode =
+      '${AppConstants.settingsKeyPrefix}localeCode';
+
+  /// AMOLED only changes the dark palette; enabling it in light mode is a
+  /// no-op state-wise but harmless.
+  void setAmoled(bool amoled) {
+    state = state.copyWith(amoled: amoled);
+    unawaited(_prefs.setBool(_keyAmoled, amoled));
+  }
+
+  void setAdaptiveAccent(bool enabled) {
+    state = state.copyWith(adaptiveAccent: enabled);
+    unawaited(_prefs.setBool(_keyAdaptiveAccent, enabled));
+    if (!enabled) {
+      setAdaptiveAccentValue(0);
+    }
+  }
+
+  /// Stores the extracted accent ARGB int (0 clears). No-op when the
+  /// adaptive mode is off so extraction cannot repaint a fixed palette.
+  void setAdaptiveAccentValue(int value) {
+    if (!state.adaptiveAccent && value != 0) {
+      return;
+    }
+    state = state.copyWith(adaptiveAccentValue: value);
+    unawaited(_prefs.setInt(_keyAdaptiveAccentValue, value));
+  }
+
+  /// Clamps to `0..[maxBlurScale]` (0 disables blurs).
+  void setBlurScale(double scale) {
+    final clamped = scale.clamp(0, maxBlurScale).toDouble();
+    state = state.copyWith(blurScale: clamped);
+    unawaited(_prefs.setDouble(_keyBlurScale, clamped));
+  }
+
+  /// Clamps to `[minRadiusScale]..[maxRadiusScale]`.
+  void setRadiusScale(double scale) {
+    final clamped = scale.clamp(minRadiusScale, maxRadiusScale).toDouble();
+    state = state.copyWith(radiusScale: clamped);
+    unawaited(_prefs.setDouble(_keyRadiusScale, clamped));
+  }
+
+  /// 'system' | 'en' | 'fa' (unknown values fall back to 'system').
+  void setLocaleCode(String code) {
+    final safe = _localeCodeFrom(code);
+    state = state.copyWith(localeCode: safe);
+    unawaited(_prefs.setString(_keyLocaleCode, safe));
+  }
+
+  /// Tolerant locale parser (Phase 11): only the two shipped locales are
+  /// honoured; anything else resolves through the system (per-app language
+  /// on Android 13+).
+  static String _localeCodeFrom(String? raw) => switch (raw) {
+        'en' => 'en',
+        'fa' => 'fa',
+        _ => 'system',
+      };
 
   /// Canonical storage format is a `StringList`. Falls back to the legacy
   /// JSON string written by the Folders tab flow (`ScanFoldersStore`, Task

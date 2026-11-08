@@ -43,6 +43,19 @@ abstract class AppSettings with _$AppSettings {
     @Default(ThemeMode.system) ThemeMode themeMode,
     @Default(AccentColor.purple) AccentColor accent,
     @Default(false) bool reduceTransparency,
+    // --- Phase 10 (UI polish): AMOLED / adaptive accent / blur / radius ---
+    /// Pure-black AMOLED surfaces (only meaningful in dark mode).
+    @Default(false) bool amoled,
+    /// Derive the accent seed from the current album art.
+    @Default(false) bool adaptiveAccent,
+    /// Last extracted adaptive accent (ARGB int; 0 = none).
+    @Default(0) int adaptiveAccentValue,
+    /// Backdrop blur multiplier (0..[maxBlurScale], 1 = design tokens).
+    @Default(1.0) double blurScale,
+    /// Corner radius multiplier (0.5..[maxRadiusScale], 1 = design tokens).
+    @Default(1.0) double radiusScale,
+    /// UI language: 'system' (per-app language / OS default), 'en' or 'fa'.
+    @Default('system') String localeCode,
     @Default(0) double crossfadeSeconds,
     @Default(true) bool gaplessPlayback,
     @Default(true) bool resumeOnStart,
@@ -52,3 +65,10 @@ abstract class AppSettings with _$AppSettings {
     @Default(1.0) double playbackSpeed,
   }) = _AppSettings;
 }
+
+/// Bounds of the blur-strength slider (Phase 10): 0 disables blurs.
+const double maxBlurScale = 2.0;
+
+/// Bounds of the corner-radius slider (Phase 10).
+const double minRadiusScale = 0.5;
+const double maxRadiusScale = 2.0;

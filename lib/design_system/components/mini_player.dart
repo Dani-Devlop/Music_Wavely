@@ -15,6 +15,10 @@ import 'package:wavely/domain/entities/entities.dart';
 /// empty state, play/pause (+ optional next) controls with 44dp+ padded
 /// targets, a hairline progress strip pinned to the bottom edge, and a
 /// whole-tile tap that opens the now-playing screen.
+///
+/// Phase 10.2: the cover area supports a double-tap (play/pause toggle —
+/// Musicolet parity); [onCoverDoubleTap] wires it, null keeps the plain
+/// cover.
 class MiniPlayer extends StatelessWidget {
   const MiniPlayer({
     required this.track,
@@ -24,6 +28,7 @@ class MiniPlayer extends StatelessWidget {
     required this.onPlayPause,
     required this.onTap,
     this.onNext,
+    this.onCoverDoubleTap,
     super.key,
   });
 
@@ -34,6 +39,9 @@ class MiniPlayer extends StatelessWidget {
   final VoidCallback onPlayPause;
   final VoidCallback onTap;
   final VoidCallback? onNext;
+
+  /// Double-tap on the cover toggles play/pause (Phase 10.2 gestures).
+  final VoidCallback? onCoverDoubleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +65,15 @@ class MiniPlayer extends StatelessWidget {
                   height: AppConstants.trackTileCoverSize,
                   child: ClipRRect(
                     borderRadius: AppRadii.bSm,
-                    child: _cover(current),
+                    child: onCoverDoubleTap == null
+                        ? _cover(current)
+                        : GestureDetector(
+                            key: const ValueKey<String>(
+                              'mini-player-cover-tap',
+                            ),
+                            onDoubleTap: onCoverDoubleTap,
+                            child: _cover(current),
+                          ),
                   ),
                 ),
                 const SizedBox(width: Spacing.md),

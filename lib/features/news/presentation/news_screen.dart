@@ -115,7 +115,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                 for (final NewsCategory category in NewsCategory.values)
                   Padding(
                     key: ValueKey<String>('news-chip-${category.storageName}'),
-                    padding: const EdgeInsets.only(right: Spacing.sm),
+                    padding: const EdgeInsetsDirectional.only(end: Spacing.sm),
                     child: Center(
                       child: ChipFilter(
                         label: category.label,

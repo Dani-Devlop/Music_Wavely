@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/app/app_providers.dart';
 import 'package:wavely/app/root_messenger.dart';
 import 'package:wavely/app/router.dart';
+import 'package:wavely/app/splash.dart';
 import 'package:wavely/app/theme_provider.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
+import 'package:wavely/l10n/app_localizations.dart';
 
-/// Root widget: wires the canonical settings (theme mode + accent) into the
-/// MaterialApp and the go_router configuration.
+/// Root widget: wires the canonical settings (theme mode + accent + locale)
+/// into the MaterialApp and the go_router configuration.
+///
+/// Phase 11: localizationsDelegates include the generated
+/// [AppLocalizations] so Persian (فارسی) is a first-class locale with full
+/// RTL mirroring.
 class WavelyApp extends ConsumerWidget {
   /// Creates the app.
   const WavelyApp({super.key});
@@ -28,9 +33,11 @@ class WavelyApp extends ConsumerWidget {
       // BUG-9: lets non-UI layers (parental preload hook) show toasts.
       scaffoldMessengerKey: rootMessengerKey,
       routerConfig: ref.watch(routerProvider),
+      // Phase 12: branded splash gate (fades the logo in/out once).
+      builder: (context, child) => SplashGate(child: child ?? const SizedBox.shrink()),
       locale: locale,
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      supportedLocales: const <Locale>[Locale('en')],
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       debugShowCheckedModeBanner: false,
     );
   }

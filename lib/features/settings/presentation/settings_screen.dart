@@ -153,6 +153,101 @@ class SettingsScreen extends ConsumerWidget {
                 value: settings.reduceTransparency,
                 onChanged: notifier.setReduceTransparency,
               ),
+              // --- Phase 10: AMOLED / adaptive accent / blur / radius -----
+              SwitchListTile(
+                key: const ValueKey<String>('settings-amoled'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('AMOLED black'),
+                subtitle: const Text('Pure black surfaces in dark mode'),
+                value: settings.amoled,
+                onChanged: settings.themeMode == ThemeMode.dark ||
+                        settings.themeMode == ThemeMode.system
+                    ? notifier.setAmoled
+                    : null,
+              ),
+              SwitchListTile(
+                key: const ValueKey<String>('settings-adaptive-accent'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Accent from album art'),
+                subtitle: const Text('Tints the theme to the playing cover'),
+                value: settings.adaptiveAccent,
+                onChanged: notifier.setAdaptiveAccent,
+              ),
+              // --- Phase 11: language selector (Persian/RTL first-class) ---
+              Semantics(
+                label: 'Language',
+                child: ListTile(
+                  key: const ValueKey<String>('settings-language'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(
+                    'Language',
+                    style: WavelyTypography.body14(color: colors.textPrimary),
+                  ),
+                  trailing: SegmentedButton<String>(
+                    showSelectedIcon: false,
+                    segments: const <ButtonSegment<String>>[
+                      ButtonSegment<String>(
+                        value: 'system',
+                        label: Text('System'),
+                      ),
+                      ButtonSegment<String>(
+                        value: 'en',
+                        label: Text('EN'),
+                      ),
+                      ButtonSegment<String>(
+                        value: 'fa',
+                        label: Text('فا'),
+                      ),
+                    ],
+                    selected: <String>{settings.localeCode},
+                    onSelectionChanged: (selection) =>
+                        notifier.setLocaleCode(selection.first),
+                  ),
+                ),
+              ),
+              Semantics(
+                label: 'Blur strength',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(
+                    'Blur strength',
+                    style: WavelyTypography.body14(color: colors.textPrimary),
+                  ),
+                  subtitle: Slider(
+                    key: const ValueKey<String>('settings-blur-slider'),
+                    value: settings.blurScale,
+                    min: 0,
+                    max: maxBlurScale,
+                    divisions: 8,
+                    label: settings.blurScale == 0
+                        ? 'Off'
+                        : settings.blurScale.toStringAsFixed(1),
+                    onChanged: notifier.setBlurScale,
+                  ),
+                ),
+              ),
+              Semantics(
+                label: 'Corner radius',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(
+                    'Corner radius',
+                    style: WavelyTypography.body14(color: colors.textPrimary),
+                  ),
+                  subtitle: Slider(
+                    key: const ValueKey<String>('settings-radius-slider'),
+                    value: settings.radiusScale,
+                    min: minRadiusScale,
+                    max: maxRadiusScale,
+                    divisions: 6,
+                    label: settings.radiusScale.toStringAsFixed(1),
+                    onChanged: notifier.setRadiusScale,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: Spacing.lg),
@@ -182,6 +277,7 @@ class SettingsScreen extends ConsumerWidget {
                     style: WavelyTypography.body14(color: colors.textPrimary),
                   ),
                   subtitle: Slider(
+                    key: const ValueKey<String>('settings-crossfade-slider'),
                     value: settings.crossfadeSeconds,
                     min: 0,
                     max: AppConstants.crossfadeMaxSeconds.toDouble(),
@@ -216,6 +312,7 @@ class SettingsScreen extends ConsumerWidget {
                     style: WavelyTypography.body14(color: colors.textPrimary),
                   ),
                   subtitle: Slider(
+                    key: const ValueKey<String>('settings-speed-slider'),
                     value: settings.playbackSpeed,
                     min: 0.5,
                     max: 2,

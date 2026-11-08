@@ -36,6 +36,7 @@ class MiniPlayerHost extends ConsumerWidget {
             onPlayPause: () => unawaited(manager.togglePlayPause()),
             onTap: onOpenNowPlaying,
             onNext: () => unawaited(manager.next()),
+            onCoverDoubleTap: () => unawaited(manager.togglePlayPause()),
           );
     return AnimatedSwitcher(
       duration: WavelyDurations.normal,

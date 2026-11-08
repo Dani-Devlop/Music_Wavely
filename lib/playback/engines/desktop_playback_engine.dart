@@ -152,6 +152,25 @@ class DesktopPlaybackEngine
     await _player.setVolume(volume.clamp(0.0, 1.0).toDouble() * 100);
   }
 
+  // --- Phase 9: system-surface hooks (no-ops on desktop) --------------------
+  //
+  // Desktop builds have no lock-screen media session / widgets / QS tile /
+  // headset-button rules, so the transport hooks stay inert here. The base
+  // class defaults would cover this; explicit overrides document intent.
+
+  @override
+  void setTransportCallbacks({
+    void Function()? onNext,
+    void Function()? onPrevious,
+    void Function()? onTogglePlayPause,
+  }) {}
+
+  @override
+  Future<void> seekBy(Duration offset) async {}
+
+  @override
+  Future<void> setLyrics(String? lyrics) async {}
+
   /// Requests exclusive (bit-perfect) audio output from libmpv
   /// (`audio-exclusive=yes`: WASAPI/CoreAudio/ALSA exclusive mode — the
   /// mixer is bypassed and samples go to the device unresampled). Returns

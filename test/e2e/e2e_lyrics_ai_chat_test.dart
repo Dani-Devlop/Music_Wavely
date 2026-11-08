@@ -64,7 +64,7 @@ Future<ProviderContainer> _pumpNowPlaying(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: WavelyThemes.dark(WavelyAccent.purple),
+        theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const NowPlayingScreen(),
       ),
     ),
@@ -193,7 +193,7 @@ void main() {
           trackLauncherProvider.overrideWithValue(launcher),
         ],
         child: MaterialApp(
-          theme: WavelyThemes.light(WavelyAccent.purple),
+          theme: WavelyThemes.light(WavelyAccent.purple.colors),
           home: const AiChatScreen(),
         ),
       ),

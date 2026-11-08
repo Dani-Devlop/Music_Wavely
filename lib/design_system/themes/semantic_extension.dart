@@ -24,8 +24,84 @@ class WavelySemanticColors extends ThemeExtension<WavelySemanticColors> {
     required this.isDark,
   });
 
-  factory WavelySemanticColors.dark(WavelyAccent accent) {
+  /// Phase 10: AccentColors-based variant (named palette or the adaptive
+  /// accent extracted from album art).
+  factory WavelySemanticColors.darkAccent(
+    AccentColors accentColors, {
+    bool amoled = false,
+  }) {
+    if (amoled) {
+      return WavelySemanticColors(
+        bgBase: const Color(0xFF000000),
+        surface: const Color(0xE60D0D0D),
+        elevated: const Color(0xF21A1A1A),
+        textPrimary: WavelyDarkColors.textPrimary,
+        textSecondary: WavelyDarkColors.textSecondary,
+        textTertiary: WavelyDarkColors.textTertiary,
+        borderGlass: const Color(0x0DFFFFFF),
+        shadowColor: const Color(0x33000000),
+        error: WavelyDarkColors.error,
+        warning: WavelyDarkColors.warning,
+        success: WavelyDarkColors.success,
+        accentColors: accentColors,
+        isDark: true,
+      );
+    }
+    return WavelySemanticColors(
+      bgBase: WavelyDarkColors.bgBase,
+      surface: WavelyDarkColors.surface,
+      elevated: WavelyDarkColors.elevated,
+      textPrimary: WavelyDarkColors.textPrimary,
+      textSecondary: WavelyDarkColors.textSecondary,
+      textTertiary: WavelyDarkColors.textTertiary,
+      borderGlass: WavelyDarkColors.borderGlass,
+      shadowColor: WavelyDarkColors.shadow,
+      error: WavelyDarkColors.error,
+      warning: WavelyDarkColors.warning,
+      success: WavelyDarkColors.success,
+      accentColors: accentColors,
+      isDark: true,
+    );
+  }
+
+  /// Phase 10: AccentColors-based light variant.
+  factory WavelySemanticColors.lightAccent(AccentColors accentColors) =>
+      WavelySemanticColors(
+        bgBase: WavelyLightColors.bgBase,
+        surface: WavelyLightColors.surface,
+        elevated: WavelyLightColors.elevated,
+        textPrimary: WavelyLightColors.textPrimary,
+        textSecondary: WavelyLightColors.textSecondary,
+        textTertiary: WavelyLightColors.textTertiary,
+        borderGlass: WavelyLightColors.borderGlass,
+        shadowColor: WavelyLightColors.shadow,
+        error: WavelyLightColors.error,
+        warning: WavelyLightColors.warning,
+        success: WavelyLightColors.success,
+        accentColors: accentColors,
+        isDark: false,
+      );
+
+  factory WavelySemanticColors.dark(WavelyAccent accent, {bool amoled = false}) {
     final accentColors = accent.colors;
+    if (amoled) {
+      // Phase 10: pure-black AMOLED surfaces — the accent stays untouched.
+      return WavelySemanticColors(
+        bgBase: const Color(0xFF000000),
+        surface: const Color(0xE60D0D0D),
+        elevated: const Color(0xF21A1A1A),
+        textPrimary: WavelyDarkColors.textPrimary,
+        textSecondary: WavelyDarkColors.textSecondary,
+        textTertiary: WavelyDarkColors.textTertiary,
+        borderGlass: const Color(0x0DFFFFFF),
+        shadowColor: const Color(0x33000000),
+        error: WavelyDarkColors.error,
+        warning: WavelyDarkColors.warning,
+        success: WavelyDarkColors.success,
+        accentColors: accentColors,
+        isDark: true,
+      );
+    }
     return WavelySemanticColors(
       bgBase: WavelyDarkColors.bgBase,
       surface: WavelyDarkColors.surface,
@@ -174,5 +250,6 @@ extension WavelySemanticColorsContextX on BuildContext {
   /// sensible defaults instead of crashing the build.
   WavelySemanticColors get wavelyColors =>
       Theme.of(this).extension<WavelySemanticColors>() ??
-      WavelyThemes.light(WavelyAccent.purple).extension<WavelySemanticColors>()!;
+      WavelyThemes.light(WavelyAccent.purple.colors)
+          .extension<WavelySemanticColors>()!;
 }

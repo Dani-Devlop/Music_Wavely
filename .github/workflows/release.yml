@@ -40,9 +40,14 @@ jobs:
         with:
           channel: stable
       # The repo does not commit platform runner folders (see README
-      # "Getting Started"); scaffold them in CI. flutter create . only
-      # generates MISSING files — lib/, pubspec.yaml etc. are untouched.
-      - run: flutter create . --platforms=android --org app.wavely --project-name wavely
+      # "Getting Started"); scaffold them in CI. NOTE: flutter create (even
+      # with --no-pub) REPLACES pubspec.lock with the template lockfile, and
+      # the pub get below then re-solves every dep to the latest allowed —
+      # which pulled sqlite3 3.9.0, whose Android x64 prebuilt download
+      # fails its baked-in hash check and breaks the APK build. Restore the
+      # committed lockfile so the lock stays authoritative.
+      - run: flutter create . --no-pub --platforms=android --org app.wavely --project-name wavely
+      - run: git checkout -- pubspec.lock
       # flutter_local_notifications requires core library desugaring, which
       # the flutter create template does not enable — see tools/
       # patch_android_desugaring.py.
@@ -50,7 +55,18 @@ jobs:
       # Android 10+ scoped storage: write the MediaStore bridge MainActivity
       # + media permissions (see tools/patch_android_media_store.py).
       - run: python3 tools/patch_android_media_store.py
+      # Phase 9 system integrations: home-screen widgets, quick-settings
+      # tile, audio_service MediaBrowser plumbing (lock screen / Android
+      # Auto) — see tools/patch_android_widgets.py.
+      - run: python3 tools/patch_android_widgets.py
+      # Phase 11: Android 13+ per-app language (localeConfig en/fa).
+      - run: python3 tools/patch_android_per_app_language.py
       - run: flutter pub get
+      # home_widget pins kotlinOptions.jvmTarget 1.8 in its pub-cache
+      # build.gradle while its androidx deps expose JVM-11 inlinees — the
+      # compiler's inliner rejects that (warning-mode does not cover it).
+      # Runs AFTER pub get: the plugin files only exist in the cache then.
+      - run: python3 tools/patch_android_jvm_target.py
       - run: dart run build_runner build --delete-conflicting-outputs
       # Universal (fat) APK. Target set = every ABI modern Flutter engines
       # ship (arm / arm64 / x64) — the CLI rejects `android-x86` (32-bit
@@ -98,7 +114,10 @@ jobs:
           channel: stable
       # Scaffold the missing Windows runner (see README "Getting Started").
       - run: flutter config --enable-windows-desktop
-      - run: flutter create . --platforms=windows --org app.wavely --project-name wavely
+      # --no-pub + lock restore keeps the committed pubspec.lock
+      # authoritative (see the android job for the sqlite3 rationale).
+      - run: flutter create . --no-pub --platforms=windows --org app.wavely --project-name wavely
+      - run: git checkout -- pubspec.lock
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
       # Stage 4 §1.2: Windows targets x64 only (flutter's Windows runner is
@@ -164,7 +183,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libmpv-dev mpv ninja-build clang cmake pkg-config libjson-glib-dev libsecret-1-dev libcurl4-openssl-dev squashfs-tools
       # Scaffold the missing Linux runner (see README "Getting Started").
       - run: flutter config --enable-linux-desktop
-      - run: flutter create . --platforms=linux --org app.wavely --project-name wavely
+      # --no-pub + lock restore keeps the committed pubspec.lock
+      # authoritative (see the android job for the sqlite3 rationale).
+      - run: flutter create . --no-pub --platforms=linux --org app.wavely --project-name wavely
+      - run: git checkout -- pubspec.lock
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
       # Stage 4 §1.2: Linux targets x64 only.

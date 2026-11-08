@@ -103,12 +103,28 @@ class _ScriptedEngine implements PlaybackEngine {
     await load(tracks[index]);
   }
 
-    @override
+  @override
   Future<void> setVolume(double volume) async {
     lastVolume = volume;
   }
 
-@override
+
+  // --- Phase 9 base-contract defaults (no-ops in fakes) --------------------
+
+  @override
+  void setTransportCallbacks({
+    void Function()? onNext,
+    void Function()? onPrevious,
+    void Function()? onTogglePlayPause,
+  }) {}
+
+  @override
+  Future<void> seekBy(Duration offset) async {}
+
+  @override
+  Future<void> setLyrics(String? lyrics) async {}
+
+  @override
   Future<void> dispose() async {
     if (disposed) {
       return; // idempotent

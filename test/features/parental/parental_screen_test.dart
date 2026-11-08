@@ -33,7 +33,7 @@ Future<AppDatabase> _pumpWithSeed(WidgetTester tester) async {
       child: MaterialApp(
         // The PIN gate + cards read context.wavelyColors — pump the real
         // Wavely theme so the semantic extension is present.
-        theme: WavelyThemes.dark(WavelyAccent.purple),
+        theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const ParentalScreen(),
       ),
     ),

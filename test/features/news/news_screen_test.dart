@@ -108,7 +108,7 @@ Future<ProviderContainer> _pump(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: WavelyThemes.dark(WavelyAccent.purple),
+        theme: WavelyThemes.dark(WavelyAccent.purple.colors),
         home: const NewsScreen(),
       ),
     ),

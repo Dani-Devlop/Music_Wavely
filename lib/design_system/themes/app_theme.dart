@@ -4,27 +4,39 @@ import 'package:wavely/design_system/tokens/colors.dart';
 import 'package:wavely/design_system/tokens/radii.dart';
 import 'package:wavely/design_system/tokens/typography.dart';
 
-/// Builds the two Wavely themes (light/dark) for a given accent.
+/// Builds the two Wavely themes (light/dark) for a given accent token set.
+///
+/// Phase 10: accepts the concrete [AccentColors] (named palette OR the
+/// adaptive accent extracted from album art) plus the AMOLED flag.
 class WavelyThemes {
   const WavelyThemes._();
 
-  static ThemeData light(WavelyAccent accent) => _build(accent, Brightness.light);
+  static ThemeData light(AccentColors colors) => _build(colors, Brightness.light);
 
-  static ThemeData dark(WavelyAccent accent) => _build(accent, Brightness.dark);
+  static ThemeData dark(AccentColors colors, {bool amoled = false}) =>
+      _build(colors, Brightness.dark, amoled: amoled);
 
-  static ThemeData _build(WavelyAccent accent, Brightness brightness) {
+  static ThemeData _build(
+    AccentColors colors,
+    Brightness brightness, {
+    bool amoled = false,
+  }) {
     final semantic = brightness == Brightness.dark
-        ? WavelySemanticColors.dark(accent)
-        : WavelySemanticColors.light(accent);
-    final accentColor = accent.colors.accent;
+        ? WavelySemanticColors.darkAccent(colors, amoled: amoled)
+        : WavelySemanticColors.lightAccent(colors);
+    final accentColor = colors.accent;
     final colorScheme = ColorScheme.fromSeed(
       seedColor: accentColor,
       brightness: brightness,
     ).copyWith(surface: semantic.surface);
+    // AMOLED: scaffold goes pure black; cards keep the near-black surfaces.
+    final scaffold = amoled && brightness == Brightness.dark
+        ? const Color(0xFF000000)
+        : semantic.bgBase;
 
     return ThemeData(
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: semantic.bgBase,
+      scaffoldBackgroundColor: scaffold,
       extensions: <ThemeExtension<dynamic>>[semantic],
       appBarTheme: AppBarThemeData(
         backgroundColor: Colors.transparent,
@@ -55,7 +67,7 @@ class WavelyThemes {
       sliderTheme: SliderThemeData(
         activeTrackColor: accentColor,
         inactiveTrackColor: semantic.borderGlass,
-        thumbColor: accent.colors.hover,
+        thumbColor: colors.hover,
         overlayColor: accentColor.withValues(alpha: 0.12),
         valueIndicatorColor: accentColor,
       ),

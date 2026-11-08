@@ -829,8 +829,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     };
     final accent = _draft.accent.toWavelyAccent;
     final theme = brightness == Brightness.dark
-        ? WavelyThemes.dark(accent)
-        : WavelyThemes.light(accent);
+        ? WavelyThemes.dark(accent.colors)
+        : WavelyThemes.light(accent.colors);
     return Theme(
       key: kOnboardingLivePreviewKey,
       data: theme,
@@ -1203,7 +1203,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       final rendered = _renderTemplate(segments[i]);
       rows.add(
         Padding(
-          padding: EdgeInsets.only(left: 20.0 * (i + 1)),
+          padding: EdgeInsetsDirectional.only(start: 20.0 * (i + 1)),
           child: Row(
             children: <Widget>[
               Icon(
