@@ -1,0 +1,721 @@
+     1→/// The DESKTOP shell — a premium Spotify clone (v1.0.2, width >= 800).
+     2→///
+     3→/// Owner spec, implemented verbatim:
+     4→/// - **3-column layout**: left sidebar (250 px: logo, Home, Search,
+     5→///   Library, Playlists on a dark gradient), center main view (the routed
+     6→///   branch content: hero, "Made for you" carousels, album grid) and a
+     7→///   right sidebar (300 px: Now Playing details + Next in queue).
+     8→/// - **Bottom playbar**: full-width, fixed: album art, transport controls,
+     9→///   seekbar, volume and the device selector. Glassmorphism throughout.
+    10→library;
+    11→
+    12→import 'dart:async';
+    13→
+    14→import 'package:flutter/material.dart' hide RepeatMode;
+    15→import 'package:flutter_riverpod/flutter_riverpod.dart';
+    16→import 'package:go_router/go_router.dart';
+    17→import 'package:wavely/core/constants/app_constants.dart';
+    18→import 'package:wavely/core/extensions/duration_x.dart';
+    19→import 'package:wavely/design_system/design_system.dart';
+    20→import 'package:wavely/design_system/components/wavely_cover_widget.dart';
+    21→import 'package:wavely/domain/entities/entities.dart';
+    22→import 'package:wavely/features/library/data/library_view_config.dart';
+    23→import 'package:wavely/features/library/presentation/library_screen.dart';
+    24→import 'package:wavely/features/library/presentation/library_tab_manager.dart';
+    25→import 'package:wavely/features/player/presentation/now_playing_screen.dart';
+    26→import 'package:wavely/features/player/presentation/queue_manager_sheet.dart';
+    27→import 'package:wavely/features/search/presentation/search_screen.dart';
+    28→import 'package:wavely/features/settings/presentation/settings_screen.dart';
+    29→import 'package:wavely/playback/engines/engine_factory.dart';
+    30→import 'package:wavely/playback/engines/playback_engine.dart';
+    31→import 'package:wavely/playback/profiles/audio_engine_controller.dart';
+    32→import 'package:wavely/playback/queue/queue_manager.dart';
+    33→
+    34→/// Glass blur used by the playbar (heavy — it floats over content).
+    35→const double _playbarBlurSigma = 26;
+    36→
+    37→/// Fixed widths of the three columns (owner spec: 250 / flexible / 300).
+    38→const double _sidebarWidth = 250;
+    39→const double _rightPanelWidth = 300;
+    40→
+    41→/// The Spotify-style desktop shell around the stateful navigation shell.
+    42→class DesktopShell extends ConsumerStatefulWidget {
+    43→  const DesktopShell({required this.navigationShell, super.key});
+    44→
+    45→  final StatefulNavigationShell navigationShell;
+    46→
+    47→  @override
+    48→  ConsumerState<DesktopShell> createState() => _DesktopShellState();
+    49→}
+    50→
+    51→class _DesktopShellState extends ConsumerState<DesktopShell> {
+    52→  bool _playlistsSelected = false;
+    53→
+    54→  @override
+    55→  Widget build(BuildContext context) {
+    56→    final colors = context.wavelyColors;
+    57→    return Scaffold(
+    58→      backgroundColor: colors.bgBase,
+    59→      body: SafeArea(
+    60→        child: Column(
+    61→          children: <Widget>[
+    62→            Expanded(
+    63→              child: Row(
+    64→                crossAxisAlignment: CrossAxisAlignment.stretch,
+    65→                children: <Widget>[
+    66→                  _Sidebar(
+    67→                    playlistsSelected: _playlistsSelected,
+    68→                    onNavigate: (route) {
+    69→                      setState(() {
+    70→                        _playlistsSelected =
+    71→                            route == LibraryScreen.libraryRoute &&
+    72→                                ref.read(pendingLibraryTabProvider) ==
+    73→                                    LibraryTabId.playlists;
+    74→                      });
+    75→                      context.go(route);
+    76→                    },
+    77→                  ),
+    78→                  Expanded(
+    79→                    child: ClipRRect(
+    80→                      borderRadius: BorderRadius.circular(10),
+    81→                      child: widget.navigationShell,
+    82→                    ),
+    83→                  ),
+    84→                  const _RightPanel(),
+    85→                ],
+    86→              ),
+    87→            ),
+    88→            const _DesktopPlaybar(),
+    89→          ],
+    90→        ),
+    91→      ),
+    92→    );
+    93→  }
+    94→}
+    95→
+    96→// -- LEFT SIDEBAR --------------------------------------------------------------
+    97→
+    98→class _Sidebar extends ConsumerWidget {
+    99→  const _Sidebar({
+   100→    required this.playlistsSelected,
+   101→    required this.onNavigate,
+   102→  });
+   103→
+   104→  /// Whether the Playlists entry is the visually-selected nav item (the
+   105→  /// router cannot know which library tab is active, so the shell tracks
+   106→  /// the last sidebar tap).
+   107→  final bool playlistsSelected;
+   108→
+   109→  /// Invoked with the target route; the shell updates its sidebar
+   110→  /// selection state before navigating.
+   111→  final void Function(String route) onNavigate;
+   112→
+   113→  @override
+   114→  Widget build(BuildContext context, WidgetRef ref) {
+   115→    final colors = context.wavelyColors;
+   116→    final location = GoRouterState.of(context).matchedLocation;
+   117→    final inLibrary = location.startsWith(LibraryScreen.libraryRoute);
+   118→    return Container(
+   119→      width: _sidebarWidth,
+   120→      padding: const EdgeInsets.all(Spacing.md),
+   121→      decoration: BoxDecoration(
+   122→        gradient: LinearGradient(
+   123→          begin: Alignment.topCenter,
+   124→          end: Alignment.bottomCenter,
+   125→          colors: <Color>[
+   126→            colors.elevated.withValues(alpha: 0.9),
+   127→            colors.bgBase.withValues(alpha: 0.6),
+   128→          ],
+   129→        ),
+   130→        border: Border(
+   131→          right: BorderSide(color: colors.borderGlass),
+   132→        ),
+   133→      ),
+   134→      child: Column(
+   135→        crossAxisAlignment: CrossAxisAlignment.start,
+   136→        children: <Widget>[
+   137→          // -- brand ---------------------------------------------------
+   138→          Padding(
+   139→            padding: const EdgeInsets.symmetric(
+   140→              horizontal: Spacing.sm, vertical: Spacing.md,
+   141→            ),
+   142→            child: Row(
+   143→              children: <Widget>[
+   144→                const WavelyLogo(size: 30),
+   145→                const SizedBox(width: Spacing.md),
+   146→                Text(
+   147→                  'Wavely',
+   148→                  style: WavelyTypography.title18(color: colors.textPrimary),
+   149→                ),
+   150→              ],
+   151→            ),
+   152→          ),
+   153→          const SizedBox(height: Spacing.sm),
+   154→          // -- primary nav ----------------------------------------------
+   155→          _SideNavItem(
+   156→            icon: Icons.home_rounded,
+   157→            label: 'Home',
+   158→            selected: !inLibrary && location.startsWith('/home'),
+   159→            onTap: () => onNavigate('/home'),
+   160→          ),
+   161→          _SideNavItem(
+   162→            icon: Icons.search_rounded,
+   163→            label: 'Search',
+   164→            selected: location.startsWith('/search'),
+   165→            onTap: () => onNavigate(SearchScreen.route),
+   166→          ),
+   167→          _SideNavItem(
+   168→            icon: Icons.library_music_rounded,
+   169→            label: 'Library',
+   170→            selected: inLibrary && !playlistsSelected,
+   171→            onTap: () {
+   172→              ref.read(pendingLibraryTabProvider.notifier).state = null;
+   173→              onNavigate(LibraryScreen.libraryRoute);
+   174→            },
+   175→          ),
+   176→          _SideNavItem(
+   177→            icon: Icons.playlist_play_rounded,
+   178→            label: 'Playlists',
+   179→            selected: playlistsSelected,
+   180→            onTap: () {
+   181→              ref.read(pendingLibraryTabProvider.notifier).state =
+   182→                  LibraryTabId.playlists;
+   183→              onNavigate(LibraryScreen.libraryRoute);
+   184→            },
+   185→          ),
+   186→          const Spacer(),
+   187→          const Divider(color: Colors.white12, height: 1),
+   188→          _SideNavItem(
+   189→            icon: Icons.settings_rounded,
+   190→            label: 'Settings',
+   191→            selected: location.startsWith(SettingsScreen.route),
+   192→            onTap: () => onNavigate(SettingsScreen.route),
+   193→          ),
+   194→        ],
+   195→      ),
+   196→    );
+   197→  }
+   198→}
+   199→
+   200→class _SideNavItem extends StatelessWidget {
+   201→  const _SideNavItem({
+   202→    required this.icon,
+   203→    required this.label,
+   204→    required this.selected,
+   205→    required this.onTap,
+   206→  });
+   207→
+   208→  final IconData icon;
+   209→  final String label;
+   210→  final bool selected;
+   211→  final VoidCallback onTap;
+   212→
+   213→  @override
+   214→  Widget build(BuildContext context) {
+   215→    final colors = context.wavelyColors;
+   216→    final accent = colors.accentColors.accent;
+   217→    return Padding(
+   218→      padding: const EdgeInsets.symmetric(vertical: 2),
+   219→      child: InkWell(
+   220→        onTap: onTap,
+   221→        borderRadius: AppRadii.bMd,
+   222→        child: Container(
+   223→          height: 44,
+   224→          padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+   225→          decoration: BoxDecoration(
+   226→            borderRadius: AppRadii.bMd,
+   227→            color: selected ? Colors.white.withValues(alpha: 0.08) : null,
+   228→          ),
+   229→          child: Row(
+   230→            children: <Widget>[
+   231→              Icon(
+   232→                icon,
+   233→                size: 22,
+   234→                color: selected ? accent : colors.textSecondary,
+   235→              ),
+   236→              const SizedBox(width: Spacing.md),
+   237→              Expanded(
+   238→                child: Text(
+   239→                  label,
+   240→                  maxLines: 1,
+   241→                  overflow: TextOverflow.ellipsis,
+   242→                  style: WavelyTypography.body14Medium(
+   243→                    color: selected ? colors.textPrimary
+   244→                        : colors.textSecondary,
+   245→                  ),
+   246→                ),
+   247→              ),
+   248→            ],
+   249→          ),
+   250→        ),
+   251→      ),
+   252→    );
+   253→  }
+   254→}
+   255→
+   256→// -- RIGHT PANEL ---------------------------------------------------------------
+   257→
+   258→class _RightPanel extends ConsumerWidget {
+   259→  const _RightPanel();
+   260→
+   261→  @override
+   262→  Widget build(BuildContext context, WidgetRef ref) {
+   263→    final colors = context.wavelyColors;
+   264→    final queue = ref.watch(queueManagerProvider);
+   265→    final track = queue.currentTrack;
+   266→    return Container(
+   267→      width: _rightPanelWidth,
+   268→      padding: const EdgeInsets.all(Spacing.lg),
+   269→      decoration: BoxDecoration(
+   270→        gradient: LinearGradient(
+   271→          begin: Alignment.topCenter,
+   272→          end: Alignment.bottomCenter,
+   273→          colors: <Color>[
+   274→            colors.elevated.withValues(alpha: 0.9),
+   275→            colors.bgBase.withValues(alpha: 0.6),
+   276→          ],
+   277→        ),
+   278→        border: Border(
+   279→          left: BorderSide(color: colors.borderGlass),
+   280→        ),
+   281→      ),
+   282→      child: Column(
+   283→        crossAxisAlignment: CrossAxisAlignment.start,
+   284→        children: <Widget>[
+   285→          Row(
+   286→            children: <Widget>[
+   287→              Expanded(
+   288→                child: Text(
+   289→                  'Now playing',
+   290→                  style: WavelyTypography.title18(color: colors.textPrimary),
+   291→                ),
+   292→              ),
+   293→              IconButton(
+   294→                tooltip: 'Open full player',
+   295→                icon: Icon(Icons.open_in_full_rounded,
+   296→                    size: 18, color: colors.textSecondary),
+   297→                onPressed: () =>
+   298→                    unawaited(context.push(NowPlayingScreen.route)),
+   299→              ),
+   300→            ],
+   301→          ),
+   302→          const SizedBox(height: Spacing.md),
+   303→          if (track == null)
+   304→            Expanded(
+   305→              child: Center(
+   306→                child: Text(
+   307→                  'Nothing playing',
+   308→                  style: WavelyTypography.body14(
+   309→                    color: colors.textSecondary,
+   310→                  ),
+   311→                ),
+   312→              ),
+   313→            )
+   314→          else ...<Widget>[
+   315→            // -- cover + details ----------------------------------------
+   316→            AspectRatio(
+   317→              aspectRatio: 1,
+   318→              child: WavelyCover(
+   319→                label: track.title,
+   320→                coverPath: track.coverPath,
+   321→                borderRadius: BorderRadius.circular(14),
+   322→              ),
+   323→            ),
+   324→            const SizedBox(height: Spacing.lg),
+   325→            Text(
+   326→              track.title,
+   327→              maxLines: 1,
+   328→              overflow: TextOverflow.ellipsis,
+   329→              style: WavelyTypography.title18(color: colors.textPrimary),
+   330→            ),
+   331→            const SizedBox(height: Spacing.xs),
+   332→            Text(
+   333→              track.artistOrUnknown,
+   334→              maxLines: 1,
+   335→              overflow: TextOverflow.ellipsis,
+   336→              style: WavelyTypography.body14(color: colors.textSecondary),
+   337→            ),
+   338→            if (track.album?.isNotEmpty == true)
+   339→              Text(
+   340→                track.album!,
+   341→                maxLines: 1,
+   342→                overflow: TextOverflow.ellipsis,
+   343→                style: WavelyTypography.caption12(color: colors.textTertiary),
+   344→              ),
+   345→            const SizedBox(height: Spacing.lg),
+   346→            // -- next in queue ------------------------------------------
+   347→            Text(
+   348→              'Next in queue',
+   349→              style: WavelyTypography.title18(color: colors.textPrimary),
+   350→            ),
+   351→            const SizedBox(height: Spacing.sm),
+   352→            Expanded(child: _NextInQueue(queue: queue)),
+   353→          ],
+   354→        ],
+   355→      ),
+   356→    );
+   357→  }
+   358→}
+   359→
+   360→class _NextInQueue extends ConsumerWidget {
+   361→  const _NextInQueue({required this.queue});
+   362→
+   363→  final QueueState queue;
+   364→
+   365→  @override
+   366→  Widget build(BuildContext context, WidgetRef ref) {
+   367→    final colors = context.wavelyColors;
+   368→    final upcoming = <Track>[
+   369→      for (var i = queue.currentIndex + 1;
+   370→          i < queue.tracks.length && i < queue.currentIndex + 20;
+   371→          i++)
+   372→        queue.tracks[i],
+   373→    ];
+   374→    if (upcoming.isEmpty) {
+   375→      return Center(
+   376→        child: Text(
+   377→          'Queue is empty',
+   378→          style: WavelyTypography.caption12(color: colors.textTertiary),
+   379→        ),
+   380→      );
+   381→    }
+   382→    return ListView.builder(
+   383→      itemCount: upcoming.length,
+   384→      itemBuilder: (context, index) {
+   385→        final track = upcoming[index];
+   386→        final absoluteIndex = queue.currentIndex + 1 + index;
+   387→        return ListTile(
+   388→          dense: true,
+   389→          contentPadding: EdgeInsets.zero,
+   390→          leading: SizedBox(
+   391→            width: 40,
+   392→            height: 40,
+   393→            child: WavelyCover(
+   394→              label: track.title,
+   395→              coverPath: track.coverPath,
+   396→            ),
+   397→          ),
+   398→          title: Text(
+   399→            track.title,
+   400→            maxLines: 1,
+   401→            overflow: TextOverflow.ellipsis,
+   402→            style:
+   403→                WavelyTypography.body14Medium(color: colors.textPrimary),
+   404→          ),
+   405→          subtitle: Text(
+   406→            track.artistOrUnknown,
+   407→            maxLines: 1,
+   408→            overflow: TextOverflow.ellipsis,
+   409→            style: WavelyTypography.caption12(color: colors.textSecondary),
+   410→          ),
+   411→          trailing: Text(
+   412→            track.displayDuration,
+   413→            style: WavelyTypography.timerTabular(color: colors.textTertiary),
+   414→          ),
+   415→          onTap: () => unawaited(
+   416→            ref
+   417→                .read(queueManagerProvider.notifier)
+   418→                .setQueue(List<Track>.of(queue.tracks),
+   419→                    startIndex: absoluteIndex),
+   420→          ),
+   421→        );
+   422→      },
+   423→    );
+   424→  }
+   425→}
+   426→
+   427→// -- BOTTOM PLAYBAR -------------------------------------------------------------
+   428→
+   429→class _DesktopPlaybar extends ConsumerStatefulWidget {
+   430→  const _DesktopPlaybar();
+   431→
+   432→  @override
+   433→  ConsumerState<_DesktopPlaybar> createState() => _DesktopPlaybarState();
+   434→}
+   435→
+   436→class _DesktopPlaybarState extends ConsumerState<_DesktopPlaybar> {
+   437→  double _volume = 1;
+   438→
+   439→  Future<void> _setVolume(double value) async {
+   440→    setState(() => _volume = value);
+   441→    final PlaybackEngine engine = ref.read(playbackEngineProvider);
+   442→    await engine.setVolume(value);
+   443→  }
+   444→
+   445→  @override
+   446→  Widget build(BuildContext context) {
+   447→    final manager = ref.watch(queueManagerProvider.notifier);
+   448→    final queue = ref.watch(queueManagerProvider);
+   449→    final engineState = ref.watch(audioEngineControllerProvider);
+   450→    final colors = context.wavelyColors;
+   451→    final accent = colors.accentColors.accent;
+   452→    final track = queue.currentTrack;
+   453→    final isPlaying = queue.playbackState == PlaybackState.playing;
+   454→    final durationMs = queue.duration.inMilliseconds;
+   455→    final positionMs = queue.position.inMilliseconds;
+   456→    final seekValue = durationMs <= 0
+   457→        ? 0.0
+   458→        : (positionMs / durationMs).clamp(0.0, 1.0).toDouble();
+   459→    final minTarget = BoxConstraints(
+   460→      minWidth: AppConstants.touchTargetMin,
+   461→      minHeight: AppConstants.touchTargetMin,
+   462→    );
+   463→    return GlassCard(
+   464→      blurSigma: _playbarBlurSigma,
+   465→      borderRadius: BorderRadius.zero,
+   466→      padding: EdgeInsets.zero,
+   467→      child: Container(
+   468→        height: 96,
+   469→        decoration: BoxDecoration(
+   470→          border: Border(top: BorderSide(color: colors.borderGlass)),
+   471→        ),
+   472→        padding: const EdgeInsets.symmetric(
+   473→          horizontal: Spacing.lg, vertical: Spacing.sm,
+   474→        ),
+   475→        child: Row(
+   476→          children: <Widget>[
+   477→            // -- left: art + meta --------------------------------------
+   478→            SizedBox(
+   479→              width: 220,
+   480→              child: track == null
+   481→                  ? Text(
+   482→                      'Nothing playing',
+   483→                      style: WavelyTypography.body14(
+   484→                        color: colors.textSecondary,
+   485→                      ),
+   486→                    )
+   487→                  : Row(
+   488→                      children: <Widget>[
+   489→                        SizedBox(
+   490→                          width: 52,
+   491→                          height: 52,
+   492→                          child: WavelyCover(
+   493→                            label: track.title,
+   494→                            coverPath: track.coverPath,
+   495→                            borderRadius: BorderRadius.circular(8),
+   496→                          ),
+   497→                        ),
+   498→                        const SizedBox(width: Spacing.md),
+   499→                        Expanded(
+   500→                          child: Column(
+   501→                            mainAxisAlignment: MainAxisAlignment.center,
+   502→                            crossAxisAlignment: CrossAxisAlignment.start,
+   503→                            children: <Widget>[
+   504→                              Text(
+   505→                                track.title,
+   506→                                maxLines: 1,
+   507→                                overflow: TextOverflow.ellipsis,
+   508→                                style: WavelyTypography.body14Medium(
+   509→                                  color: colors.textPrimary,
+   510→                                ),
+   511→                              ),
+   512→                              Text(
+   513→                                track.artistOrUnknown,
+   514→                                maxLines: 1,
+   515→                                overflow: TextOverflow.ellipsis,
+   516→                                style: WavelyTypography.caption12(
+   517→                                  color: colors.textSecondary,
+   518→                                ),
+   519→                              ),
+   520→                            ],
+   521→                          ),
+   522→                        ),
+   523→                      ],
+   524→                    ),
+   525→            ),
+   526→            // -- center: controls + seekbar ------------------------------
+   527→            Expanded(
+   528→              child: Column(
+   529→                mainAxisAlignment: MainAxisAlignment.center,
+   530→                children: <Widget>[
+   531→                  Row(
+   532→                    mainAxisAlignment: MainAxisAlignment.center,
+   533→                    children: <Widget>[
+   534→                      IconButton(
+   535→                        constraints: minTarget,
+   536→                        tooltip: 'Shuffle',
+   537→                        onPressed: () =>
+   538→                            unawaited(manager.toggleShuffle()),
+   539→                        color: queue.shuffleEnabled
+   540→                            ? accent
+   541→                            : colors.textSecondary,
+   542→                        icon: const Icon(Icons.shuffle_rounded, size: 20),
+   543→                      ),
+   544→                      IconButton(
+   545→                        constraints: minTarget,
+   546→                        tooltip: 'Previous',
+   547→                        onPressed: () => unawaited(manager.previous()),
+   548→                        color: colors.textPrimary,
+   549→                        icon: const Icon(Icons.skip_previous_rounded),
+   550→                      ),
+   551→                      Container(
+   552→                        decoration: BoxDecoration(
+   553→                          color: colors.textPrimary,
+   554→                          shape: BoxShape.circle,
+   555→                        ),
+   556→                        child: IconButton(
+   557→                          constraints: minTarget,
+   558→                          tooltip: 'Play or pause',
+   559→                          onPressed: () =>
+   560→                              unawaited(manager.togglePlayPause()),
+   561→                          color: colors.bgBase,
+   562→                          icon: Icon(
+   563→                            isPlaying
+   564→                                ? Icons.pause_rounded
+   565→                                : Icons.play_arrow_rounded,
+   566→                          ),
+   567→                        ),
+   568→                      ),
+   569→                      IconButton(
+   570→                        constraints: minTarget,
+   571→                        tooltip: 'Next',
+   572→                        onPressed: () => unawaited(manager.next()),
+   573→                        color: colors.textPrimary,
+   574→                        icon: const Icon(Icons.skip_next_rounded),
+   575→                      ),
+   576→                      IconButton(
+   577→                        constraints: minTarget,
+   578→                        tooltip: 'Repeat',
+   579→                        onPressed: () => manager.setRepeatMode(
+   580→                          switch (queue.repeatMode) {
+   581→                            RepeatMode.off => RepeatMode.all,
+   582→                            RepeatMode.all => RepeatMode.one,
+   583→                            RepeatMode.one => RepeatMode.off,
+   584→                          },
+   585→                        ),
+   586→                        color: queue.repeatMode == RepeatMode.off
+   587→                            ? colors.textSecondary
+   588→                            : accent,
+   589→                        icon: Icon(
+   590→                          queue.repeatMode == RepeatMode.one
+   591→                              ? Icons.repeat_one_rounded
+   592→                              : Icons.repeat_rounded,
+   593→                          size: 20,
+   594→                        ),
+   595→                      ),
+   596→                    ],
+   597→                  ),
+   598→                  SizedBox(
+   599→                    height: 26,
+   600→                    child: Row(
+   601→                      children: <Widget>[
+   602→                        Text(
+   603→                          queue.position.hm,
+   604→                          style: WavelyTypography.micro10(
+   605→                            color: colors.textSecondary,
+   606→                          ),
+   607→                        ),
+   608→                        Expanded(
+   609→                          child: SliderTheme(
+   610→                            data: SliderTheme.of(context).copyWith(
+   611→                              trackHeight: 3,
+   612→                              thumbShape: const RoundSliderThumbShape(
+   613→                                enabledThumbRadius: 5,
+   614→                              ),
+   615→                            ),
+   616→                            child: Slider(
+   617→                              value: seekValue,
+   618→                              activeColor: accent,
+   619→                              inactiveColor: colors.borderGlass,
+   620→                              onChanged: durationMs <= 0
+   621→                                  ? null
+   622→                                  : (v) => unawaited(
+   623→                                        manager.seek(
+   624→                                          Duration(
+   625→                                            milliseconds:
+   626→                                                (v * durationMs).round(),
+   627→                                          ),
+   628→                                        ),
+   629→                                      ),
+   630→                            ),
+   631→                          ),
+   632→                        ),
+   633→                        Text(
+   634→                          queue.duration.hm,
+   635→                          style: WavelyTypography.micro10(
+   636→                            color: colors.textSecondary,
+   637→                          ),
+   638→                        ),
+   639→                      ],
+   640→                    ),
+   641→                  ),
+   642→                ],
+   643→              ),
+   644→            ),
+   645→            // -- right: queue · device · volume --------------------------
+   646→            SizedBox(
+   647→              width: 220,
+   648→              child: Row(
+   649→                mainAxisAlignment: MainAxisAlignment.end,
+   650→                children: <Widget>[
+   651→                  IconButton(
+   652→                    constraints: minTarget,
+   653→                    tooltip: 'Queue manager',
+   654→                    onPressed: () =>
+   655→                        unawaited(showQueueManagerSheet(context)),
+   656→                    color: colors.textSecondary,
+   657→                    icon: const Icon(Icons.queue_music_rounded, size: 20),
+   658→                  ),
+   659→                  PopupMenuButton<String>(
+   660→                    tooltip: 'Output device',
+   661→                    icon: Icon(Icons.speaker_rounded,
+   662→                        size: 20, color: colors.textSecondary),
+   663→                    onSelected: (_) {},
+   664→                    itemBuilder: (context) => <PopupMenuEntry<String>>[
+   665→                      PopupMenuItem<String>(
+   666→                        enabled: false,
+   667→                        value: 'current',
+   668→                        child: Text(
+   669→                          'Output: ${engineState.outputDeviceLabel}',
+   670→                          style: WavelyTypography.caption12(
+   671→                            color: colors.textPrimary,
+   672→                          ),
+   673→                        ),
+   674→                      ),
+   675→                      const PopupMenuDivider(),
+   676→                      PopupMenuItem<String>(
+   677→                        enabled: false,
+   678→                        value: 'default',
+   679→                        child: Text(
+   680→                          'System default is applied per output device '
+   681→                          'profile.',
+   682→                          style: WavelyTypography.micro10(
+   683→                            color: colors.textTertiary,
+   684→                          ),
+   685→                        ),
+   686→                      ),
+   687→                    ],
+   688→                  ),
+   689→                  const SizedBox(width: Spacing.sm),
+   690→                  Icon(Icons.volume_up_rounded,
+   691→                      size: 20, color: colors.textSecondary),
+   692→                  SizedBox(
+   693→                    width: 90,
+   694→                    child: SliderTheme(
+   695→                      data: SliderTheme.of(context).copyWith(
+   696→                        trackHeight: 3,
+   697→                        thumbShape: const RoundSliderThumbShape(
+   698→                          enabledThumbRadius: 5,
+   699→                        ),
+   700→                        overlayShape: const RoundSliderOverlayShape(
+   701→                          overlayRadius: 10,
+   702→                        ),
+   703→                      ),
+   704→                      child: Slider(
+   705→                        value: _volume,
+   706→                        activeColor: accent,
+   707→                        inactiveColor: colors.borderGlass,
+   708→                        onChanged: (v) => unawaited(_setVolume(v)),
+   709→                      ),
+   710→                    ),
+   711→                  ),
+   712→                ],
+   713→              ),
+   714→            ),
+   715→          ],
+   716→        ),
+   717→      ),
+   718→    );
+   719→  }
+   720→}
+   721→
