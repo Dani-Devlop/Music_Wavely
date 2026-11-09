@@ -5,23 +5,30 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { EqBars } from "../eq-bars";
 import { SongRow } from "../song-row";
-import { SourceModeChips, OfflineBanner } from "../source-mode-chips";
-import { useWavely, useCurrentTrack, useEffectiveMode, filterByMode } from "@/lib/wavely/store";
-import { ALBUMS, FOLDERS, PLAYLISTS, TRACKS, albumCover, trackById, tracksOfAlbum } from "@/lib/wavely/data";
-import { fmtLongTime } from "@/lib/wavely/data";
+import { OfflineBanner } from "../source-mode-chips";
+import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
+import { ALBUMS, PLAYLISTS, TRACKS, fmtLongTime, trackById, tracksOfAlbum } from "@/lib/wavely/data";
+import type { LibraryTab, SongFilter, SongSortMode } from "@/lib/wavely/types";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import {
   ArrowRight,
+  Ban,
+  ChevronRight,
+  ClockPlus,
   Cloud,
+  CloudOff,
+  Disc3,
+  Flame,
   Folder,
   Heart,
-  Layers,
-  MoreHorizontal,
+  History,
+  LibraryBig,
+  ListMusic,
+  ListPlus,
+  MicVocal,
   Play,
   Smartphone,
   Sparkles,
-  WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,13 +50,309 @@ function SectionHeader({ title, action }: { title: string; action?: React.ReactN
   );
 }
 
-function seeAll(tab: "playlists" | "albums" | "folders") {
-  useWavely.getState().setLibraryTab(tab);
-  useWavely.getState().setView("library");
+/** Jumps into the Library with a specific tab / sort / filter pre-applied. */
+function openLibrary(opts: { tab: LibraryTab; sort?: SongSortMode; filter?: SongFilter }) {
+  const s = useWavely.getState();
+  s.setLibraryTab(opts.tab);
+  if (opts.sort) s.setSongSort(opts.sort);
+  s.setSongFilter(opts.filter ?? "all");
+  s.setView("library");
+}
+
+/** Is this track a real file on the device (local scan or downloaded)? */
+const onDevice = (id: string) => {
+  const t = trackById.get(id);
+  return !!t && (t.origin === "local" || !!t.downloaded);
+};
+
+/* ---------------------------------------------------------------- */
+/* Compact header — avatar + greeting + search, one row, no waste    */
+/* ---------------------------------------------------------------- */
+function HomeHeader() {
+  const setView = useWavely((s) => s.setView);
+  return (
+    <header className="sticky top-0 z-20 -mx-4 bg-background/85 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl md:-mx-8 md:px-8">
+      <div className="flex items-center gap-3 pt-1">
+        <button
+          onClick={() => setView("settings")}
+          className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/40 transition hover:ring-primary"
+          aria-label="Open profile"
+        >
+          <Image src="/wavely/avatar.png" alt="Your profile" fill sizes="40px" className="object-cover" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            {greeting()}
+          </p>
+          <h1 className="truncate font-display text-xl font-extrabold leading-tight tracking-tight">
+            Hi, Dani
+          </h1>
+        </div>
+        <button
+          onClick={() => setView("search")}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wav-elevated text-foreground transition hover:bg-accent"
+          aria-label="Search"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-5 w-5" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+    </header>
+  );
 }
 
 /* ---------------------------------------------------------------- */
-/* Curated banner card — "Discover weekly" style from the reference  */
+/* Liked & favorites — one combined home for both worlds             */
+/* ---------------------------------------------------------------- */
+function LikedSection({
+  favIds,
+  onOpen,
+}: {
+  favIds: string[];
+  onOpen: () => void;
+}) {
+  const playContext = useWavely((s) => s.playContext);
+  const toggleShuffle = useWavely((s) => s.toggleShuffle);
+
+  const shuffleLiked = () => {
+    if (favIds.length === 0) return;
+    playContext("Liked songs", favIds, Math.floor(Math.random() * favIds.length));
+    if (!useWavely.getState().shuffle) toggleShuffle();
+  };
+
+  return (
+    <section>
+      <SectionHeader
+        title="Liked & favorites"
+        action={
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={onOpen}>
+            See all
+          </Button>
+        }
+      />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <motion.button
+          whileTap={{ scale: 0.985 }}
+          onClick={onOpen}
+          className="group relative flex min-h-44 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-primary/45 via-primary/18 to-transparent p-4 text-left"
+          aria-label="Open liked songs"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg accent-glow">
+            <Heart className="h-5 w-5 fill-primary-foreground" />
+          </span>
+          <span className="mt-4 block">
+            <span className="block font-display text-lg font-bold">Liked songs</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              {favIds.length} songs — whatever you love, in one place
+            </span>
+          </span>
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              shuffleLiked();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.stopPropagation();
+                shuffleLiked();
+              }
+            }}
+            className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-xl transition-all hover:scale-105 focus-visible:opacity-100 group-hover:opacity-100"
+            aria-label="Shuffle liked songs"
+          >
+            <Play className="ml-0.5 h-5 w-5 fill-primary-foreground" />
+          </span>
+        </motion.button>
+
+        <div className="flex flex-col justify-center rounded-2xl bg-wav-surface/60 p-1.5">
+          {favIds.slice(0, 3).map((id) => {
+            const t = trackById.get(id)!;
+            return (
+              <SongRow
+                key={id}
+                track={t}
+                compact
+                onPlay={() => playContext("Liked songs", favIds, favIds.indexOf(id))}
+              />
+            );
+          })}
+          {favIds.length > 3 && (
+            <button
+              onClick={onOpen}
+              className="flex items-center gap-1.5 px-2 pb-1.5 pt-1 text-xs font-semibold text-muted-foreground transition hover:text-primary"
+            >
+              +{favIds.length - 3} more <ChevronRight className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* LOCAL world — Musicolet-style flat rows                           */
+/* ---------------------------------------------------------------- */
+function MusicoletRow({
+  icon: Icon,
+  label,
+  detail,
+  onClick,
+  active,
+}: {
+  icon: React.ElementType;
+  label: string;
+  detail?: string;
+  onClick: () => void;
+  active?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-4 rounded-xl px-2.5 py-2.5 text-left transition hover:bg-accent/60",
+        active && "bg-accent/40",
+      )}
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-semibold leading-tight">{label}</span>
+        {detail && <span className="block truncate text-xs text-muted-foreground">{detail}</span>}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+    </button>
+  );
+}
+
+function QuickLink({
+  icon: Icon,
+  label,
+  count,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  count: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-3 rounded-xl bg-wav-surface px-3 py-3 text-left transition hover:bg-accent"
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[13px] font-semibold leading-tight">{label}</span>
+        <span className="block text-[11px] text-muted-foreground">{count}</span>
+      </span>
+    </button>
+  );
+}
+
+function LocalSection({
+  deviceCount,
+  deviceTime,
+  notPlayedCount,
+}: {
+  deviceCount: number;
+  deviceTime: string;
+  notPlayedCount: number;
+}) {
+  const favorites = useWavely((s) => s.favorites);
+  const history = useWavely((s) => s.history);
+  const queues = useWavely((s) => s.queues);
+  const currentTrack = useCurrentTrack();
+
+  const deviceFavorites = favorites.filter(onDevice).length;
+  const deviceHistory = history.filter(onDevice).length;
+  const deviceAlbums = ALBUMS.filter((a) => a.origin !== "online").length;
+  const wavelyDownloads = TRACKS.filter((t) => t.downloaded).length;
+
+  return (
+    <section>
+      <div className="mb-2 flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+          <Smartphone className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">Your Library</h2>
+          <p className="truncate text-[11px] text-muted-foreground">
+            On this device • {deviceCount} songs • {deviceTime}
+            {wavelyDownloads > 0 && ` • ${wavelyDownloads} saved from online`}
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-wav-surface/50 p-1.5">
+        <MusicoletRow
+          icon={LibraryBig}
+          label="All songs"
+          detail={`${deviceCount} songs on device`}
+          onClick={() => openLibrary({ tab: "songs", sort: "title-asc" })}
+        />
+        <MusicoletRow
+          icon={Heart}
+          label="Favorites"
+          detail={`${deviceFavorites} songs`}
+          onClick={() => openLibrary({ tab: "favorites" })}
+        />
+        <MusicoletRow
+          icon={ClockPlus}
+          label="Recently added"
+          detail="newest imports first"
+          onClick={() => openLibrary({ tab: "songs", sort: "date-added" })}
+        />
+        <MusicoletRow
+          icon={History}
+          label="Recently played"
+          detail={`${deviceHistory} in device history`}
+          onClick={() => openLibrary({ tab: "history" })}
+        />
+        <MusicoletRow
+          icon={Flame}
+          label="Most played"
+          detail="sorted by play count"
+          onClick={() => openLibrary({ tab: "songs", sort: "play-count" })}
+        />
+        <MusicoletRow
+          icon={Ban}
+          label="Not played"
+          detail={`${notPlayedCount} songs waiting for you`}
+          onClick={() => openLibrary({ tab: "songs", filter: "not-played" })}
+        />
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <QuickLink icon={Disc3} label="Albums" count={`${deviceAlbums}`} onClick={() => openLibrary({ tab: "albums" })} />
+        <QuickLink icon={MicVocal} label="Artists" count="8 on device" onClick={() => openLibrary({ tab: "artists" })} />
+        <QuickLink icon={Folder} label="Folders" count="Music · Downloads · FLAC" onClick={() => openLibrary({ tab: "folders" })} />
+        <QuickLink icon={ListPlus} label="Playlists" count={`${PLAYLISTS.length}`} onClick={() => openLibrary({ tab: "playlists" })} />
+        <QuickLink icon={ListMusic} label="Queues" count={`${queues.length}/20`} onClick={() => openLibrary({ tab: "queues" })} />
+        <QuickLink
+          icon={currentTrack ? ListMusic : Sparkles}
+          label={currentTrack ? "Now playing queue" : "Ask Wavely AI"}
+          count={currentTrack ? "open the queue sheet" : "build a playlist by chat"}
+          onClick={() =>
+            currentTrack
+              ? useWavely.getState().setQueueSheetOpen(true)
+              : useWavely.getState().setView("ai")
+          }
+        />
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* ONLINE world — Spotify-style discovery                            */
 /* ---------------------------------------------------------------- */
 function CuratedCard({
   image,
@@ -57,20 +360,13 @@ function CuratedCard({
   title,
   subtitle,
   onPlay,
-  imagePosition = "right",
 }: {
   image?: string;
-  badge?: "online" | "ai" | "offline";
+  badge?: "online" | "ai";
   title: string;
   subtitle: string;
   onPlay: () => void;
-  imagePosition?: "right" | "full";
 }) {
-  const favorites = useWavely((s) => s.favorites);
-  const toggleFavorite = useWavely((s) => s.toggleFavorite);
-  const { toast } = useToast();
-  const isFav = favorites.includes(`cur:${title}`);
-
   return (
     <motion.article
       whileTap={{ scale: 0.985 }}
@@ -85,16 +381,14 @@ function CuratedCard({
           alt=""
           fill
           sizes="(max-width: 640px) 86vw, 380px"
-          className={cn("object-cover", imagePosition === "right" ? "object-right" : "object-center")}
+          className="object-cover object-right"
         />
       )}
       <div
         className={cn(
           "absolute inset-0",
           image
-            ? imagePosition === "right"
-              ? "bg-gradient-to-r from-background/95 via-background/70 to-transparent"
-              : "bg-gradient-to-r from-background/90 via-background/55 to-background/20"
+            ? "bg-gradient-to-r from-background/95 via-background/70 to-transparent"
             : "bg-gradient-to-r from-background/80 via-background/40 to-transparent",
         )}
       />
@@ -111,13 +405,11 @@ function CuratedCard({
             "absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-widest backdrop-blur",
             badge === "online" && "bg-sky-400/20 text-sky-200",
             badge === "ai" && "bg-primary/25 text-primary",
-            badge === "offline" && "bg-amber-500/20 text-amber-300",
           )}
         >
           {badge === "online" && <Cloud className="h-3 w-3" />}
           {badge === "ai" && <Sparkles className="h-3 w-3" />}
-          {badge === "offline" && <WifiOff className="h-3 w-3" />}
-          {badge === "online" ? "Online" : badge === "ai" ? "AI" : "Offline"}
+          {badge === "online" ? "Online" : "AI"}
         </span>
       )}
 
@@ -128,7 +420,6 @@ function CuratedCard({
             {subtitle}
           </p>
         </div>
-
         <div className="flex items-center gap-2">
           <button
             onClick={onPlay}
@@ -137,325 +428,133 @@ function CuratedCard({
           >
             <Play className="ml-0.5 h-5 w-5 fill-primary-foreground" />
           </button>
-          <button
-            onClick={() => toggleFavorite(`cur:${title}`)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-foreground backdrop-blur transition hover:bg-black/50"
-            aria-label={`Favorite ${title}`}
-          >
-            <Heart className={cn("h-4 w-4", isFav && "fill-primary text-primary")} />
-          </button>
-          <button
-            onClick={() => toast({ description: "Download starts in the full app" })}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-foreground backdrop-blur transition hover:bg-black/50"
-            aria-label={`Download ${title}`}
-          >
-            <ArrowRight className="hidden h-4 w-4" />
-            <Folder className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => toast({ description: "More options — in the full app" })}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-foreground backdrop-blur transition hover:bg-black/50"
-            aria-label={`More options for ${title}`}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
         </div>
       </div>
     </motion.article>
   );
 }
 
-/* ---------------------------------------------------------------- */
-/* Playlist list row — mixed origins get badges                      */
-/* ---------------------------------------------------------------- */
-function PlaylistRow({
-  name,
-  description,
-  cover,
-  origin,
-  trackCount,
-  playing,
-  onPlay,
-  onOpen,
-}: {
-  name: string;
-  description: string;
-  cover: string;
-  origin: "local" | "online" | "mixed";
-  trackCount: number;
-  playing?: boolean;
-  onPlay: () => void;
-  onOpen: () => void;
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      className="group flex items-center gap-3 rounded-xl p-2 text-left transition hover:bg-accent/60"
-    >
-      <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-xl bg-secondary">
-        <Image src={cover} alt="" fill sizes="52px" className="object-cover" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
-          <span className="truncate">{name}</span>
-          {origin === "online" && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-400/12 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-300">
-              <Cloud className="h-2.5 w-2.5" /> Online
-            </span>
-          )}
-          {origin === "mixed" && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/12 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
-              <Layers className="h-2.5 w-2.5" /> Mixed
-            </span>
-          )}
-        </p>
-        <p className="truncate text-xs text-muted-foreground">
-          By Wavely • {trackCount} songs
-        </p>
-        <p className="truncate text-[11px] text-muted-foreground/70">{description}</p>
-      </div>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onPlay();
-        }}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-foreground transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
-        aria-label={`Play ${name}`}
-      >
-        {playing ? <EqBars barClassName="bg-primary" /> : <Play className="h-4 w-4 fill-current" />}
-      </button>
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------- */
-/* Spotify-style quick tile (2-col grid, cover + label)              */
-/* ---------------------------------------------------------------- */
-function QuickTile({
+function ReleaseCard({
   cover,
   title,
+  meta,
   playing,
-  onClick,
+  onPlay,
 }: {
   cover: string;
   title: string;
+  meta: string;
   playing?: boolean;
-  onClick: () => void;
+  onPlay: () => void;
 }) {
   return (
     <button
-      onClick={onClick}
-      className="group flex items-center gap-3 overflow-hidden rounded-lg bg-wav-surface text-left transition hover:bg-accent"
+      onClick={onPlay}
+      className="group w-40 shrink-0 snap-start rounded-xl bg-wav-surface p-3 text-left transition hover:bg-accent"
     >
-      <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-secondary">
-        <Image src={cover} alt="" fill sizes="56px" className="object-cover" />
+      <div className="relative mb-3 aspect-square overflow-hidden rounded-lg bg-secondary">
+        <Image src={cover} alt={title} fill sizes="160px" className="object-cover" />
+        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-sky-300 backdrop-blur">
+          <Cloud className="h-3 w-3" /> Online
+        </span>
+        <span className="absolute bottom-2 right-2 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-xl transition-all group-hover:translate-y-0 group-hover:opacity-100">
+          {playing ? <EqBars barClassName="bg-primary-foreground" /> : <Play className="h-5 w-5 fill-primary-foreground" />}
+        </span>
       </div>
-      <p className="min-w-0 flex-1 truncate pr-2 text-[13px] font-semibold leading-tight">{title}</p>
-      {playing ? (
-        <span className="mr-3 shrink-0">
-          <EqBars />
-        </span>
-      ) : (
-        <span className="mr-3 hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-lg transition group-hover:opacity-100 sm:flex">
-          <Play className="h-4 w-4 fill-primary-foreground" />
-        </span>
-      )}
+      <p className="truncate text-sm font-semibold">{title}</p>
+      <p className="truncate text-xs text-muted-foreground">{meta}</p>
     </button>
   );
 }
 
-/* ---------------------------------------------------------------- */
-/* Home view                                                         */
-/* ---------------------------------------------------------------- */
-export function HomeView() {
+function OnlineSection() {
   const playContext = useWavely((s) => s.playContext);
   const setView = useWavely((s) => s.setView);
-  const currentTrack = useCurrentTrack();
-  const mode = useEffectiveMode();
   const isOffline = useWavely((s) => s.isOffline);
-  const { toast } = useToast();
+  const cachedIds = useWavely((s) => s.cachedIds);
+  const currentTrack = useCurrentTrack();
 
-  const playlists = useMemo(() => {
-    if (mode === "all") return PLAYLISTS;
-    if (mode === "local") return PLAYLISTS.filter((p) => p.origin === "local" || p.origin === "mixed");
-    return PLAYLISTS.filter((p) => p.origin === "online" || p.origin === "mixed");
-  }, [mode]);
-
-  const jumpBackIds = useMemo(
-    () =>
-      filterByMode(
-        ["t26", "t35", "t17", "t01", "t39", "t31", "t13"]
-          .map((id) => trackById.get(id)!)
-          .filter(Boolean),
-        mode,
-      ).map((t) => t.id),
-    [mode],
+  const onlineTracks = useMemo(() => TRACKS.filter((t) => t.origin === "online"), []);
+  const topStreams = useMemo(
+    () => [...onlineTracks].sort((a, b) => b.playCount - a.playCount).slice(0, 5),
+    [onlineTracks],
   );
-
-  const albums = useMemo(() => {
-    const sorted = [...ALBUMS].sort((a, b) => b.year - a.year);
-    if (mode === "all") return sorted.slice(0, 4);
-    return filterByMode(sorted.flatMap((a) => tracksOfAlbum(a.id)), mode)
-      .map((t) => ALBUMS.find((a) => a.id === t.albumId)!)
-      .filter((a, i, arr) => a && arr.findIndex((x) => x.id === a.id) === i)
-      .slice(0, 4);
-  }, [mode]);
-
-  const localTracks = useMemo(() => TRACKS.filter((t) => t.origin === "local"), []);
-  const downloadedTracks = useMemo(() => TRACKS.filter((t) => t.downloaded), []);
-  const localStats = useMemo(() => {
-    const sec = localTracks.reduce((a, t) => a + t.duration, 0);
-    return { count: localTracks.length, time: fmtLongTime(sec) };
-  }, [localTracks]);
-
-  const discoverMix = filterByMode(["t01", "t35", "t13", "t43", "t26", "t39", "t09", "t31", "t22", "t17"], "all");
-
-  const playlistCover = (id: string) =>
-    id === "pl1" ? "/covers/green-circuit.png"
-    : id === "pl2" ? "/covers/deep-focus.png"
-    : id === "pl3" ? "/covers/persian-echoes.png"
-    : id === "pl4" ? "/covers/velvet-static.png"
-    : id === "pl5" ? "/covers/neon-horizon.png"
-    : id === "pl6" ? "/covers/online-violet-summer.png"
-    : id === "pl7" ? "/covers/paper-planes.png"
-    : "/covers/golden-hour.png";
-
-  const eyebrow =
-    mode === "local" ? `${greeting()} • Offline player` : mode === "online" ? `${greeting()} • Discover online` : greeting();
+  const newReleases = useMemo(() => ALBUMS.filter((a) => a.origin === "online"), []);
+  const cachedTracks = useMemo(
+    () => cachedIds.map((id) => trackById.get(id)!).filter(Boolean),
+    [cachedIds],
+  );
+  const discoverMix = ["t01", "t35", "t13", "t43", "t26", "t39", "t09", "t31", "t22", "t17"];
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-7 px-4 pb-10 md:max-w-3xl md:px-8 lg:max-w-5xl">
-      {/* ------- sticky header: avatar, actions + source chips ------- */}
-      <header className="sticky top-0 z-20 -mx-4 bg-background/85 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl md:-mx-8 md:px-8">
-        <div className="flex items-center justify-between gap-3 pt-2">
-          <button
-            onClick={() => setView("settings")}
-            className="relative h-12 w-12 overflow-hidden rounded-full ring-2 ring-primary/40 transition hover:ring-primary"
-            aria-label="Open profile"
-          >
-            <Image src="/wavely/avatar.png" alt="Your profile" fill sizes="48px" className="object-cover" />
-          </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setView("search")}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-wav-elevated text-foreground transition hover:bg-accent"
-              aria-label="Search"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-5 w-5" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-              </svg>
-            </button>
-            <button
-              onClick={() => {
-                useWavely.getState().setLibraryTab("favorites");
-                setView("library");
-              }}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-wav-elevated text-foreground transition hover:bg-accent"
-              aria-label="Favorites"
-            >
-              <Heart className="h-5 w-5" />
-            </button>
-          </div>
+    <section>
+      <div className="mb-3 flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-400/12 text-sky-300">
+          <Cloud className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">Discover Online</h2>
+          <p className="truncate text-[11px] text-muted-foreground">
+            Streaming catalogue • up to FLAC • separate from your device library
+          </p>
         </div>
-        <SourceModeChips className="mt-3" />
-      </header>
-
-      <OfflineBanner />
-
-      {/* ------- greeting ------- */}
-      <div className="-mt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {eyebrow}
-        </p>
-        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight md:text-4xl">
-          Hi, Dani
-        </h1>
+        {!isOffline && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground"
+            onClick={() => setView("search")}
+          >
+            Search
+          </Button>
+        )}
       </div>
 
-      {/* ------- jump back in (Spotify-style tiles) ------- */}
-      <section>
-        <SectionHeader title={mode === "online" ? "Pick up where you left off" : "Jump back in"} />
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {jumpBackIds.slice(0, 6).map((id) => {
-            const t = trackById.get(id)!;
-            return (
-              <QuickTile
-                key={id}
-                cover={albumCover(t.albumId)}
-                title={`${t.title} • ${t.artist}`}
-                playing={currentTrack?.id === id}
-                onClick={() => playContext("Jump back in", jumpBackIds, jumpBackIds.indexOf(id))}
-              />
-            );
-          })}
+      {isOffline ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-300/90">
+            <CloudOff className="h-4 w-4 shrink-0" />
+            <p>
+              Online discovery is hidden while you&apos;re offline. Songs cached from streaming below
+              still play — and can be saved instantly.
+            </p>
+          </div>
+          {cachedTracks.length > 0 && (
+            <div className="rounded-2xl bg-wav-surface/50 p-1.5">
+              <p className="px-2 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                Cached from streaming — {cachedTracks.length} song{cachedTracks.length > 1 ? "s" : ""}
+              </p>
+              {cachedTracks.map((t, i) => (
+                <SongRow
+                  key={t.id}
+                  track={t}
+                  index={i}
+                  compact
+                  onPlay={() => playContext("Cached songs", cachedIds, i)}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      </section>
-
-      {/* ------- LOCAL MODE: offline hero ------- */}
-      {mode === "local" && (
-        <section>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent p-5"
-          >
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground accent-glow">
-                <Smartphone className="h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-display text-lg font-bold">Offline player ready</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {localStats.count} songs on device + {downloadedTracks.length} saved from online
-                  • {localStats.time} of music • zero internet needed
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <Button
-                className="h-10 gap-2 rounded-full"
-                onClick={() => {
-                  const ids = filterByMode(TRACKS, "local").map((t) => t.id);
-                  playContext("Offline shuffle", ids, Math.floor(Math.random() * ids.length));
-                  useWavely.getState().toggleShuffle();
-                }}
-              >
-                <Play className="h-4 w-4 fill-primary-foreground" /> Shuffle offline
-              </Button>
-              <Button variant="outline" className="h-10 gap-2 rounded-full" onClick={() => seeAll("folders")}>
-                <Folder className="h-4 w-4" /> Browse folders
-              </Button>
-              <Button variant="ghost" className="h-10 rounded-full text-muted-foreground" onClick={() => setView("settings")}>
-                Storage settings
-              </Button>
-            </div>
-          </motion.div>
-        </section>
-      )}
-
-      {/* ------- curated & trending (all / online) ------- */}
-      {mode !== "local" && (
-        <section>
-          <SectionHeader title={mode === "online" ? "Trending now" : "Curated & trending"} />
-          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-            <CuratedCard
-              image="/wavely/curated-1.png"
-              badge="ai"
-              title="Wavely Weekly"
-              subtitle="Fresh picks built from what you play — local and online together."
-              onPlay={() => playContext("Wavely Weekly", discoverMix, 0)}
-            />
-            <CuratedCard
-              badge="ai"
-              title="Wavely AI DJ"
-              subtitle="Ask for a playlist, song facts, or just say “surprise me”."
-              onPlay={() => setView("ai")}
-            />
-            {mode === "online" && (
+      ) : (
+        <div className="space-y-6">
+          {/* made for you */}
+          <div>
+            <h3 className="mb-2 text-sm font-bold text-muted-foreground">Made for you</h3>
+            <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+              <CuratedCard
+                image="/wavely/curated-1.png"
+                badge="ai"
+                title="Wavely Weekly"
+                subtitle="Fresh picks built from what you play — updated every Monday."
+                onPlay={() => playContext("Wavely Weekly", discoverMix, 0)}
+              />
+              <CuratedCard
+                badge="ai"
+                title="Wavely AI DJ"
+                subtitle="Ask for a playlist, song facts, or just say “surprise me”."
+                onPlay={() => setView("ai")}
+              />
               <CuratedCard
                 image="/covers/online-chrome-city.png"
                 badge="online"
@@ -463,104 +562,89 @@ export function HomeView() {
                 subtitle="Midnight Arcade's new synthpop LP, streaming in 320kbps."
                 onPlay={() => playContext("Chrome City", tracksOfAlbum("al9").map((t) => t.id), 0)}
               />
-            )}
-            <CuratedCard
-              image="/wavely/curated-2.png"
-              title="Discover Mix"
-              subtitle="A scan through genres you haven't touched yet."
-              onPlay={() => playContext("Discover Mix", discoverMix.slice().reverse(), 0)}
-            />
+            </div>
           </div>
-        </section>
-      )}
 
-      {/* ------- top playlists (all modes, filtered) ------- */}
-      <section>
-        <SectionHeader
-          title={mode === "local" ? "Your playlists" : "Top daily playlists"}
-          action={
-            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => seeAll("playlists")}>
-              See all
-            </Button>
-          }
-        />
-        <div className="space-y-0.5">
-          {playlists.map((p) => (
-            <PlaylistRow
-              key={p.id}
-              name={p.name}
-              description={p.description}
-              cover={playlistCover(p.id)}
-              origin={p.origin}
-              trackCount={p.trackIds.length}
-              playing={currentTrack !== undefined && p.trackIds.includes(currentTrack.id)}
-              onPlay={() => playContext(p.name, p.trackIds, 0)}
-              onOpen={() => seeAll("playlists")}
-            />
-          ))}
-          {playlists.length === 0 && (
-            <p className="rounded-xl bg-wav-surface p-4 text-sm text-muted-foreground">
-              Nothing here for this filter yet.
-            </p>
-          )}
+          {/* new releases */}
+          <div>
+            <h3 className="mb-2 text-sm font-bold text-muted-foreground">New releases</h3>
+            <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+              {newReleases.map((a) => (
+                <ReleaseCard
+                  key={a.id}
+                  cover={a.cover}
+                  title={a.title}
+                  meta={`${a.year} • ${a.artist}`}
+                  playing={currentTrack !== undefined && tracksOfAlbum(a.id).some((t) => t.id === currentTrack.id)}
+                  onPlay={() => playContext(a.title, tracksOfAlbum(a.id).map((t) => t.id), 0)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* charts */}
+          <div>
+            <h3 className="mb-2 text-sm font-bold text-muted-foreground">Top streaming now</h3>
+            <div className="rounded-2xl bg-wav-surface/50 p-1.5">
+              {topStreams.map((t, i) => (
+                <SongRow
+                  key={t.id}
+                  track={t}
+                  index={i}
+                  compact
+                  onPlay={() => playContext("Top streaming now", topStreams.map((x) => x.id), i)}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-      </section>
-
-      {/* ------- on this device (all / local) ------- */}
-      {mode !== "online" && (
-        <section>
-          <SectionHeader
-            title="On this device"
-            action={
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => seeAll("folders")}>
-                See all
-              </Button>
-            }
-          />
-          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-            {FOLDERS.map((f) => {
-              const short = f.split("/").filter(Boolean).slice(-1)[0];
-              const count = TRACKS.filter((t) => t.folder === f).length;
-              return (
-                <button
-                  key={f}
-                  onClick={() => playContext(short, TRACKS.filter((t) => t.folder === f).map((t) => t.id), 0)}
-                  className="flex shrink-0 items-center gap-2.5 rounded-xl bg-wav-surface px-4 py-3 text-left transition hover:bg-accent"
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                    <Folder className="h-4 w-4" />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-semibold">/{short}</span>
-                    <span className="block text-[11px] text-muted-foreground">{count} songs</span>
-                  </span>
-                </button>
-              );
-            })}
-            {downloadedTracks.length > 0 && (
-              <button
-                onClick={() =>
-                  playContext("Saved from online", downloadedTracks.map((t) => t.id), 0)
-                }
-                className="flex shrink-0 items-center gap-2.5 rounded-xl bg-primary/10 px-4 py-3 text-left ring-1 ring-primary/30 transition hover:bg-primary/15"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 text-primary">
-                  <Layers className="h-4 w-4" />
-                </span>
-                <span>
-                  <span className="block text-sm font-semibold">Wavely Downloads</span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {downloadedTracks.length} saved • /Music/Wavely
-                  </span>
-                </span>
-              </button>
-            )}
-          </div>
-        </section>
       )}
+    </section>
+  );
+}
 
-      {/* ------- AI DJ strip (desktop) ------- */}
-      {mode !== "local" && (
+/* ---------------------------------------------------------------- */
+/* Home view                                                         */
+/* ---------------------------------------------------------------- */
+export function HomeView() {
+  const setView = useWavely((s) => s.setView);
+  const isOffline = useWavely((s) => s.isOffline);
+
+  const favIds = useWavely((s) => s.favorites);
+  const deviceTracks = useMemo(() => TRACKS.filter((t) => t.origin === "local" || t.downloaded), []);
+  const notPlayedCount = useMemo(() => deviceTracks.filter((t) => t.playCount === 0).length, [deviceTracks]);
+  const deviceTime = useMemo(
+    () => fmtLongTime(deviceTracks.reduce((a, t) => a + t.duration, 0)),
+    [deviceTracks],
+  );
+
+  return (
+    <div className="mx-auto w-full max-w-md space-y-7 px-4 pb-10 md:max-w-3xl md:px-8 lg:max-w-5xl">
+      <HomeHeader />
+
+      <OfflineBanner />
+
+      {/* combined likes — local & online side by side */}
+      <LikedSection
+        favIds={favIds}
+        onOpen={() => {
+          useWavely.getState().setLibraryTab("favorites");
+          useWavely.getState().setView("library");
+        }}
+      />
+
+      {/* local world — Musicolet style */}
+      <LocalSection
+        deviceCount={deviceTracks.length}
+        deviceTime={deviceTime}
+        notPlayedCount={notPlayedCount}
+      />
+
+      {/* online world — Spotify style */}
+      <OnlineSection />
+
+      {/* AI DJ strip (desktop) */}
+      {!isOffline && (
         <button
           onClick={() => setView("ai")}
           className="group hidden w-full items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-primary/25 via-primary/10 to-transparent p-5 text-left transition hover:from-primary/35 md:flex"
@@ -578,49 +662,8 @@ export function HomeView() {
         </button>
       )}
 
-      {/* ------- new releases / album grid ------- */}
-      <section>
-        <SectionHeader
-          title={mode === "local" ? "Your albums" : "New releases"}
-          action={
-            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => seeAll("albums")}>
-              See all
-            </Button>
-          }
-        />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {albums.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => playContext(a.title, tracksOfAlbum(a.id).map((t) => t.id), 0)}
-              className="group rounded-xl bg-wav-surface p-3 text-left transition hover:bg-accent"
-            >
-              <div className="relative mb-3 aspect-square overflow-hidden rounded-lg bg-secondary">
-                <Image src={a.cover} alt={a.title} fill sizes="(max-width: 640px) 45vw, 220px" className="object-cover" />
-                {a.origin === "online" && (
-                  <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-sky-300 backdrop-blur">
-                    <Cloud className="h-3 w-3" /> Stream
-                  </span>
-                )}
-                <span className="absolute bottom-2 right-2 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-xl transition-all group-hover:translate-y-0 group-hover:opacity-100">
-                  <Play className="h-5 w-5 fill-primary-foreground" />
-                </span>
-              </div>
-              <p className="truncate text-sm font-semibold">{a.title}</p>
-              <p className="truncate text-xs text-muted-foreground">{a.year} • {a.artist}</p>
-            </button>
-          ))}
-        </div>
-      </section>
-
       <footer className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-2 pt-2 text-center text-xs text-muted-foreground">
-        {isOffline ? (
-          <>
-            <WifiOff className="h-3 w-3" /> Offline player • all {localStats.count + downloadedTracks.length} songs available
-          </>
-        ) : (
-          <>Wavely prototype • Musicolet UX × Spotify design • v1.0.3-preview</>
-        )}
+        Wavely prototype • Musicolet UX × Spotify design • v1.0.3-preview
       </footer>
     </div>
   );

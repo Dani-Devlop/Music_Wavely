@@ -6,6 +6,7 @@ import type {
   LibraryTab,
   QueueDef,
   RepeatMode,
+  SongFilter,
   SongSortMode,
   SourceMode,
   Track,
@@ -19,6 +20,14 @@ import {
 } from "./data";
 
 export const EQ_FREQS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+
+/**
+ * Streaming cache: an online track being streamed fills its cache in
+ * CACHE_FILL_SECONDS of playback (real app = progressive file cache).
+ * Fully cached tracks keep playing with no connection, and can be
+ * "saved" to the music folder instantly — no re-download needed.
+ */
+export const CACHE_FILL_SECONDS = 6;
 
 export const EQ_PRESETS: Record<string, number[]> = {
   Flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -50,6 +59,14 @@ interface WavelyState {
   effectiveMode: () => SourceMode;
   /** can this track actually play right now? */
   canPlayTrack: (t: Track | undefined) => boolean;
+
+  /* streaming cache — songs heard online stay playable offline */
+  cacheProgress: Record<string, number>; // 0..1 while a track is being cached
+  cachedIds: string[]; // fully cached → plays without internet, instant-save
+  clearCache: () => void;
+  /** Musicolet-style list filter for the Library songs tab */
+  songFilter: SongFilter;
+  setSongFilter: (f: SongFilter) => void;
   /** true → set the track's downloaded flag (save to organised folder) */
   toggleDownload: (trackId: string) => void;
   /** bumped on every download toggle so badge subscribers re-render */
@@ -128,10 +145,15 @@ interface WavelyState {
 const now = () => Date.now();
 
 /** Offline simulation toggles force-browse the local side of the library. */
-export const isTrackPlayable = (t: Track | undefined, isOffline: boolean): boolean => {
+export const isTrackPlayable = (
+  t: Track | undefined,
+  isOffline: boolean,
+  cachedIds: string[] = [],
+): boolean => {
   if (!t) return false;
   if (t.origin === "local" || t.downloaded) return true; // files always work
-  return !isOffline; // streamed tracks need a connection
+  if (cachedIds.includes(t.id)) return true; // fully cached by streaming
+  return !isOffline; // otherwise streamed tracks need a connection
 };
 
 /** Which tracks survive the current browsing mode (badge-aware filtering). */
@@ -167,12 +189,23 @@ export const useWavely = create<WavelyState>((set, get) => ({
         : "Back online — streaming sources reconnected",
     }),
   effectiveMode: () => (get().isOffline ? "local" : get().sourceMode),
-  canPlayTrack: (t) => isTrackPlayable(t, get().isOffline),
+  canPlayTrack: (t) => isTrackPlayable(t, get().isOffline, get().cachedIds),
+
+  cacheProgress: {},
+  cachedIds: [],
+  clearCache: () =>
+    set({ cacheProgress: {}, cachedIds: [], playbackNotice: "Streaming cache cleared" }),
+  songFilter: "all",
+  setSongFilter: (f) => set({ songFilter: f }),
+
   toggleDownload: (trackId) => {
     const t = trackById.get(trackId);
     if (!t || t.origin !== "online") return;
     if (t.downloaded) {
       set({ playbackNotice: `Removed from device: ${t.title}` });
+    } else if (get().cachedIds.includes(trackId)) {
+      // file already sits complete in the streaming cache → instant save
+      set({ playbackNotice: `Saved from cache — no re-download: ${t.title}` });
     } else {
       set({ playbackNotice: `Saved to ${get().downloadPath}/${t.country ?? "--"}/${t.genre}` });
     }
@@ -243,7 +276,9 @@ export const useWavely = create<WavelyState>((set, get) => ({
     if (trackIds.length === 0) return;
     const s = get();
     // hard-block unavailable (offline) tracks from starting playback
-    const available = trackIds.filter((id) => isTrackPlayable(trackById.get(id), s.isOffline));
+    const available = trackIds.filter((id) =>
+      isTrackPlayable(trackById.get(id), s.isOffline, s.cachedIds),
+    );
     if (available.length === 0) {
       set({
         playbackNotice: s.isOffline
@@ -350,28 +385,36 @@ export const useWavely = create<WavelyState>((set, get) => ({
         } while (
           idx === s.index &&
           guard < 50 &&
-          !isTrackPlayable(trackById.get(q.trackIds[idx]), s.isOffline)
+          !isTrackPlayable(trackById.get(q.trackIds[idx]), s.isOffline, s.cachedIds)
         );
         return idx;
       }
       let idx = s.index;
       for (let step = 0; step < q.trackIds.length; step++) {
         idx = idx + 1 >= q.trackIds.length ? 0 : idx + 1;
-        if (isTrackPlayable(trackById.get(q.trackIds[idx]), s.isOffline)) return idx;
+        if (isTrackPlayable(trackById.get(q.trackIds[idx]), s.isOffline, s.cachedIds)) return idx;
         if (!auto) break; // manual skip just wraps once like before
       }
       return idx;
     };
     let nextIndex: number;
     const immediate = s.index + 1;
-    if (immediate < q.trackIds.length && isTrackPlayable(trackById.get(q.trackIds[immediate]), s.isOffline)) {
+    if (
+      immediate < q.trackIds.length &&
+      isTrackPlayable(trackById.get(q.trackIds[immediate]), s.isOffline, s.cachedIds)
+    ) {
       nextIndex = immediate;
     } else if (immediate >= q.trackIds.length && !auto) {
       nextIndex = 0;
     } else {
       nextIndex = pickNext();
     }
-    if (auto && nextIndex === s.index && q.trackIds.length > 1 && !isTrackPlayable(trackById.get(q.trackIds[nextIndex]), s.isOffline)) {
+    if (
+      auto &&
+      nextIndex === s.index &&
+      q.trackIds.length > 1 &&
+      !isTrackPlayable(trackById.get(q.trackIds[nextIndex]), s.isOffline, s.cachedIds)
+    ) {
       set({ isPlaying: false });
       return;
     }
@@ -414,6 +457,21 @@ export const useWavely = create<WavelyState>((set, get) => ({
     }
     if (s.sleepEndsAt && now() >= s.sleepEndsAt) {
       set({ isPlaying: false, sleepEndsAt: null });
+      return;
+    }
+    // streaming cache fills while listening online (offline = nothing to fetch)
+    if (t.origin === "online" && !t.downloaded && !s.isOffline && !s.cachedIds.includes(t.id)) {
+      const prev = s.cacheProgress[t.id] ?? 0;
+      const progress = Math.min(1, prev + (dt * s.speed) / CACHE_FILL_SECONDS);
+      if (progress >= 1) {
+        set((st) => ({
+          cachedIds: [...st.cachedIds, t.id],
+          cacheProgress: { ...st.cacheProgress, [t.id]: 1 },
+          playbackNotice: `Cached — ${t.title} now plays offline`,
+        }));
+      } else {
+        set((st) => ({ cacheProgress: { ...st.cacheProgress, [t.id]: progress } }));
+      }
     }
   },
 
@@ -514,7 +572,7 @@ export const useActiveQueue = () => useWavely((s) => s.activeQueue());
 export const useEffectiveMode = () =>
   useWavely((s) => (s.isOffline ? "local" : s.sourceMode));
 export const useIsTrackPlayable = (t: Track | undefined) =>
-  useWavely((s) => isTrackPlayable(t, s.isOffline));
+  useWavely((s) => isTrackPlayable(t, s.isOffline, s.cachedIds));
 
 export { filterByMode };
 export const allTracks = TRACKS;

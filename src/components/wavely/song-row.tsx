@@ -56,6 +56,7 @@ export function SongRow({
   const addToQueue = useWavely((s) => s.addToQueue);
   const setNowPlayingOpen = useWavely((s) => s.setNowPlayingOpen);
   const toggleDownload = useWavely((s) => s.toggleDownload);
+  const isCached = useWavely((s) => s.cachedIds.includes(track.id));
   const playable = useIsTrackPlayable(track);
   const isCurrent = currentTrack?.id === track.id;
   const isFav = favorites.includes(track.id);
@@ -137,12 +138,14 @@ export function SongRow({
               toast({
                 description: wasDownloaded
                   ? `Removed from device: ${track.title}`
-                  : `Saved to your music folder (organised by country/genre)`,
+                  : isCached
+                    ? `Saved from cache — no re-download needed`
+                    : `Saved to your music folder (organised by country/genre)`,
               });
             }}
           >
             <FolderDown className={cn("h-4 w-4", track.downloaded && "text-primary fill-primary/30")} />
-            {track.downloaded ? "Remove download" : "Download to device"}
+            {track.downloaded ? "Remove download" : isCached ? "Save from cache (instant)" : "Download to device"}
           </DropdownMenuItem>
         )}
         <DropdownMenuItem onClick={() => toast({ description: `Album: ${track.album}` })}>
@@ -228,7 +231,7 @@ export function SongRow({
           )}
         >
           <span className="truncate">{track.title}</span>
-          {!compact && <OriginBadge track={track} />}
+          <OriginBadge track={track} cached={isCached} compact={compact} />
         </p>
         <p className="truncate text-[13px] leading-tight text-muted-foreground">
           {track.artist} • {track.album}

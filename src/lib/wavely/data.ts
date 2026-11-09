@@ -289,8 +289,9 @@ export const TRACKS: Track[] = SEEDS.map((s, i) => {
     year: album.year,
     trackNumber: s.n,
     addedAt: Date.now() - (SEEDS.length - i) * 86400000,
-    playCount: online && !isDownloaded ? ((i * 3) % 4) + 1 : ((i * 7 + 3) % 14) + 1,
-    lastPlayedAt: online ? undefined : Date.now() - (i % 9) * 3600000,
+    // every 5th song was never touched → feeds the "Not played" smart row
+    playCount: i % 5 === 0 ? 0 : online && !isDownloaded ? ((i * 3) % 4) + 1 : ((i * 7 + 3) % 14) + 1,
+    lastPlayedAt: i % 5 === 0 ? undefined : online ? undefined : Date.now() - (i % 9) * 3600000,
     lyrics: s.lyrics ? mkLyrics(s.lyrics, s.d) : undefined,
     origin: online ? "online" : "local",
     source: meta?.source,

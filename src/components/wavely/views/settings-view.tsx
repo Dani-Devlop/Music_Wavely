@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   Bell,
   ChevronRight,
+  CloudDownload,
   Download,
   Folder,
   FolderDown,
@@ -27,6 +28,7 @@ import {
   ScanLine,
   SlidersHorizontal,
   Timer,
+  Trash2,
   Waves,
   WifiOff,
 } from "lucide-react";
@@ -105,6 +107,8 @@ export function SettingsView() {
   const setAudioFormat = useWavely((s) => s.setAudioFormat);
   const isOffline = useWavely((s) => s.isOffline);
   const setOffline = useWavely((s) => s.setOffline);
+  const cachedCount = useWavely((s) => s.cachedIds.length);
+  const clearCache = useWavely((s) => s.clearCache);
 
   // playback prefs (prototype-local)
   const [gapless, setGapless] = useState(true);
@@ -297,6 +301,32 @@ export function SettingsView() {
         <Row icon={Download} title="Auto-download favorites" subtitle="From online sources when available" control={<Switch checked={autoDownload} onCheckedChange={setAutoDownload} />} />
         <Separator />
         <Row icon={FolderSync} title="Keep organised on move" subtitle="Re-shelve files if the template changes" control={<Switch defaultChecked />} />
+      </div>
+
+      <SectionHeader icon={CloudDownload} title="Streaming cache" />
+      <div className="overflow-hidden rounded-2xl bg-wav-surface">
+        <Row
+          icon={CloudDownload}
+          title="Cached songs"
+          subtitle={`${cachedCount} fully cached — play offline & save instantly, no re-download`}
+        />
+        <Separator />
+        <Row
+          icon={Trash2}
+          title="Clear cache"
+          subtitle="Frees space — cached songs go back to streaming-only"
+          onClick={() => {
+            clearCache();
+            toast({ description: "Streaming cache cleared" });
+          }}
+          arrow
+        />
+        <Separator />
+        <Row
+          icon={Info}
+          title="How it works"
+          subtitle="Songs you stream fill the cache as you listen. Fully cached songs survive a dropped connection; half-cached ones don't."
+        />
       </div>
 
       <SectionHeader icon={WifiOff} title="Connection (prototype)" />

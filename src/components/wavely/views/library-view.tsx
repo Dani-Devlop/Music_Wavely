@@ -4,8 +4,8 @@ import Image from "next/image";
 import { useMemo, useState } from "react";
 import { EqBars } from "../eq-bars";
 import { SongRow } from "../song-row";
-import { SourceModeChips, OfflineBanner } from "../source-mode-chips";
-import { useWavely, useCurrentTrack, useEffectiveMode, filterByMode } from "@/lib/wavely/store";
+import { OfflineBanner } from "../source-mode-chips";
+import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
 import {
   ALBUMS,
   ARTISTS,
@@ -102,15 +102,13 @@ function TrackList({ tracks, contextName }: { tracks: Track[]; contextName: stri
 function AlbumGrid() {
   const playContext = useWavely((s) => s.playContext);
   const current = useCurrentTrack();
-  const mode = useEffectiveMode();
+  // device albums only — online albums appear once at least one song is saved
   const albums = useMemo(
     () =>
-      ALBUMS.filter((a) => {
-        if (mode === "local") return a.origin !== "online";
-        if (mode === "online") return a.origin === "online";
-        return true;
-      }),
-    [mode],
+      ALBUMS.filter(
+        (a) => a.origin !== "online" || tracksOfAlbum(a.id).some((t) => t.downloaded),
+      ),
+    [],
   );
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -141,16 +139,15 @@ function AlbumGrid() {
 
 function ArtistList() {
   const playContext = useWavely((s) => s.playContext);
-  const mode = useEffectiveMode();
   const artists = useMemo(
     () =>
       ARTISTS.filter((a) => {
         const albums = a.albumIds.map((id) => ALBUMS.find((x) => x.id === id)!);
-        if (mode === "local") return albums.some((al) => al.origin !== "online");
-        if (mode === "online") return albums.some((al) => al.origin === "online");
-        return true;
+        return albums.some(
+          (al) => al.origin !== "online" || tracksOfAlbum(al.id).some((t) => t.downloaded),
+        );
       }),
-    [mode],
+    [],
   );
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -175,19 +172,18 @@ function ArtistList() {
 
 function GenreList() {
   const playContext = useWavely((s) => s.playContext);
-  const mode = useEffectiveMode();
+  const isDeviceTrack = (t: Track) => t.origin === "local" || !!t.downloaded;
   const genres = useMemo(() => {
-    const visible = new Set(filterByMode(TRACKS_ALL, mode).map((t) => t.genre));
-    return GENRES.filter((g) => visible.has(g));
-  }, [mode]);
+    const device = new Set(TRACKS_ALL.filter(isDeviceTrack).map((t) => t.genre));
+    return GENRES.filter((g) => device.has(g));
+  }, []);
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {genres.map((g) => {
         const tracks = sortTracks(
-          filterByMode(
-            ALBUMS.filter((a) => a.genre === g).flatMap((a) => tracksOfAlbum(a.id)),
-            mode,
-          ),
+          ALBUMS.filter((a) => a.genre === g)
+            .flatMap((a) => tracksOfAlbum(a.id))
+            .filter(isDeviceTrack),
           "title-asc",
         );
         return (
@@ -213,17 +209,17 @@ function GenreList() {
 
 function FolderList() {
   const playContext = useWavely((s) => s.playContext);
-  const mode = useEffectiveMode();
-  // folders = on-device scan targets + the organised Wavely download folder
+  // on-device scan targets + every organised Wavely download folder in use
   const folders = useMemo(() => {
-    const dlFolder = TRACKS_ALL.find((t) => t.downloaded)?.folder;
-    if (mode === "online") return [];
-    return dlFolder ? [...FOLDERS, dlFolder] : FOLDERS;
-  }, [mode]);
+    const dlFolders = Array.from(
+      new Set(TRACKS_ALL.filter((t) => t.downloaded).map((t) => t.folder)),
+    );
+    return [...FOLDERS, ...dlFolders.filter((f) => !FOLDERS.includes(f))];
+  }, []);
   return (
     <div className="space-y-2">
       {folders.map((f) => {
-        const tracks = TRACKS_IN_FOLDER(f).filter((t) => mode !== "online");
+        const tracks = TRACKS_IN_FOLDER(f);
         const short = f.split("/").filter(Boolean).slice(-1)[0];
         const isWavely = f.includes("/Music/Wavely");
         return (
@@ -264,15 +260,9 @@ function PlaylistList() {
   const { toast } = useToast();
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
-  const mode = useEffectiveMode();
   const playlists = useMemo(
-    () =>
-      PLAYLISTS.filter((p) => {
-        if (mode === "local") return p.origin === "local" || p.origin === "mixed";
-        if (mode === "online") return p.origin === "online" || p.origin === "mixed";
-        return true;
-      }),
-    [mode],
+    () => PLAYLISTS.filter((p) => p.origin === "local" || p.origin === "mixed"),
+    [],
   );
   const covers = ["/covers/green-circuit.png", "/covers/deep-focus.png", "/covers/persian-echoes.png", "/covers/velvet-static.png", "/covers/golden-hour.png", "/covers/paper-planes.png"];
 
@@ -418,42 +408,49 @@ export function LibraryView() {
   const setLibraryTab = useWavely((s) => s.setLibraryTab);
   const songSort = useWavely((s) => s.songSort);
   const setSongSort = useWavely((s) => s.setSongSort);
+  const songFilter = useWavely((s) => s.songFilter);
+  const setSongFilter = useWavely((s) => s.setSongFilter);
   const favorites = useWavely((s) => s.favorites);
   const history = useWavely((s) => s.history);
   const playContext = useWavely((s) => s.playContext);
   const [query, setQuery] = useState("");
-  const mode = useEffectiveMode();
+
+  // Library = the device (Musicolet world): local files + songs saved from online
+  const isDeviceTrack = (t: Track) => t.origin === "local" || !!t.downloaded;
 
   const songs = useMemo(
     () =>
       sortTracks(
-        filterByMode(
-          [...TRACKS_ALL].filter(
+        [...TRACKS_ALL]
+          .filter(isDeviceTrack)
+          .filter((t) => (songFilter === "not-played" ? t.playCount === 0 : true))
+          .filter(
             (t) =>
               t.title.toLowerCase().includes(query.toLowerCase()) ||
               t.artist.toLowerCase().includes(query.toLowerCase()) ||
               t.album.toLowerCase().includes(query.toLowerCase()),
           ),
-          mode,
-        ),
         songSort,
       ),
-    [query, mode, songSort],
+    [query, songSort, songFilter],
   );
 
   const favTracks = useMemo(
-    () => filterByMode(favorites.map((id) => trackById.get(id)!).filter(Boolean), mode),
-    [favorites, mode],
+    () => favorites.map((id) => trackById.get(id)!).filter(Boolean).filter(isDeviceTrack),
+    [favorites],
   );
   const histTracks = useMemo(
-    () => filterByMode(history.map((id) => trackById.get(id)!).filter(Boolean), mode),
-    [history, mode],
+    () => history.map((id) => trackById.get(id)!).filter(Boolean).filter(isDeviceTrack),
+    [history],
   );
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 px-4 pb-8 pt-6 md:px-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">Library</h1>
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">Library</h1>
+          <p className="text-xs text-muted-foreground">On this device — your local player</p>
+        </div>
         <div className="flex items-center gap-2">
           {libraryTab === "songs" && (
             <DropdownMenu>
@@ -497,9 +494,22 @@ export function LibraryView() {
         </div>
       </div>
 
-      {/* source mode chips */}
-      <SourceModeChips />
+      {/* source scope: the library itself is device-only (Musicolet world).
+          Online browsing lives on Home + Search. */}
       <OfflineBanner />
+
+      {songFilter === "not-played" && libraryTab === "songs" && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSongFilter("all")}
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/25"
+          >
+            Filter: Not played
+            <span aria-hidden="true">×</span>
+            <span className="sr-only">Clear filter</span>
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
@@ -537,7 +547,7 @@ export function LibraryView() {
           (favTracks.length ? (
             <TrackList tracks={favTracks} contextName="Favorites" />
           ) : (
-            <EmptyState icon={Heart} text={mode === "local" ? "No downloaded favorites offline" : "Songs you love will live here"} />
+            <EmptyState icon={Heart} text="Songs you love will live here" />
           ))}
         {libraryTab === "history" &&
           (histTracks.length ? (

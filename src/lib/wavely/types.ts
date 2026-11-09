@@ -108,6 +108,8 @@ export type LibraryTab =
 
 export type AppView = "home" | "search" | "library" | "ai" | "settings";
 
+export type SongFilter = "all" | "not-played";
+
 export type SongSortMode =
   | "title-asc"
   | "title-desc"
