@@ -79,6 +79,8 @@ export interface Album {
   genre: string;
   /** online-only albums never live on the device */
   origin?: TrackOrigin;
+  /** when the album dropped — powers the Explore time-window filters */
+  releasedAt?: number;
 }
 
 /** Musicolet-style queue: 20 slots, position retention per queue. */
@@ -106,7 +108,7 @@ export type LibraryTab =
   | "favorites"
   | "history";
 
-export type AppView = "home" | "search" | "library" | "ai" | "settings";
+export type AppView = "home" | "explore" | "search" | "library" | "ai" | "settings";
 
 export type SongFilter = "all" | "not-played";
 

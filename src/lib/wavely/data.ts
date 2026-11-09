@@ -38,9 +38,10 @@ export const ALBUMS: Album[] = [
   { id: "al7", title: "Golden Hour", artist: "Sola", artistId: "ar6", year: 2025, cover: "/covers/golden-hour.png", genre: "Pop" },
   { id: "al8", title: "Echoes of Tehran", artist: "Ava Rostami", artistId: "ar7", year: 2024, cover: "/covers/persian-echoes.png", genre: "World" },
   // ---- online-only catalogue (streaming, not on device) ----
-  { id: "al9", title: "Chrome City", artist: "Midnight Arcade", artistId: "ar8", year: 2025, cover: "/covers/online-chrome-city.png", genre: "Synthpop", origin: "online" },
-  { id: "al10", title: "Violet Summer", artist: "Luna Waves", artistId: "ar9", year: 2024, cover: "/covers/online-violet-summer.png", genre: "Dream Pop", origin: "online" },
-  { id: "al11", title: "Golden Retro", artist: "Aria Vance", artistId: "ar10", year: 2025, cover: "/covers/online-golden-retro.png", genre: "Pop", origin: "online" },
+  // releasedAt powers the Explore windows: 1 week / 2 weeks / 1 month / since last visit
+  { id: "al9", title: "Chrome City", artist: "Midnight Arcade", artistId: "ar8", year: 2025, cover: "/covers/online-chrome-city.png", genre: "Synthpop", origin: "online", releasedAt: Date.now() - 3 * 86400000 },
+  { id: "al10", title: "Violet Summer", artist: "Luna Waves", artistId: "ar9", year: 2024, cover: "/covers/online-violet-summer.png", genre: "Dream Pop", origin: "online", releasedAt: Date.now() - 12 * 86400000 },
+  { id: "al11", title: "Golden Retro", artist: "Aria Vance", artistId: "ar10", year: 2025, cover: "/covers/online-golden-retro.png", genre: "Pop", origin: "online", releasedAt: Date.now() - 26 * 86400000 },
 ];
 
 export const ARTISTS: Artist[] = [
@@ -348,3 +349,19 @@ export const INITIAL_QUEUES: QueueDef[] = [
 export const INITIAL_FAVORITES = ["t01", "t09", "t17", "t26", "t31", "t13", "t39"];
 
 export const INITIAL_HISTORY = ["t26", "t17", "t35", "t01", "t31", "t09", "t13", "t22", "t28"];
+
+/** Artists the user follows — Explore surfaces their new releases first. */
+export const FOLLOWED_ARTIST_IDS = ["ar1", "ar8", "ar9"];
+
+/** The app was last online 10 days ago — "since last visit" shows everything newer. */
+export const LAST_ONLINE_AT = Date.now() - 10 * 86400000;
+
+/** "3 d ago" / "2 w ago" style age label for release dates. */
+export function fmtAge(releasedAt: number): string {
+  const days = Math.max(0, Math.floor((Date.now() - releasedAt) / 86400000));
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}

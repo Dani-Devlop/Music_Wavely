@@ -3,11 +3,18 @@
 import Image from "next/image";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { EqBars } from "../eq-bars";
 import { SongRow } from "../song-row";
+import { CuratedCard, ReleaseCard } from "../cards";
 import { OfflineBanner } from "../source-mode-chips";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
-import { ALBUMS, PLAYLISTS, TRACKS, fmtLongTime, trackById, tracksOfAlbum } from "@/lib/wavely/data";
+import {
+  ALBUMS,
+  PLAYLISTS,
+  TRACKS,
+  fmtAge,
+  fmtLongTime,
+  trackById,
+} from "@/lib/wavely/data";
 import type { LibraryTab, SongFilter, SongSortMode } from "@/lib/wavely/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,11 +22,10 @@ import {
   Ban,
   ChevronRight,
   ClockPlus,
-  Cloud,
   CloudOff,
+  Compass,
   Disc3,
   Flame,
-  Folder,
   Heart,
   History,
   LibraryBig,
@@ -50,8 +56,8 @@ function SectionHeader({ title, action }: { title: string; action?: React.ReactN
   );
 }
 
-/** Jumps into the Library with a specific tab / sort / filter pre-applied. */
-function openLibrary(opts: { tab: LibraryTab; sort?: SongSortMode; filter?: SongFilter }) {
+/** Jumps into My Music with a specific tab / sort / filter pre-applied. */
+function openMyMusic(opts: { tab: LibraryTab; sort?: SongSortMode; filter?: SongFilter }) {
   const s = useWavely.getState();
   s.setLibraryTab(opts.tab);
   if (opts.sort) s.setSongSort(opts.sort);
@@ -59,20 +65,14 @@ function openLibrary(opts: { tab: LibraryTab; sort?: SongSortMode; filter?: Song
   s.setView("library");
 }
 
-/** Is this track a real file on the device (local scan or downloaded)? */
-const onDevice = (id: string) => {
-  const t = trackById.get(id);
-  return !!t && (t.origin === "local" || !!t.downloaded);
-};
-
 /* ---------------------------------------------------------------- */
 /* Compact header — avatar + greeting + search, one row, no waste    */
 /* ---------------------------------------------------------------- */
 function HomeHeader() {
   const setView = useWavely((s) => s.setView);
   return (
-    <header className="sticky top-0 z-20 -mx-4 bg-background/85 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl md:-mx-8 md:px-8">
-      <div className="flex items-center gap-3 pt-1">
+    <header className="sticky top-0 z-20 -mx-4 bg-background/85 px-4 pb-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-xl md:-mx-8 md:px-8">
+      <div className="flex items-center gap-3">
         <button
           onClick={() => setView("settings")}
           className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/40 transition hover:ring-primary"
@@ -105,6 +105,8 @@ function HomeHeader() {
 
 /* ---------------------------------------------------------------- */
 /* Liked & favorites — one combined home for both worlds             */
+/* online rows keep their ☁ badge; every liked row gets the green    */
+/* Spotify-style heart on the right.                                 */
 /* ---------------------------------------------------------------- */
 function LikedSection({
   favIds,
@@ -136,7 +138,7 @@ function LikedSection({
         <motion.button
           whileTap={{ scale: 0.985 }}
           onClick={onOpen}
-          className="group relative flex min-h-44 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-primary/45 via-primary/18 to-transparent p-4 text-left"
+          className="group relative flex min-h-40 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-primary/45 via-primary/18 to-transparent p-4 text-left"
           aria-label="Open liked songs"
         >
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg accent-glow">
@@ -176,6 +178,7 @@ function LikedSection({
                 key={id}
                 track={t}
                 compact
+                showFavHeart
                 onPlay={() => playContext("Liked songs", favIds, favIds.indexOf(id))}
               />
             );
@@ -195,7 +198,8 @@ function LikedSection({
 }
 
 /* ---------------------------------------------------------------- */
-/* LOCAL world — Musicolet-style flat rows                           */
+/* LOCAL world — Musicolet-style flat rows ("My Music")              */
+/* Folder browsing lives inside My Music → Folders, not on Home.     */
 /* ---------------------------------------------------------------- */
 function MusicoletRow({
   icon: Icon,
@@ -214,11 +218,11 @@ function MusicoletRow({
     <button
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-4 rounded-xl px-2.5 py-2.5 text-left transition hover:bg-accent/60",
+        "flex w-full items-center gap-4 rounded-xl px-2.5 py-2 text-left transition hover:bg-accent/60",
         active && "bg-accent/40",
       )}
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
         <Icon className="h-5 w-5" />
       </span>
       <span className="min-w-0 flex-1">
@@ -244,7 +248,7 @@ function QuickLink({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-3 rounded-xl bg-wav-surface px-3 py-3 text-left transition hover:bg-accent"
+      className="flex items-center gap-3 rounded-xl bg-wav-surface px-3 py-2.5 text-left transition hover:bg-accent"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
         <Icon className="h-4 w-4" />
@@ -274,6 +278,9 @@ function LocalSection({
   const deviceFavorites = favorites.filter(onDevice).length;
   const deviceHistory = history.filter(onDevice).length;
   const deviceAlbums = ALBUMS.filter((a) => a.origin !== "online").length;
+  const deviceGenres = new Set(
+    TRACKS.filter((t) => t.origin === "local" || t.downloaded).map((t) => t.genre),
+  ).size;
   const wavelyDownloads = TRACKS.filter((t) => t.downloaded).length;
 
   return (
@@ -283,12 +290,20 @@ function LocalSection({
           <Smartphone className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">Your Library</h2>
+          <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">My Music</h2>
           <p className="truncate text-[11px] text-muted-foreground">
             On this device • {deviceCount} songs • {deviceTime}
             {wavelyDownloads > 0 && ` • ${wavelyDownloads} saved from online`}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs text-muted-foreground"
+          onClick={() => openMyMusic({ tab: "songs", sort: "title-asc" })}
+        >
+          Open
+        </Button>
       </div>
 
       <div className="rounded-2xl bg-wav-surface/50 p-1.5">
@@ -296,46 +311,45 @@ function LocalSection({
           icon={LibraryBig}
           label="All songs"
           detail={`${deviceCount} songs on device`}
-          onClick={() => openLibrary({ tab: "songs", sort: "title-asc" })}
+          onClick={() => openMyMusic({ tab: "songs", sort: "title-asc" })}
         />
         <MusicoletRow
           icon={Heart}
           label="Favorites"
           detail={`${deviceFavorites} songs`}
-          onClick={() => openLibrary({ tab: "favorites" })}
+          onClick={() => openMyMusic({ tab: "favorites" })}
         />
         <MusicoletRow
           icon={ClockPlus}
           label="Recently added"
           detail="newest imports first"
-          onClick={() => openLibrary({ tab: "songs", sort: "date-added" })}
+          onClick={() => openMyMusic({ tab: "songs", sort: "date-added" })}
         />
         <MusicoletRow
           icon={History}
           label="Recently played"
           detail={`${deviceHistory} in device history`}
-          onClick={() => openLibrary({ tab: "history" })}
+          onClick={() => openMyMusic({ tab: "history" })}
         />
         <MusicoletRow
           icon={Flame}
           label="Most played"
           detail="sorted by play count"
-          onClick={() => openLibrary({ tab: "songs", sort: "play-count" })}
+          onClick={() => openMyMusic({ tab: "songs", sort: "play-count" })}
         />
         <MusicoletRow
           icon={Ban}
           label="Not played"
           detail={`${notPlayedCount} songs waiting for you`}
-          onClick={() => openLibrary({ tab: "songs", filter: "not-played" })}
+          onClick={() => openMyMusic({ tab: "songs", filter: "not-played" })}
         />
       </div>
 
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <QuickLink icon={Disc3} label="Albums" count={`${deviceAlbums}`} onClick={() => openLibrary({ tab: "albums" })} />
-        <QuickLink icon={MicVocal} label="Artists" count="8 on device" onClick={() => openLibrary({ tab: "artists" })} />
-        <QuickLink icon={Folder} label="Folders" count="Music · Downloads · FLAC" onClick={() => openLibrary({ tab: "folders" })} />
-        <QuickLink icon={ListPlus} label="Playlists" count={`${PLAYLISTS.length}`} onClick={() => openLibrary({ tab: "playlists" })} />
-        <QuickLink icon={ListMusic} label="Queues" count={`${queues.length}/20`} onClick={() => openLibrary({ tab: "queues" })} />
+        <QuickLink icon={Disc3} label="Albums" count={`${deviceAlbums}`} onClick={() => openMyMusic({ tab: "albums" })} />
+        <QuickLink icon={MicVocal} label="Artists" count="8 on device" onClick={() => openMyMusic({ tab: "artists" })} />
+        <QuickLink icon={ListPlus} label="Playlists" count={`${PLAYLISTS.length}`} onClick={() => openMyMusic({ tab: "playlists" })} />
+        <QuickLink icon={ListMusic} label="Queues" count={`${queues.length}/20`} onClick={() => openMyMusic({ tab: "queues" })} />
         <QuickLink
           icon={currentTrack ? ListMusic : Sparkles}
           label={currentTrack ? "Now playing queue" : "Ask Wavely AI"}
@@ -346,128 +360,21 @@ function LocalSection({
               : useWavely.getState().setView("ai")
           }
         />
+        <QuickLink
+          icon={MicVocal}
+          label="Genres"
+          count={`${deviceGenres} on device`}
+          onClick={() => openMyMusic({ tab: "genres" })}
+        />
       </div>
     </section>
   );
 }
 
 /* ---------------------------------------------------------------- */
-/* ONLINE world — Spotify-style discovery                            */
+/* ONLINE world — compact teaser; full experience lives in Explore   */
 /* ---------------------------------------------------------------- */
-function CuratedCard({
-  image,
-  badge,
-  title,
-  subtitle,
-  onPlay,
-}: {
-  image?: string;
-  badge?: "online" | "ai";
-  title: string;
-  subtitle: string;
-  onPlay: () => void;
-}) {
-  return (
-    <motion.article
-      whileTap={{ scale: 0.985 }}
-      className={cn(
-        "relative aspect-[16/10] w-[86%] max-w-[420px] shrink-0 snap-center overflow-hidden rounded-2xl sm:aspect-[2.3/1] sm:w-[380px]",
-        image ? "bg-wav-elevated" : "bg-gradient-to-br from-primary/45 via-primary/15 to-wav-elevated",
-      )}
-    >
-      {image && (
-        <Image
-          src={image}
-          alt=""
-          fill
-          sizes="(max-width: 640px) 86vw, 380px"
-          className="object-cover object-right"
-        />
-      )}
-      <div
-        className={cn(
-          "absolute inset-0",
-          image
-            ? "bg-gradient-to-r from-background/95 via-background/70 to-transparent"
-            : "bg-gradient-to-r from-background/80 via-background/40 to-transparent",
-        )}
-      />
-
-      {!image && (
-        <div className="absolute -right-6 top-1/2 -translate-y-1/2 opacity-90" aria-hidden="true">
-          <Sparkles className="h-28 w-28 text-primary/50" strokeWidth={1} />
-        </div>
-      )}
-
-      {badge && (
-        <span
-          className={cn(
-            "absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-widest backdrop-blur",
-            badge === "online" && "bg-sky-400/20 text-sky-200",
-            badge === "ai" && "bg-primary/25 text-primary",
-          )}
-        >
-          {badge === "online" && <Cloud className="h-3 w-3" />}
-          {badge === "ai" && <Sparkles className="h-3 w-3" />}
-          {badge === "online" ? "Online" : "AI"}
-        </span>
-      )}
-
-      <div className="relative flex h-full flex-col justify-between p-4 sm:p-5">
-        <div className="max-w-[62%]">
-          <h3 className="font-display text-base font-bold leading-tight sm:text-lg">{title}</h3>
-          <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground sm:text-[13px]">
-            {subtitle}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onPlay}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:scale-105 hover:bg-wav-accent-hover active:scale-95"
-            aria-label={`Play ${title}`}
-          >
-            <Play className="ml-0.5 h-5 w-5 fill-primary-foreground" />
-          </button>
-        </div>
-      </div>
-    </motion.article>
-  );
-}
-
-function ReleaseCard({
-  cover,
-  title,
-  meta,
-  playing,
-  onPlay,
-}: {
-  cover: string;
-  title: string;
-  meta: string;
-  playing?: boolean;
-  onPlay: () => void;
-}) {
-  return (
-    <button
-      onClick={onPlay}
-      className="group w-40 shrink-0 snap-start rounded-xl bg-wav-surface p-3 text-left transition hover:bg-accent"
-    >
-      <div className="relative mb-3 aspect-square overflow-hidden rounded-lg bg-secondary">
-        <Image src={cover} alt={title} fill sizes="160px" className="object-cover" />
-        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-sky-300 backdrop-blur">
-          <Cloud className="h-3 w-3" /> Online
-        </span>
-        <span className="absolute bottom-2 right-2 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-xl transition-all group-hover:translate-y-0 group-hover:opacity-100">
-          {playing ? <EqBars barClassName="bg-primary-foreground" /> : <Play className="h-5 w-5 fill-primary-foreground" />}
-        </span>
-      </div>
-      <p className="truncate text-sm font-semibold">{title}</p>
-      <p className="truncate text-xs text-muted-foreground">{meta}</p>
-    </button>
-  );
-}
-
-function OnlineSection() {
+function ExploreSection() {
   const playContext = useWavely((s) => s.playContext);
   const setView = useWavely((s) => s.setView);
   const isOffline = useWavely((s) => s.isOffline);
@@ -476,10 +383,16 @@ function OnlineSection() {
 
   const onlineTracks = useMemo(() => TRACKS.filter((t) => t.origin === "online"), []);
   const topStreams = useMemo(
-    () => [...onlineTracks].sort((a, b) => b.playCount - a.playCount).slice(0, 5),
+    () => [...onlineTracks].sort((a, b) => b.playCount - a.playCount).slice(0, 3),
     [onlineTracks],
   );
-  const newReleases = useMemo(() => ALBUMS.filter((a) => a.origin === "online"), []);
+  const newReleases = useMemo(
+    () =>
+      ALBUMS.filter(
+        (a) => a.origin === "online" && a.releasedAt && Date.now() - a.releasedAt <= 30 * 86400000,
+      ).sort((a, b) => (b.releasedAt ?? 0) - (a.releasedAt ?? 0)),
+    [],
+  );
   const cachedTracks = useMemo(
     () => cachedIds.map((id) => trackById.get(id)!).filter(Boolean),
     [cachedIds],
@@ -488,14 +401,14 @@ function OnlineSection() {
 
   return (
     <section>
-      <div className="mb-3 flex items-center gap-3">
+      <div className="mb-2 flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-400/12 text-sky-300">
-          <Cloud className="h-5 w-5" />
+          <Compass className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">Discover Online</h2>
+          <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">Explore</h2>
           <p className="truncate text-[11px] text-muted-foreground">
-            Streaming catalogue • up to FLAC • separate from your device library
+            Streaming catalogue • up to FLAC • new drops from artists you follow
           </p>
         </div>
         {!isOffline && (
@@ -503,9 +416,9 @@ function OnlineSection() {
             variant="ghost"
             size="sm"
             className="text-xs text-muted-foreground"
-            onClick={() => setView("search")}
+            onClick={() => setView("explore")}
           >
-            Search
+            Open
           </Button>
         )}
       </div>
@@ -530,6 +443,7 @@ function OnlineSection() {
                   track={t}
                   index={i}
                   compact
+                  showFavHeart
                   onPlay={() => playContext("Cached songs", cachedIds, i)}
                 />
               ))}
@@ -537,7 +451,38 @@ function OnlineSection() {
           )}
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
+          {/* new releases — last month, followed artists first */}
+          <div>
+            <div className="mb-2 flex items-baseline justify-between">
+              <h3 className="text-sm font-bold text-muted-foreground">New for you</h3>
+              <button
+                onClick={() => setView("explore")}
+                className="flex items-center gap-1 text-xs font-semibold text-primary transition hover:text-wav-accent-hover"
+              >
+                1 week · 2 weeks · 1 month <ChevronRight className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+              {newReleases.map((a) => (
+                <ReleaseCard
+                  key={a.id}
+                  cover={a.cover}
+                  title={a.title}
+                  meta={`${a.artist} • ${fmtAge(a.releasedAt!)}`}
+                  playing={currentTrack?.albumId === a.id}
+                  onPlay={() =>
+                    playContext(
+                      a.title,
+                      TRACKS.filter((t) => t.albumId === a.id).map((t) => t.id),
+                      0,
+                    )
+                  }
+                />
+              ))}
+            </div>
+          </div>
+
           {/* made for you */}
           <div>
             <h3 className="mb-2 text-sm font-bold text-muted-foreground">Made for you</h3>
@@ -555,30 +500,6 @@ function OnlineSection() {
                 subtitle="Ask for a playlist, song facts, or just say “surprise me”."
                 onPlay={() => setView("ai")}
               />
-              <CuratedCard
-                image="/covers/online-chrome-city.png"
-                badge="online"
-                title="Chrome City — full album stream"
-                subtitle="Midnight Arcade's new synthpop LP, streaming in 320kbps."
-                onPlay={() => playContext("Chrome City", tracksOfAlbum("al9").map((t) => t.id), 0)}
-              />
-            </div>
-          </div>
-
-          {/* new releases */}
-          <div>
-            <h3 className="mb-2 text-sm font-bold text-muted-foreground">New releases</h3>
-            <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-              {newReleases.map((a) => (
-                <ReleaseCard
-                  key={a.id}
-                  cover={a.cover}
-                  title={a.title}
-                  meta={`${a.year} • ${a.artist}`}
-                  playing={currentTrack !== undefined && tracksOfAlbum(a.id).some((t) => t.id === currentTrack.id)}
-                  onPlay={() => playContext(a.title, tracksOfAlbum(a.id).map((t) => t.id), 0)}
-                />
-              ))}
             </div>
           </div>
 
@@ -592,6 +513,7 @@ function OnlineSection() {
                   track={t}
                   index={i}
                   compact
+                  showFavHeart
                   onPlay={() => playContext("Top streaming now", topStreams.map((x) => x.id), i)}
                 />
               ))}
@@ -602,6 +524,12 @@ function OnlineSection() {
     </section>
   );
 }
+
+/** Is this track a real file on the device (local scan or downloaded)? */
+const onDevice = (id: string) => {
+  const t = trackById.get(id);
+  return !!t && (t.origin === "local" || !!t.downloaded);
+};
 
 /* ---------------------------------------------------------------- */
 /* Home view                                                         */
@@ -619,7 +547,7 @@ export function HomeView() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-7 px-4 pb-10 md:max-w-3xl md:px-8 lg:max-w-5xl">
+    <div className="mx-auto w-full max-w-md space-y-6 px-4 pb-10 md:max-w-3xl md:px-8 lg:max-w-5xl">
       <HomeHeader />
 
       <OfflineBanner />
@@ -640,8 +568,8 @@ export function HomeView() {
         notPlayedCount={notPlayedCount}
       />
 
-      {/* online world — Spotify style */}
-      <OnlineSection />
+      {/* online world — Spotify style teaser */}
+      <ExploreSection />
 
       {/* AI DJ strip (desktop) */}
       {!isOffline && (

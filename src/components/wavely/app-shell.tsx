@@ -3,11 +3,12 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
-import { PLAYLISTS, trackById } from "@/lib/wavely/data";
+import { PLAYLISTS } from "@/lib/wavely/data";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { WavelyLogo } from "./logo";
 import { HomeView } from "./views/home-view";
+import { ExploreView } from "./views/explore-view";
 import { LibraryView } from "./views/library-view";
 import { SearchView } from "./views/search-view";
 import { AiChatView } from "./views/ai-chat-view";
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Bot,
+  Compass,
   Home,
   LibraryBig,
   Search,
@@ -30,10 +32,13 @@ import {
 import { cn } from "@/lib/utils";
 import type { AppView } from "@/lib/wavely/types";
 
+/* Names stay deliberately distinct: "My Music" = on-device player world,
+   "Explore" = streaming discovery world — no Library/Discovery confusion. */
 const NAV: { id: AppView; label: string; icon: React.ElementType }[] = [
   { id: "home", label: "Home", icon: Home },
+  { id: "explore", label: "Explore", icon: Compass },
+  { id: "library", label: "My Music", icon: LibraryBig },
   { id: "search", label: "Search", icon: Search },
-  { id: "library", label: "Library", icon: LibraryBig },
   { id: "ai", label: "Wavely AI", icon: Bot },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -107,7 +112,7 @@ function Sidebar() {
 
       {/* queues quick access */}
       <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        Your queues
+        My Music — queues
       </p>
       <div className="space-y-0.5">
         {queues.slice(0, 5).map((q) => (
@@ -148,7 +153,7 @@ function Sidebar() {
         <p className="text-[11px] leading-relaxed text-muted-foreground/70">
           Wavely prototype
           <br />
-          Musicolet UX × Spotify UI
+          My Music × Explore
         </p>
       </div>
     </aside>
@@ -200,6 +205,7 @@ function ViewContent() {
         className="wavely-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain"
       >
         {view === "home" && <HomeView />}
+        {view === "explore" && <ExploreView />}
         {view === "library" && <LibraryView />}
         {view === "search" && <SearchView />}
         {view === "ai" && <AiChatView />}

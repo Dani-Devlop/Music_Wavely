@@ -1,16 +1,16 @@
 "use client";
 
-import { Check, Cloud, CloudCheck } from "lucide-react";
+import { Cloud, CloudCheck } from "lucide-react";
 import { SOURCE_LABELS, type Track } from "@/lib/wavely/types";
 import { cn } from "@/lib/utils";
 
 /**
  * Origin badge shown next to song titles in playlists, queues and search.
- * Kept deliberately minimal — it only answers "where does this come from":
- *   local file        → nothing (clean row, Musicolet style)
- *   online stream     → ☁ Online            (plays with internet)
- *   fully cached      → ☁✓ Cached           (heard once, plays offline too)
- *   saved / downloaded → ✓ Saved            (real file in the music folder)
+ * Kept deliberately minimal — it only answers "is this still streaming?":
+ *   local file         → nothing (clean row, Musicolet style)
+ *   saved / downloaded → nothing either (it IS a local file now — no "Saved" badge)
+ *   online stream      → ☁ Online            (plays with internet)
+ *   fully cached       → ☁✓ Cached           (heard once, plays offline too)
  * Provider names stay in the tooltip only, never in the UI.
  */
 export function OriginBadge({
@@ -26,22 +26,8 @@ export function OriginBadge({
   compact?: boolean;
   className?: string;
 }) {
-  if (track.origin === "local") return null;
-
-  if (track.downloaded) {
-    return (
-      <span
-        title="Saved on device — plays offline"
-        className={cn(
-          "inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-wide text-primary",
-          className,
-        )}
-      >
-        <Check className="h-2.5 w-2.5" strokeWidth={3} />
-        Saved{!compact && track.quality ? ` • ${track.quality}` : ""}
-      </span>
-    );
-  }
+  // local files and saved songs are just files — no badge at all
+  if (track.origin === "local" || track.downloaded) return null;
 
   if (cached) {
     return (

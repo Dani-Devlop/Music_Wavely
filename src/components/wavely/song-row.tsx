@@ -39,12 +39,15 @@ export function SongRow({
   onPlay,
   showIndex = false,
   compact = false,
+  showFavHeart = false,
 }: {
   track: Track;
   index?: number;
   onPlay: () => void;
   showIndex?: boolean;
   compact?: boolean;
+  /** liked lists → the green heart is always visible on the right (Spotify style) */
+  showFavHeart?: boolean;
 }) {
   const { toast } = useToast();
   const currentTrack = useWavely((s) => s.currentTrack());
@@ -139,7 +142,7 @@ export function SongRow({
                 description: wasDownloaded
                   ? `Removed from device: ${track.title}`
                   : isCached
-                    ? `Saved from cache — no re-download needed`
+                    ? `Saved from cache — cache space freed`
                     : `Saved to your music folder (organised by country/genre)`,
               });
             }}
@@ -243,12 +246,15 @@ export function SongRow({
           toggleFavorite(track.id);
         }}
         aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
-        className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground sm:flex"
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground",
+          showFavHeart ? "flex" : "hidden sm:flex",
+        )}
       >
         {isFav ? (
           <Heart className="h-4 w-4 fill-primary text-primary" />
         ) : (
-          <Heart className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-60" />
+          <Heart className={cn("h-4 w-4", !showFavHeart && "opacity-0 transition-opacity group-hover:opacity-60")} />
         )}
       </button>
       <span className="w-10 shrink-0 text-right text-[13px] tabular-nums text-muted-foreground">

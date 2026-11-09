@@ -15,6 +15,7 @@ import {
   INITIAL_FAVORITES,
   INITIAL_HISTORY,
   INITIAL_QUEUES,
+  LAST_ONLINE_AT,
   TRACKS,
   trackById,
 } from "./data";
@@ -28,6 +29,26 @@ export const EQ_FREQS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
  * "saved" to the music folder instantly — no re-download needed.
  */
 export const CACHE_FILL_SECONDS = 6;
+
+/**
+ * Hard ceiling of the streaming cache (user decision: max 400 MB).
+ * The cache is invisible app storage — never a folder in the music library.
+ * When it fills up, the oldest cached songs are evicted first (LRU).
+ */
+export const CACHE_LIMIT_MB = 400;
+
+/** Rough per-track cache footprint by quality label (prototype estimate). */
+export function cacheMbOf(t?: Track): number {
+  if (!t) return 0;
+  if (t.quality === "FLAC") return 28;
+  if (t.quality === "256") return 7;
+  return 9; // 320 kbps default
+}
+
+/** Total MB currently used by fully cached songs. */
+export function cacheUsedMb(cachedIds: string[]): number {
+  return cachedIds.reduce((sum, id) => sum + cacheMbOf(trackById.get(id)), 0);
+}
 
 export const EQ_PRESETS: Record<string, number[]> = {
   Flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -63,6 +84,8 @@ interface WavelyState {
   /* streaming cache — songs heard online stay playable offline */
   cacheProgress: Record<string, number>; // 0..1 while a track is being cached
   cachedIds: string[]; // fully cached → plays without internet, instant-save
+  /** epoch ms of the last time the app was online — powers "since last visit" */
+  lastOnlineAt: number;
   clearCache: () => void;
   /** Musicolet-style list filter for the Library songs tab */
   songFilter: SongFilter;
@@ -184,6 +207,8 @@ export const useWavely = create<WavelyState>((set, get) => ({
     set({
       isOffline: v,
       ...(v ? { sourceMode: "local" as SourceMode } : {}),
+      // coming back online resets the "since last visit" window
+      ...(!v ? { lastOnlineAt: now() } : {}),
       playbackNotice: v
         ? "You're offline — Wavely is now an offline player"
         : "Back online — streaming sources reconnected",
@@ -193,6 +218,7 @@ export const useWavely = create<WavelyState>((set, get) => ({
 
   cacheProgress: {},
   cachedIds: [],
+  lastOnlineAt: LAST_ONLINE_AT,
   clearCache: () =>
     set({ cacheProgress: {}, cachedIds: [], playbackNotice: "Streaming cache cleared" }),
   songFilter: "all",
@@ -203,13 +229,20 @@ export const useWavely = create<WavelyState>((set, get) => ({
     if (!t || t.origin !== "online") return;
     if (t.downloaded) {
       set({ playbackNotice: `Removed from device: ${t.title}` });
-    } else if (get().cachedIds.includes(trackId)) {
-      // file already sits complete in the streaming cache → instant save
-      set({ playbackNotice: `Saved from cache — no re-download: ${t.title}` });
     } else {
-      set({ playbackNotice: `Saved to ${get().downloadPath}/${t.country ?? "--"}/${t.genre}` });
+      // saving = real file in the music folder; it leaves the streaming cache
+      const inCache = get().cachedIds.includes(trackId);
+      set((s) => ({
+        cachedIds: s.cachedIds.filter((id) => id !== trackId),
+        cacheProgress: Object.fromEntries(
+          Object.entries(s.cacheProgress).filter(([id]) => id !== trackId),
+        ),
+        playbackNotice: inCache
+          ? `Saved from cache to ${get().downloadPath}/${t.country ?? "--"}/${t.genre} — cache space freed`
+          : `Saved to ${get().downloadPath}/${t.country ?? "--"}/${t.genre}`,
+      }));
     }
-    // mutate the catalog entry so the badge flips everywhere
+    // mutate the catalog entry so the row flips everywhere
     t.downloaded = t.downloaded ? undefined : true;
     t.folder = t.downloaded
       ? `${get().downloadPath}/${t.country ?? "--"}/${t.genre}`
@@ -464,11 +497,26 @@ export const useWavely = create<WavelyState>((set, get) => ({
       const prev = s.cacheProgress[t.id] ?? 0;
       const progress = Math.min(1, prev + (dt * s.speed) / CACHE_FILL_SECONDS);
       if (progress >= 1) {
-        set((st) => ({
-          cachedIds: [...st.cachedIds, t.id],
-          cacheProgress: { ...st.cacheProgress, [t.id]: 1 },
-          playbackNotice: `Cached — ${t.title} now plays offline`,
-        }));
+        set((st) => {
+          // enforce the 400 MB ceiling — evict oldest fully-cached songs first (LRU)
+          const ids = [...st.cachedIds, t.id];
+          let used = cacheUsedMb(ids);
+          const evicted: string[] = [];
+          let i = 0;
+          while (used > CACHE_LIMIT_MB && i < ids.length - 1) {
+            evicted.push(ids[i]);
+            used -= cacheMbOf(trackById.get(ids[i]));
+            i++;
+          }
+          const kept = ids.slice(i);
+          return {
+            cachedIds: kept,
+            cacheProgress: { ...st.cacheProgress, [t.id]: 1 },
+            playbackNotice: evicted.length
+              ? `Cache hit its ${CACHE_LIMIT_MB} MB limit — oldest cached songs freed`
+              : `Cached — ${t.title} now plays offline`,
+          };
+        });
       } else {
         set((st) => ({ cacheProgress: { ...st.cacheProgress, [t.id]: progress } }));
       }
@@ -573,6 +621,8 @@ export const useEffectiveMode = () =>
   useWavely((s) => (s.isOffline ? "local" : s.sourceMode));
 export const useIsTrackPlayable = (t: Track | undefined) =>
   useWavely((s) => isTrackPlayable(t, s.isOffline, s.cachedIds));
+export const useCacheUsage = () =>
+  useWavely((s) => cacheUsedMb(s.cachedIds));
 
 export { filterByMode };
 export const allTracks = TRACKS;

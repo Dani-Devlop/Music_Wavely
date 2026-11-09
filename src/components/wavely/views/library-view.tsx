@@ -87,13 +87,29 @@ function sortTracks(tracks: Track[], mode: SongSortMode): Track[] {
   }
 }
 
-function TrackList({ tracks, contextName }: { tracks: Track[]; contextName: string }) {
+function TrackList({
+  tracks,
+  contextName,
+  favList = false,
+}: {
+  tracks: Track[];
+  contextName: string;
+  /** liked list → always-visible green hearts on the right */
+  favList?: boolean;
+}) {
   const playContext = useWavely((s) => s.playContext);
   const ids = tracks.map((t) => t.id);
   return (
     <div className="space-y-0.5">
       {tracks.map((t, i) => (
-        <SongRow key={t.id} track={t} index={i} showIndex onPlay={() => playContext(contextName, ids, i)} />
+        <SongRow
+          key={t.id}
+          track={t}
+          index={i}
+          showIndex
+          showFavHeart={favList}
+          onPlay={() => playContext(contextName, ids, i)}
+        />
       ))}
     </div>
   );
@@ -435,8 +451,10 @@ export function LibraryView() {
     [query, songSort, songFilter],
   );
 
+  // Favorites span both worlds — liked online streams stay in the list,
+  // marked with their ☁ Online badge (local songs show nothing).
   const favTracks = useMemo(
-    () => favorites.map((id) => trackById.get(id)!).filter(Boolean).filter(isDeviceTrack),
+    () => favorites.map((id) => trackById.get(id)!).filter(Boolean),
     [favorites],
   );
   const histTracks = useMemo(
@@ -446,12 +464,14 @@ export function LibraryView() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 px-4 pb-8 pt-6 md:px-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">Library</h1>
-          <p className="text-xs text-muted-foreground">On this device — your local player</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="min-w-0 flex-1 basis-full sm:basis-auto">
+          <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">My Music</h1>
+          <p className="truncate text-xs text-muted-foreground">
+            On this device — your local player, Musicolet style
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           {libraryTab === "songs" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -545,7 +565,12 @@ export function LibraryView() {
         {libraryTab === "queues" && <QueueList />}
         {libraryTab === "favorites" &&
           (favTracks.length ? (
-            <TrackList tracks={favTracks} contextName="Favorites" />
+            <>
+              <p className="px-1 pb-2 text-xs text-muted-foreground">
+                Everything you love — device files and ☁ online streams side by side.
+              </p>
+              <TrackList tracks={favTracks} contextName="Favorites" favList />
+            </>
           ) : (
             <EmptyState icon={Heart} text="Songs you love will live here" />
           ))}

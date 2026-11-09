@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useWavely } from "@/lib/wavely/store";
+import { useWavely, CACHE_LIMIT_MB, useCacheUsage } from "@/lib/wavely/store";
 import { EqualizerView } from "./equalizer-view";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -109,6 +109,7 @@ export function SettingsView() {
   const setOffline = useWavely((s) => s.setOffline);
   const cachedCount = useWavely((s) => s.cachedIds.length);
   const clearCache = useWavely((s) => s.clearCache);
+  const cacheUsed = useCacheUsage();
 
   // playback prefs (prototype-local)
   const [gapless, setGapless] = useState(true);
@@ -305,10 +306,41 @@ export function SettingsView() {
 
       <SectionHeader icon={CloudDownload} title="Streaming cache" />
       <div className="overflow-hidden rounded-2xl bg-wav-surface">
+        <div className="px-3 py-3">
+          <div className="mb-1.5 flex items-center justify-between text-sm">
+            <span className="font-medium">Cache usage</span>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {cacheUsed} of {CACHE_LIMIT_MB} MB
+            </span>
+          </div>
+          <div
+            className="h-2 w-full overflow-hidden rounded-full bg-secondary"
+            role="progressbar"
+            aria-valuenow={cacheUsed}
+            aria-valuemin={0}
+            aria-valuemax={CACHE_LIMIT_MB}
+            aria-label="Streaming cache usage"
+          >
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${Math.min(100, (cacheUsed / CACHE_LIMIT_MB) * 100)}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            {cachedCount} fully cached — play offline &amp; save instantly, no re-download
+          </p>
+        </div>
+        <Separator />
         <Row
           icon={CloudDownload}
-          title="Cached songs"
-          subtitle={`${cachedCount} fully cached — play offline & save instantly, no re-download`}
+          title="Hard limit: 400 MB"
+          subtitle="Fits under 400 MB — when it fills, the oldest cached songs are evicted first (LRU)"
+        />
+        <Separator />
+        <Row
+          icon={Folder}
+          title="No cache folder in your music"
+          subtitle="The cache is invisible app storage — saved songs move OUT of the cache into your music folder"
         />
         <Separator />
         <Row
@@ -325,7 +357,7 @@ export function SettingsView() {
         <Row
           icon={Info}
           title="How it works"
-          subtitle="Songs you stream fill the cache as you listen. Fully cached songs survive a dropped connection; half-cached ones don't."
+          subtitle="Songs you stream fill the cache as you listen. Fully cached songs survive a dropped connection — half-cached ones don't, and can't be saved."
         />
       </div>
 
