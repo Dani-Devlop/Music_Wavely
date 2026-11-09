@@ -26,6 +26,7 @@ import 'package:wavely/features/onboarding/data/onboarding_repository.dart';
 import 'package:wavely/features/onboarding/presentation/onboarding_flow.dart';
 import 'package:wavely/features/online/presentation/online_screen.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
+import 'package:wavely/features/player/presentation/equalizer_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_tab.dart';
 import 'package:wavely/features/search/presentation/search_hub_shell.dart';
@@ -273,6 +274,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: kAudioSettingsRoute,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AudioSettingsScreen(),
+      ),
+      // -- v1.0.2: dedicated Musicolet-style equalizer screen ------------------
+      GoRoute(
+        path: kEqualizerRoute,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const EqualizerScreen(),
       ),
     ],
   );

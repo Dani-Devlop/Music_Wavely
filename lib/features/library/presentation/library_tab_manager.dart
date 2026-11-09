@@ -3,6 +3,13 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:wavely/features/library/data/library_view_config.dart';
 import 'package:wavely/features/library/presentation/sort_menu.dart';
 
+/// One-shot navigation intent: the library tab the desktop shell (or any
+/// other surface) wants opened the next time the library screen mounts.
+/// The shell sets it right before pushing '/local' (e.g. the sidebar's
+/// "Playlists" entry) and the screen clears it after applying.
+final pendingLibraryTabProvider =
+    StateProvider<LibraryTabId?>((ref) => null);
+
 /// Label + icon for each library tab.
 class LibraryTabMeta {
   const LibraryTabMeta._(this.label, this.icon);

@@ -18,3 +18,4 @@ export 'shimmer.dart';
 export 'source_badge.dart';
 export 'staggered_appear.dart';
 export 'track_tile.dart';
+export 'wavely_cover_widget.dart';

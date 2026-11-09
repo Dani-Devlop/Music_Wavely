@@ -36,8 +36,16 @@ import 'package:wavely/playback/queue/queue_manager.dart';
 import '../support/track_factory.dart';
 import 'pump_app.dart';
 
+/// Logical phone viewport (the default harness size keeps the MOBILE
+/// Musicolet shell active).
+const Size phoneViewport = Size(390, 844);
+
+/// Logical desktop viewport — exactly at/above the 800 px split so the
+/// Spotify-style desktop shell renders.
+const Size desktopViewport = Size(1280, 800);
+
 void main() {
-  group('MainShell bottom navigation', () {
+  group('MainShell bottom navigation (mobile, < 800 px)', () {
     testWidgets('renders exactly the four destinations over the home branch',
         (tester) async {
       final harness = await pumpWavelyApp(tester, onboardingCompleted: true);
@@ -130,6 +138,69 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(HomeScreen), findsOneWidget);
       expect(find.byType(SearchScreen), findsNothing);
+    });
+  });
+
+  group('MainShell desktop shell (>= 800 px, Spotify clone)', () {
+    testWidgets('renders the three-column desktop layout with sidebar',
+        (tester) async {
+      final harness = await pumpWavelyApp(
+        tester,
+        onboardingCompleted: true,
+        viewport: desktopViewport,
+      );
+      addTearDown(harness.tearDown);
+
+      // Desktop layout, not the floating bottom nav.
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Library'), findsOneWidget);
+      expect(find.text('Playlists'), findsOneWidget);
+      expect(find.text('Now playing'), findsOneWidget);
+      // No mobile bottom-nav destinations.
+      expect(find.text('Playlist'), findsNothing);
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('sidebar switches branches (Home → Search → Settings)',
+        (tester) async {
+      final harness = await pumpWavelyApp(
+        tester,
+        onboardingCompleted: true,
+        viewport: desktopViewport,
+      );
+      addTearDown(harness.tearDown);
+
+      await tester.tap(find.text('Search'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchScreen), findsOneWidget);
+
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SettingsScreen), findsOneWidget);
+
+      await tester.tap(find.text('Home'));
+      await tester.pumpAndSettle();
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('the desktop playbar reflects a queued track',
+        (tester) async {
+      final harness = await pumpWavelyApp(
+        tester,
+        onboardingCompleted: true,
+        viewport: desktopViewport,
+      );
+      addTearDown(harness.tearDown);
+
+      await harness.container
+          .read(queueManagerProvider.notifier)
+          .setQueue(seedTracks(1));
+      await tester.pumpAndSettle();
+
+      // The playbar shows the queued track (title + artist) and the
+      // right panel shows the Now Playing details.
+      expect(find.text('Track 1'), findsWidgets);
+      expect(harness.engine.setQueueCalls, 1);
     });
   });
 

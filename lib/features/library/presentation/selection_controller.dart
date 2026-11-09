@@ -51,6 +51,19 @@ class SelectionController extends StateNotifier<SelectionState> {
     );
   }
 
+  /// v1.0.2: enters selection mode WITHOUT pre-selecting a row. Since the
+  /// long-press now opens the Musicolet 14-option context sheet, the
+  /// multi-select mode is entered from the dedicated toggle button next to
+  /// the quick-search box; rows are then tapped to select them.
+  void enterSelectionMode() {
+    state = state.copyWith(selectionMode: true);
+  }
+
+  /// Leaves selection mode and clears the selection.
+  void exitSelectionMode() {
+    state = const SelectionState();
+  }
+
   /// Toggles [id]; tapping the last selected row exits selection mode.
   void toggle(String id) {
     if (!state.selectionMode) {

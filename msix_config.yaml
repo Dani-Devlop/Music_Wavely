@@ -11,7 +11,7 @@
 display_name: Wavely
 publisher_display_name: Dani-Devlop
 identity_name: app.wavely.music
-msix_version: 1.0.1.0
+msix_version: 1.0.2.0
 publisher: CN=Dani-Devlop
 logo_path: windows/runner/resources/app_icon.ico
 capabilities: internetClient

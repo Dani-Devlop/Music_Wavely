@@ -27,6 +27,7 @@ import 'package:wavely/features/settings/presentation/screens/audio_settings_scr
     show kAudioSettingsRoute;
 import 'package:wavely/features/settings/presentation/screens/update_screen.dart';
 import 'package:wavely/features/settings/presentation/widgets/sources_settings_section.dart';
+import 'package:wavely/features/player/presentation/musicolet_dialogs.dart';
 
 /// Bytes per megabyte for the cache-size row (data math, not a token).
 const int _bytesPerMb = 1024 * 1024;
@@ -91,12 +92,18 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   String _query = '';
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  void _focusSearch() {
+    _searchFocus.requestFocus();
   }
 
   void _onSearchChanged(String value) {
@@ -138,6 +145,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'Settings',
           style: WavelyTypography.title20(color: colors.textPrimary),
         ),
+        // Musicolet parity: the tree search lives behind a top-right icon
+        // (it focuses the always-present search bar below).
+        actions: <Widget>[
+          IconButton(
+            key: const Key('settings-search-icon'),
+            tooltip: 'Search settings',
+            icon: Icon(Icons.search_rounded, color: colors.textPrimary),
+            onPressed: _focusSearch,
+          ),
+          const SizedBox(width: Spacing.xs),
+        ],
       ),
       body: Column(
         children: <Widget>[
@@ -151,6 +169,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             child: TextField(
               key: const Key('settings-search-field'),
+              focusNode: _searchFocus,
               controller: _searchController,
               textInputAction: TextInputAction.search,
               onChanged: _onSearchChanged,
@@ -497,6 +516,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         'Song Library & Tags',
         Icons.library_music_rounded,
         <_SettingsRow>[
+          _SettingsRow(
+            'scan now rescan dialog total accessible excluded media store',
+            ListTile(
+              key: const Key('settings-scan-dialog-row'),
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                Icons.manage_search_rounded,
+                color: colors.textSecondary,
+              ),
+              title: const Text('Scan library'),
+              subtitle: const Text(
+                'Scan now — totals, accessible and excluded files',
+              ),
+              onTap: () => unawaited(showScanDialog(context, ref)),
+            ),
+          ),
           _SettingsRow(
             'scan folders add remove media store sync library',
             _scanFoldersBlock(settings, notifier),

@@ -3,6 +3,47 @@
 All notable changes to Wavely. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.2] - 2026-11-09
+
+### Added — Responsive UI rebuild (Musicolet Android + Spotify desktop)
+
+- **Platform-adaptive shell** split at 800 px: `width < 800` renders the
+  Musicolet-style Android layout, `width >= 800` renders the Spotify-style
+  desktop layout — one codebase, two purpose-built UIs.
+- **Android · 14-option song context menu** on long-press: Bookmarks/Notes,
+  A-B repeat, Play speed & pitch, Add to a queue, Add to playlists, Edit
+  tags, Move to folder, Audio cutter, Set as ringtone, Share song, Delete
+  permanently, Show/hide/customize, Quick access shortcuts, Song info —
+  dark charcoal bottom sheet, every feasible row wired to a real feature.
+- **Android · Queue manager sheet**: drag handles, per-row edit/delete,
+  named queue snapshots (A, B, …) with apply/rename/delete, and the green
+  REMOVE ALL OTHER QUEUES button.
+- **Android · Musicolet dialogs**: the Scan dialog (big green SCAN NOW +
+  Total/Accessible/Excluded stats) and the Sleep-timer dialog (0:15:00,
+  1:30:00, h:mm, N=5, N=10, After a specific song) — no default
+  AlertDialogs for these flows.
+- **Android · dedicated 10-band equalizer screen** (`/equalizer`): green
+  vertical sliders, Custom preset label, Save icon; drives the engine's
+  real EqualizerControl (10 bands on desktop, device-reported on Android).
+- **Android · solid-black now playing**: massive cover, Title/Artist/Album,
+  Heart · Info · Add-to-queue · 3-dots row, Rewind · Prev · Play · Next ·
+  FF · EQ transport.
+- **Desktop · Spotify clone**: 3-column layout (250 px sidebar · center ·
+  300 px Now-Playing panel), glassmorphic bottom playbar with volume and
+  device selector, blurred album-art now playing with synced lyrics.
+- **Desktop sidebar → Playlists** deep-links the library's Playlists tab
+  through a one-shot pending-tab intent.
+
+### Changed
+
+- Settings: the tree search is behind a Musicolet top-right search icon;
+  the Song Library & Tags category gains a Scan-library row; audio
+  sub-pages use green section headers and gain Decoder + Volume sections.
+- Long-pressing a song anywhere (library lists, album/artist/playlist
+  details) opens the 14-option context menu.
+- Version bumped to `1.0.2+10`; git branches cleaned up (all merged
+  feature branches deleted).
+
 ## [1.0.1-beta3] - 2026-11-08
 
 ### Changed — Ultimate UI/UX & Musicolet-parity overhaul

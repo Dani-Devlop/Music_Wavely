@@ -59,11 +59,14 @@ void main() {
     await tester.pump();
 
     // Every section is in the tree (cacheExtent keeps them built).
-    expect(find.text('Output profile'), findsOneWidget);
-    expect(find.text('Equalizer'), findsOneWidget);
-    expect(find.text('Effects'), findsOneWidget);
-    expect(find.text('ReplayGain'), findsOneWidget);
-    expect(find.text('Transitions'), findsOneWidget);
+    // v1.0.2: Musicolet-parity green section headers render uppercase.
+    expect(find.text('OUTPUT PROFILE'), findsOneWidget);
+    expect(find.text('DECODER'), findsOneWidget);
+    expect(find.text('VOLUME'), findsOneWidget);
+    expect(find.text('EQUALIZER'), findsOneWidget);
+    expect(find.text('EFFECTS'), findsOneWidget);
+    expect(find.text('REPLAYGAIN'), findsOneWidget);
+    expect(find.text('TRANSITIONS'), findsOneWidget);
 
     // The five band sliders exist.
     for (var i = 0; i < 5; i++) {

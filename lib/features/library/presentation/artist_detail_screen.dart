@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/library/presentation/library_providers.dart';
+import 'package:wavely/features/player/presentation/song_options_sheet.dart';
 
 /// Height of the placeholder rows shown while the artist's tracks load.
 const double _shimmerRowHeight = 56;
@@ -134,6 +135,9 @@ class ArtistDetailScreen extends ConsumerWidget {
                                       .playTracks(tracks, startIndex: index),
                                 );
                               },
+                              onLongPress: () => unawaited(
+                                showSongOptionsSheet(context, ref, track),
+                              ),
                             );
                           },
                         ),

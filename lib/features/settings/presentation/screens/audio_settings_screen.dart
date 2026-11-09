@@ -21,14 +21,17 @@ import 'package:wavely/data/local/db/app_database.dart';
 import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/design_system/themes/semantic_extension.dart';
+import 'package:wavely/features/player/presentation/musicolet_palette.dart';
 import 'package:wavely/playback/effects/audio_effects.dart';
 import 'package:wavely/playback/effects/effects_filter.dart';
 import 'package:wavely/playback/profiles/audio_engine_controller.dart';
 import 'package:wavely/playback/profiles/audio_profile_codec.dart';
 import 'package:wavely/playback/equalizer/eq_presets.dart';
+import 'package:wavely/playback/engines/engine_factory.dart';
 import 'package:wavely/playback/replaygain/replay_gain_math.dart';
 import 'package:wavely/playback/replaygain/replay_gain_scan_service.dart';
 import 'package:wavely/core/audio/ffmpeg_executor.dart';
+import 'package:wavely/core/utils/platform_utils.dart';
 
 /// Route path registered in the router.
 const String kAudioSettingsRoute = '/settings/audio';
@@ -91,6 +94,10 @@ class AudioSettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: Spacing.lg),
+                _DecoderSection(engineState: engineState),
+                const SizedBox(height: Spacing.lg),
+                const _VolumeSection(),
+                const SizedBox(height: Spacing.lg),
                 _EqSection(engineState: engineState),
                 const SizedBox(height: Spacing.lg),
                 _EffectsSection(engineState: engineState),
@@ -129,14 +136,98 @@ class _SectionGroup extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            // Musicolet parity (v1.0.2): sub-page section headers are the
+            // signature Musicolet green (Decoder, Equalizer, Volume, …).
             Text(
-              title,
-              style: WavelyTypography.body14Medium(color: colors.textPrimary),
+              title.toUpperCase(),
+              style: const TextStyle(
+                color: MusicoletColors.green,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+              ),
             ),
             const SizedBox(height: Spacing.md),
             child,
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Musicolet "Decoder" section: the audio engine actually decoding the
+/// stream right now (real platform info, no placeholders).
+class _DecoderSection extends ConsumerWidget {
+  const _DecoderSection({required this.engineState});
+
+  final AudioEngineState engineState;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.wavelyColors;
+    final decoder = PlatformUtils.isDesktop
+        ? 'media_kit (libmpv)'
+        : 'just_audio (Media3/ExoPlayer)';
+    return _SectionGroup(
+      title: 'Decoder',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            decoder,
+            style: WavelyTypography.body14(color: colors.textPrimary),
+          ),
+          const SizedBox(height: Spacing.xs),
+          Text(
+            'Equalizer support: '
+            '${engineState.eqSupported
+                ? 'available'
+                : 'not available on this engine'}.',
+            style: WavelyTypography.caption12(color: colors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Musicolet "Volume" section: a real volume slider writing straight to
+/// the playback engine.
+class _VolumeSection extends ConsumerStatefulWidget {
+  const _VolumeSection();
+
+  @override
+  ConsumerState<_VolumeSection> createState() => _VolumeSectionState();
+}
+
+class _VolumeSectionState extends ConsumerState<_VolumeSection> {
+  double _volume = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.wavelyColors;
+    return _SectionGroup(
+      title: 'Volume',
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.volume_down_rounded, color: colors.textSecondary),
+          Expanded(
+            child: Slider(
+              key: const Key('audio-settings-volume-slider'),
+              value: _volume,
+              divisions: 20,
+              label: '${(_volume * 100).round()}%',
+              onChanged: (value) {
+                setState(() => _volume = value);
+                unawaited(
+                  ref.read(playbackEngineProvider).setVolume(value),
+                );
+              },
+            ),
+          ),
+          Icon(Icons.volume_up_rounded, color: colors.textSecondary),
+        ],
       ),
     );
   }

@@ -61,6 +61,16 @@ Future<ProviderContainer> _pumpNowPlaying(
     ],
   );
   addTearDown(container.dispose);
+  // v1.0.2 responsive split: this e2e drives the MOBILE (Musicolet) now
+  // playing screen — pin a phone viewport so the desktop body isn't used.
+  tester.view
+    ..devicePixelRatio = 1.0
+    ..physicalSize = const Size(390, 844);
+  addTearDown(() {
+    tester.view
+      ..resetPhysicalSize()
+      ..resetDevicePixelRatio();
+  });
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,

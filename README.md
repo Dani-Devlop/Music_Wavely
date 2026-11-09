@@ -1,56 +1,49 @@
 <div align="center">
 
-<img src="assets/brand/wavely_logo.svg" width="180" alt="Wavely logo — a neon-glass W over a soundwave" />
+<img src="assets/brand/wavely_logo.svg" width="240" alt="Wavely logo — a neon-glass W over a soundwave" />
 
 # Wavely
 
 **Your music, your way. Cross-platform, offline-first, and AI-powered.**
 
-A free, open-source, glassmorphic music player for **legal sources only** —
-your local files, your own Subsonic/Navidrome server, and free catalogs
-(Jamendo, Free Music Archive, archive.org). No ads, no paywall, no PII
-tracking.
+A free, open-source music player for **legal sources only** — your local
+files, your own Subsonic/Navidrome server, and free catalogs (Jamendo, Free
+Music Archive, archive.org). No ads, no paywall, no PII tracking.
 
-[![CI — Full Verification](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml/badge.svg)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
-[![Release — v1.0.1-beta3](https://img.shields.io/badge/release-v1.0.1--beta3-8b5cf6)](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.1-beta3)
-[![Tests](https://img.shields.io/badge/tests-1547%20passing-brightgreen)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
-[![E2E](https://img.shields.io/badge/E2E-verified-10b981)](.github/workflows/e2e.yml)
-[![Platforms](https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-informational)](#-download-v101-beta3)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![CI — Full Verification](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml/badge.svg?style=for-the-badge)](https://github.com/Dani-Devlop/Music_Wavely/actions/workflows/verify.yml)
+<br>
+[![Release — v1.0.2](https://img.shields.io/badge/release-v1.0.2_STABLE-4CAF50?style=for-the-badge)](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.2)
+[![Platforms](https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-8b5cf6?style=for-the-badge)](#-download-v102)
+[![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 
 </div>
 
 ---
 
 Wavely is a **privacy-first player** that works with **zero API keys** out of
-the box: scan your local library and hit play. Want more? Point it at your own
-Subsonic/Navidrome server, add a free Jamendo client id, or sign in with
+the box: scan your local library and hit play. Want more? Point it at your
+own Subsonic/Navidrome server, add a free Jamendo client id, or sign in with
 Telegram/Email to sync across devices via Supabase. Spotify/Deezer/Apple are
 **metadata-only** through official APIs — Wavely never touches paid-catalog
 audio.
 
-Every release is **E2E-verified on CI**: instrumented end-to-end scenarios
-drive the real app — library scan → playback, synced lyrics, AI queue
-building, parental censoring, download → offline playback — and the
-screenshots below are rendered live from those runs.
-
-## 📥 Download v1.0.1-beta3
+## 📥 Download v1.0.2
 
 Grab the latest build straight from the
-[v1.0.1-beta3 release page](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.1-beta3):
+[v1.0.2 release page](https://github.com/Dani-Devlop/Music_Wavely/releases/tag/v1.0.2):
 
-| Platform | Downloads | Requirements |
-| --- | --- | --- |
-| 🤖 **Android** | [![Universal APK](https://img.shields.io/badge/Android-universal_APK-3DDC84?logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-android-universal.apk) — all ABIs | Android 8.0+ |
-| 🤖 **Android (slim)** | [![arm64](https://img.shields.io/badge/APK-arm64__v8a-3DDC84?logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-android-arm64-v8a.apk) [![v7a](https://img.shields.io/badge/APK-armeabi__v7a-3DDC84?logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-android-armeabi-v7a.apk) [![x64](https://img.shields.io/badge/APK-x86__64-3DDC84?logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-android-x86_64.apk) | Android 8.0+ |
-| 🪟 **Windows** | [![Zip](https://img.shields.io/badge/Windows-x64_zip-0078D4?logo=windows95&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-windows-x64.zip) · [![MSIX](https://img.shields.io/badge/Windows-MSIX_installer-0078D4?logo=windows95&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely.msix) | Windows 10 / 11, 64-bit |
-| 🐧 **Linux** | [![AppImage](https://img.shields.io/badge/Linux-AppImage-FCC624?logo=linux&logoColor=black)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-linux-x64.AppImage) · [![tar.gz](https://img.shields.io/badge/Linux-tar.gz-FCC624?logo=linux&logoColor=black)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.1-beta3/wavely-v1.0.1-beta3-linux-x64.tar.gz) | glibc 2.31+ (Ubuntu 20.04+) |
-| 🌐 **Web / other** | Build from source — see [🚀 Getting Started](#-getting-started) | Flutter stable ≥ 3.35 |
+| Platform | Downloads |
+| --- | --- |
+| 🤖 **Android (Universal)** | [![Android Universal APK](https://img.shields.io/badge/ANDROID-UNIVERSAL_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.2/wavely-v1.0.2-android-universal.apk) |
+| 🤖 **Android (per-ABI slim)** | [![arm64-v8a](https://img.shields.io/badge/ANDROID-ARM64__V8A-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.2/wavely-v1.0.2-android-arm64-v8a.apk) [![armeabi-v7a](https://img.shields.io/badge/ANDROID-ARMEABI__V7A-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.2/wavely-v1.0.2-android-armeabi-v7a.apk) [![x86_64](https://img.shields.io/badge/ANDROID-X86__64-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.2/wavely-v1.0.2-android-x86_64.apk) |
+| 🪟 **Windows** | [![Windows x64 Zip](https://img.shields.io/badge/WINDOWS-X64_ZIP-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.2/wavely-v1.0.2-windows-x64.zip) [![Windows MSIX](https://img.shields.io/badge/WINDOWS-MSIX_INSTALLER-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.2/wavely.msix) |
+| 🐧 **Linux** | [![Linux AppImage](https://img.shields.io/badge/LINUX-APPIMAGE-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.2/wavely-v1.0.2-linux-x64.AppImage) [![Linux tar.gz](https://img.shields.io/badge/LINUX-TAR.GZ-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/Dani-Devlop/Music_Wavely/releases/download/v1.0.2/wavely-v1.0.2-linux-x64.tar.gz) |
+| 🌐 **Web / other** | Build from source — see [🚀 Getting Started](#-getting-started) |
 
-> ℹ️ Android picks the right architecture automatically when you install the
-> universal APK. The MSIX installer ships when its optional packaging step
-> succeeds; AppImage/MSIX are unsigned unless signing secrets are configured
-> ([docs/PACKAGING.md](docs/PACKAGING.md)).
+> ℹ️ The universal APK contains every architecture — install it and Android
+> picks the right one automatically. The MSIX installer ships when its
+> optional packaging step succeeds; AppImage/MSIX are unsigned unless
+> signing secrets are configured ([docs/PACKAGING.md](docs/PACKAGING.md)).
 
 ## 📸 Screenshots
 
@@ -66,6 +59,40 @@ Grab the latest build straight from the
 </p>
 
 ## ✨ Features
+
+### 🎧 Platform-Adaptive UI (v1.0.2)
+Wavely ships **two purpose-built UIs from one codebase**, split at 800 px:
+
+- 📱 **On Android (mobile)** — a strict **Musicolet clone**:
+  - The **14-option song context menu** on long-press (Bookmarks/Notes,
+    A-B repeat, Play speed & pitch, Add to a queue, Add to playlists,
+    Edit tags, Move to folder, Audio cutter, Set as ringtone, Share song,
+    Delete permanently, Show/hide/customize, Quick access shortcuts,
+    Song info) as a dark charcoal bottom sheet.
+  - **Queue manager** bottom sheet — drag handles, per-row edit/delete,
+    named queue snapshots (A, B, …) and the green
+    **REMOVE ALL OTHER QUEUES** button.
+  - **Musicolet settings tree** with a top-right search icon, ten deep
+    categories and **green section headers** (Decoder, Equalizer, Volume,
+    …) in the audio sub-pages.
+  - **Custom dialogs, never default AlertDialogs**: the Scan dialog with a
+    big green **SCAN NOW** button and live Total / Accessible / Excluded
+    stats; the Sleep-timer dialog with the exact 0:15:00 · 1:30:00 · h:mm ·
+    N=5 · N=10 · "After a specific song" buttons; a dedicated **10-band
+    equalizer screen** with green sliders, Custom preset label and a Save
+    icon.
+  - **Solid-black now playing** — massive cover art, Title / Artist /
+    Album, the Heart · Info · Add-to-queue · 3-dots row and the Rewind ·
+    Prev · Play · Next · FF · EQ transport row. No glassmorphism.
+- 🖥️ **On Windows/Linux desktop** — a premium **Spotify clone**:
+  - **Three-column layout**: 250 px sidebar (logo, Home, Search, Library,
+    Playlists on a dark gradient), the center main view (hero banner,
+    "Made for you" carousels, album grid) and a 300 px right panel with
+    the Now-Playing details and **Next in queue**.
+  - A fixed **glassmorphic bottom playbar** — album art, transport
+    controls, seekbar, volume and the device selector.
+  - **Now playing on desktop**: an animated blurred album-art backdrop
+    with a large cover, title and synced lyrics.
 
 ### 🎧 Playback
 - **Gapless** and **crossfade** transitions between tracks.
@@ -114,18 +141,12 @@ Grab the latest build straight from the
 - Artist / album / genre blocklists and a no-lyrics fail-safe policy
   (block · mute · allow).
 
-### 🎨 UI/UX
-- **Exactly four bottom tabs** — Playlist (Spotify-style home with greeting,
-  top-albums grid and "Made for you" / "Jump back in" carousels), Now
-  Playing (full player), Search (unified search with the Musicolet library
-  and online discovery one chip away), and Settings.
-- **Musicolet-style deep settings tree** — a search bar over expandable
-  categories (Language, Interface, Audio, Song Library & Tags, Headset /
-  Bluetooth, Notifications, Widgets, Lock Screen, Advanced, Backup, About).
+### 🎨 Design System
 - **Album art everywhere** — embedded covers on tiles, mini-player, home
-  cards and the full-screen player; a premium hash-gradient + white-note
-  fallback for tracks without artwork (never a letter box).
-- **Glassmorphism** design system with 13 reusable glass components.
+  cards, the queue manager and the full-screen player; a premium
+  hash-gradient + white-note fallback for tracks without artwork (never a
+  letter box).
+- **Glassmorphism** component set with dark-gradient desktop panels.
 - **Light / Dark / AMOLED** themes with purple/green accent pairs,
   adaptive accent from album art, blur-strength and corner-radius controls,
   plus full **Persian / RTL** localization.
@@ -234,7 +255,7 @@ flutter run -d linux            # or -d windows, or an Android device id
 
 ```bash
 flutter analyze                                            # 0 errors required
-flutter test --coverage                                    # 1547 tests passing
+flutter test --coverage                                    # full suite green
 
 # E2E scenarios + real-UI screenshots (the ARTEMIS-mirror suite):
 flutter test test/e2e test/goldens
@@ -269,24 +290,18 @@ AppImage/MSIX are unsigned unless signing secrets are configured — see
 - [x] **v0.2.0** — DAP stage: Hi-Res output, equalizer, plugin host,
       multi-arch release pipeline; Stage 5 cross-feature regression suite
 - [x] **v1.0.0** — **stable**: instrumented E2E verification of the four
-      critical user flows (library scan → playback, synced lyrics + AI
-      queue, parental censoring, download → offline play), real-UI
-      screenshot capture on CI, bundled Sora/Inter typography, cloud
-      debug-APK pipeline
-- [x] **v1.0.1-beta** — **Musicolet-parity beta**: 20 multi-queue system,
-      9-tab library with QuickSearch & multi-select, precise seek/bookmarks/
-      A-B repeat, sleep timer, 3-source lyrics + LRC editor, folder browser
-      with blacklist, 13-field tag editor, audio cutter & ringtone setter,
-      M3U + backup/restore, 5-band EQ + ReplayGain + crossfade/gapless/speed,
-      lock-screen queue & lyrics, 3 home widgets, QS tile, Android Auto
-      browse, headset FF/rewind rules, AMOLED/blur/accent theming, mini-player
-      gestures, Persian + RTL localization, neon-glass logo & splash
-- [x] **v1.0.1-beta3** — **UI overhaul**: real embedded album art on every
-      surface (scan-time cover extraction on Android included), premium
-      hash-gradient fallback art, logo in the Home app bar + splash,
-      exactly four bottom tabs (Playlist · Now Playing · Search · Settings),
-      Musicolet-style deep settings tree with search, Spotify-style home
-      (greeting, top-albums grid, "Made for you" carousel)
+      critical user flows, real-UI screenshot capture on CI, bundled
+      Sora/Inter typography, cloud debug-APK pipeline
+- [x] **v1.0.1-beta / beta3** — **Musicolet parity**: 20 multi-queue
+      system, 9-tab library, tag editor, audio cutter, 5-band EQ +
+      ReplayGain, lock-screen queue & lyrics, home widgets, Persian/RTL;
+      then the UI overhaul (real embedded album art everywhere, four bottom
+      tabs, deep settings tree, Spotify-style home)
+- [x] **v1.0.2** — **Responsive UI rebuild**: Musicolet Android clone
+      (14-option context sheet, queue manager, scan/sleep dialogs, 10-band
+      EQ screen, solid-black player) + Spotify desktop clone (3-column
+      glassmorphism, bottom playbar, blurred-art now playing) from one
+      codebase
 - [ ] Plugin UI surface (management screen + declarative REST plugins)
 - [ ] DSP extension surface (crossfeed, loudness normalization)
 
@@ -294,9 +309,9 @@ AppImage/MSIX are unsigned unless signing secrets are configured — see
 
 Contributions are welcome — see
 [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). One non-negotiable ground
-rule: **legal sources only**. No DRM circumvention, no unofficial paid-service
-APIs, no scraping of paid-catalog audio; PRs violating this are closed
-without review.
+rule: **legal sources only**. No DRM circumvention, no unofficial
+paid-service APIs, no scraping of paid-catalog audio; PRs violating this are
+closed without review.
 
 ## 📚 Documentation
 
