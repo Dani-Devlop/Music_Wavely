@@ -7,38 +7,17 @@ import { SongRow } from "../song-row";
 import { CuratedCard, ReleaseCard } from "../cards";
 import { OfflineBanner } from "../source-mode-chips";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
-import {
-  ALBUMS,
-  ARTISTS,
-  PLAYLISTS,
-  TRACKS,
-  fmtAge,
-  fmtLongTime,
-  trackById,
-} from "@/lib/wavely/data";
-import type { LibraryTab, SongFilter, SongSortMode } from "@/lib/wavely/types";
+import { ALBUMS, TRACKS, fmtAge, trackById } from "@/lib/wavely/data";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
-  Ban,
   ChevronRight,
-  ClockPlus,
   CloudOff,
   Compass,
-  Disc3,
-  Flame,
-  Folder,
   Heart,
-  History,
-  LibraryBig,
-  ListMusic,
-  MicVocal,
   Play,
-  Smartphone,
   Sparkles,
-  UserRound,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -56,15 +35,6 @@ function SectionHeader({ title, action }: { title: string; action?: React.ReactN
       {action}
     </div>
   );
-}
-
-/** Jumps into My Music with a specific tab / sort / filter pre-applied. */
-function openMyMusic(opts: { tab: LibraryTab; sort?: SongSortMode; filter?: SongFilter }) {
-  const s = useWavely.getState();
-  s.setLibraryTab(opts.tab);
-  if (opts.sort) s.setSongSort(opts.sort);
-  s.setSongFilter(opts.filter ?? "all");
-  s.setView("library");
 }
 
 /* ---------------------------------------------------------------- */
@@ -192,176 +162,6 @@ function LikedSection({
             </button>
           )}
         </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---------------------------------------------------------------- */
-/* LOCAL world — Musicolet function, Spotify polish.                  */
-/* Compact smart tiles + browse pills instead of six long rows.       */
-/* ---------------------------------------------------------------- */
-function SmartTile({
-  icon: Icon,
-  label,
-  detail,
-  tint,
-  onClick,
-}: {
-  icon: React.ElementType;
-  label: string;
-  detail: string;
-  tint: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-2.5 rounded-2xl bg-wav-surface p-3 text-left transition hover:bg-accent active:scale-[0.98]"
-    >
-      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", tint)}>
-        <Icon className="h-5 w-5" />
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-xs font-bold leading-tight">{label}</span>
-        <span className="block truncate text-[11px] text-muted-foreground">{detail}</span>
-      </span>
-    </button>
-  );
-}
-
-function BrowsePill({
-  icon: Icon,
-  label,
-  count,
-  onClick,
-}: {
-  icon: React.ElementType;
-  label: string;
-  count: string | number;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-secondary/60 px-3.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-      <span className="rounded-full bg-accent px-1.5 text-[10px] font-bold text-foreground/80">
-        {count}
-      </span>
-    </button>
-  );
-}
-
-function LocalSection({
-  deviceCount,
-  deviceTime,
-  notPlayedCount,
-}: {
-  deviceCount: number;
-  deviceTime: string;
-  notPlayedCount: number;
-}) {
-  const favorites = useWavely((s) => s.favorites);
-  const history = useWavely((s) => s.history);
-  const queues = useWavely((s) => s.queues);
-
-  const deviceFavorites = favorites.filter(onDevice).length;
-  const deviceHistory = history.filter(onDevice).length;
-  const deviceAlbums = ALBUMS.filter((a) => a.origin !== "online").length;
-  const deviceArtists = ARTISTS.filter((a) =>
-    a.albumIds.some((id) => {
-      const al = ALBUMS.find((x) => x.id === id)!;
-      return al.origin !== "online" || TRACKS.some((t) => t.albumId === id && t.downloaded);
-    }),
-  ).length;
-  const deviceGenres = new Set(
-    TRACKS.filter((t) => t.origin === "local" || t.downloaded).map((t) => t.genre),
-  ).size;
-  const wavelyDownloads = TRACKS.filter((t) => t.downloaded).length;
-  const deviceFolders = new Set(
-    TRACKS.filter((t) => t.origin === "local" || t.downloaded).map((t) => t.folder),
-  ).size;
-
-  return (
-    <section>
-      <div className="mb-2 flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
-          <Smartphone className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">My Music</h2>
-          <p className="truncate text-[11px] text-muted-foreground">
-            On this device • {deviceCount} songs • {deviceTime}
-            {wavelyDownloads > 0 && ` • ${wavelyDownloads} saved from online`}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs text-muted-foreground"
-          onClick={() => openMyMusic({ tab: "songs", sort: "title-asc" })}
-        >
-          Open
-        </Button>
-      </div>
-
-      {/* smart lists — compact grid, colour-coded at a glance */}
-      <div className="grid grid-cols-2 gap-2">
-        <SmartTile
-          icon={LibraryBig}
-          label="All songs"
-          detail={`${deviceCount} songs`}
-          tint="bg-primary/12 text-primary"
-          onClick={() => openMyMusic({ tab: "songs", sort: "title-asc" })}
-        />
-        <SmartTile
-          icon={Heart}
-          label="Favorites"
-          detail={`${deviceFavorites} songs`}
-          tint="bg-rose-500/12 text-rose-300"
-          onClick={() => openMyMusic({ tab: "favorites" })}
-        />
-        <SmartTile
-          icon={ClockPlus}
-          label="Recently added"
-          detail="newest first"
-          tint="bg-amber-500/12 text-amber-300"
-          onClick={() => openMyMusic({ tab: "songs", sort: "date-added" })}
-        />
-        <SmartTile
-          icon={History}
-          label="Recently played"
-          detail={`${deviceHistory} in history`}
-          tint="bg-teal-500/12 text-teal-300"
-          onClick={() => openMyMusic({ tab: "history" })}
-        />
-        <SmartTile
-          icon={Flame}
-          label="Most played"
-          detail="sorted by plays"
-          tint="bg-orange-500/12 text-orange-300"
-          onClick={() => openMyMusic({ tab: "songs", sort: "play-count" })}
-        />
-        <SmartTile
-          icon={Ban}
-          label="Not played"
-          detail={`${notPlayedCount} waiting`}
-          tint="bg-violet-500/12 text-violet-300"
-          onClick={() => openMyMusic({ tab: "songs", filter: "not-played" })}
-        />
-      </div>
-
-      {/* browse everything else — one tidy pill row */}
-      <div className="no-scrollbar -mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-0.5 md:mx-0 md:flex-wrap md:px-0">
-        <BrowsePill icon={Disc3} label="Albums" count={deviceAlbums} onClick={() => openMyMusic({ tab: "albums" })} />
-        <BrowsePill icon={UserRound} label="Artists" count={deviceArtists} onClick={() => openMyMusic({ tab: "artists" })} />
-        <BrowsePill icon={MicVocal} label="Genres" count={deviceGenres} onClick={() => openMyMusic({ tab: "genres" })} />
-        <BrowsePill icon={Folder} label="Folders" count={deviceFolders} onClick={() => openMyMusic({ tab: "folders" })} />
-        <BrowsePill icon={ListMusic} label="Playlists" count={PLAYLISTS.length} onClick={() => openMyMusic({ tab: "playlists" })} />
-        <BrowsePill icon={LibraryBig} label="Queues" count={`${queues.length}/20`} onClick={() => openMyMusic({ tab: "queues" })} />
       </div>
     </section>
   );
@@ -519,12 +319,6 @@ function ExploreSection() {
   );
 }
 
-/** Is this track a real file on the device (local scan or downloaded)? */
-const onDevice = (id: string) => {
-  const t = trackById.get(id);
-  return !!t && (t.origin === "local" || !!t.downloaded);
-};
-
 /* ---------------------------------------------------------------- */
 /* Home view                                                         */
 /* ---------------------------------------------------------------- */
@@ -533,12 +327,6 @@ export function HomeView() {
   const isOffline = useWavely((s) => s.isOffline);
 
   const favIds = useWavely((s) => s.favorites);
-  const deviceTracks = useMemo(() => TRACKS.filter((t) => t.origin === "local" || t.downloaded), []);
-  const notPlayedCount = useMemo(() => deviceTracks.filter((t) => t.playCount === 0).length, [deviceTracks]);
-  const deviceTime = useMemo(
-    () => fmtLongTime(deviceTracks.reduce((a, t) => a + t.duration, 0)),
-    [deviceTracks],
-  );
 
   return (
     <div className="mx-auto w-full max-w-md space-y-6 px-4 pb-10 md:max-w-3xl md:px-8 lg:max-w-5xl">
@@ -553,13 +341,6 @@ export function HomeView() {
           useWavely.getState().setLibraryTab("favorites");
           useWavely.getState().setView("library");
         }}
-      />
-
-      {/* local world — Musicolet style */}
-      <LocalSection
-        deviceCount={deviceTracks.length}
-        deviceTime={deviceTime}
-        notPlayedCount={notPlayedCount}
       />
 
       {/* online world — Spotify style teaser */}
