@@ -61,6 +61,12 @@ jobs:
       - run: python3 tools/patch_android_widgets.py
       # Phase 11: Android 13+ per-app language (localeConfig en/fa).
       - run: python3 tools/patch_android_per_app_language.py
+      # Stable release signing: wire the COMMITTED keystore
+      # (android/signing/) into the scaffolded runner so every APK — local
+      # or CI — shares one signature and updates install WITHOUT the
+      # "App not installed as package conflicts with an existing package"
+      # error. See tools/patch_android_signing.py + docs/PACKAGING.md §signing.
+      - run: python3 tools/patch_android_signing.py
       - run: flutter pub get
       # home_widget pins kotlinOptions.jvmTarget 1.8 in its pub-cache
       # build.gradle while its androidx deps expose JVM-11 inlinees — the

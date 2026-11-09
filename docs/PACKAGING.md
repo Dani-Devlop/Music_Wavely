@@ -46,10 +46,47 @@ manual `workflow_dispatch`):
   linuxdeploy/appimagetool are downloaded by the distributor at run time)
 - `release` → `gh release create` attaching everything
 
-**No signing secrets live in the workflow.** Artifacts are honest
-placeholders until the owner signs them.
+Android signs with the committed shared keystore (§3 below); MSIX /
+AppImage signing secrets are optional owner configuration.
 
 ## 3. Signing (owner actions)
+
+### Android (sideload updates install cleanly — FIXED)
+
+**Root cause of the recurring "App not installed as package conflicts with
+an existing package" error:** the repo does not commit `android/`; the
+runner is scaffolded by `flutter create . --platforms=android` in CI and
+the template signed release builds with the DEBUG keystore. Ephemeral CI
+runners regenerate `~/.android/debug.keystore` on every run, so every
+release APK carried a different signature → Android refused to update the
+installed app.
+
+**Fix (owner decision):** a shared release keystore is committed —
+`android/signing/wavely-release.jks` + `android/signing/key.properties`
+(deliberate exception to the `*.jks` ignore rule). CI wires it in via
+`tools/patch_android_signing.py` (run after `flutter create`, before
+`flutter pub get`); the patch is idempotent, supports both the Kotlin and
+Groovy gradle DSLs, and falls back to debug signing when the signing
+folder is absent (forks still build).
+
+Consequences:
+
+- Every APK — local build or CI release — now shares ONE signature, so
+  updates install over existing installs without uninstalling.
+- Keystore credentials (public repo): alias `wavely`, password
+  `wavely2025`. Acceptable for a sideload-only open-source app; anyone
+  can build an APK signed "as Wavely".
+- **One-time migration:** the app currently installed on your device was
+  signed with an older ephemeral key. Uninstall it ONCE, install the next
+  build, and every update after that installs cleanly.
+- To rotate to a private keystore later (e.g. before Play Store): remove
+  `android/signing/`, generate a local keystore
+  (`keytool -genkeypair -v -keystore wavely-release.jks -alias wavely
+  -keyalg RSA -keysize 2048 -validity 10950`), and pass it through CI
+  secrets instead (`ANDROID_KEYSTORE_BASE64` → decode to
+  `android/signing/wavely-release.jks`, keep the same key.properties
+  format). Remember: rotating the key means users must uninstall once
+  more.
 
 ### Windows / MSIX
 

@@ -11,6 +11,14 @@ google-services.json
 GoogleService-Info.plist
 lib/firebase_options.dart
 
+# EXCEPTION (owner decision): the shared release keystore IS committed so
+# every build — local and CI — signs with the SAME key and sideload updates
+# install over existing installs without "package conflicts with an
+# existing package". See docs/PACKAGING.md §signing.
+!android/signing/
+!android/signing/key.properties
+!android/signing/*.jks
+
 # ── Build artifacts ────────────────────────────────────────────
 build/
 .dart_tool/
