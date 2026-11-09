@@ -213,6 +213,7 @@ export const TRACKS: Track[] = SEEDS.map((s, i) => {
     playCount: ((i * 7 + 3) % 14) + 1,
     lastPlayedAt: Date.now() - (i % 9) * 3600000,
     lyrics: s.lyrics ? mkLyrics(s.lyrics, s.d) : undefined,
+    origin: "local",
   };
 });
 
@@ -241,10 +242,12 @@ export const FOLDERS = [F_MAIN, F_DL, F_FLAC];
 const pick = (...ids: string[]) => ids;
 
 export const PLAYLISTS: Playlist[] = [
-  { id: "pl1", name: "Morning Energy", description: "Start the day loud", trackIds: pick("t09", "t26", "t13", "t22", "t28"), createdAt: Date.now() - 40 * 86400000 },
-  { id: "pl2", name: "Late Night Coding", description: "Deep flow, zero vocals", trackIds: pick("t17", "t18", "t19", "t20", "t21", "t12"), createdAt: Date.now() - 22 * 86400000 },
-  { id: "pl3", name: "Persian Vibes", description: "Home, in melodies", trackIds: pick("t31", "t32", "t33", "t34"), createdAt: Date.now() - 10 * 86400000 },
-  { id: "pl4", name: "Workout Beast", description: "Push one more rep", trackIds: pick("t22", "t23", "t24", "t10", "t25"), createdAt: Date.now() - 3 * 86400000 },
+  { id: "pl1", name: "Morning Energy", description: "Start the day loud", trackIds: pick("t09", "t26", "t13", "t22", "t28"), createdAt: Date.now() - 40 * 86400000, origin: "local" },
+  { id: "pl2", name: "Late Night Coding", description: "Deep flow, zero vocals", trackIds: pick("t17", "t18", "t19", "t20", "t21", "t12"), createdAt: Date.now() - 22 * 86400000, origin: "local" },
+  { id: "pl3", name: "Persian Vibes", description: "Home, in melodies", trackIds: pick("t31", "t32", "t33", "t34"), createdAt: Date.now() - 10 * 86400000, origin: "local" },
+  { id: "pl4", name: "Workout Beast", description: "Push one more rep", trackIds: pick("t22", "t23", "t24", "t10", "t25"), createdAt: Date.now() - 3 * 86400000, origin: "local" },
+  { id: "pl5", name: "Global Top Hits", description: "Charting around the world", trackIds: pick("t03", "t28", "t24", "t26", "t29", "t12"), createdAt: Date.now() - 2 * 86400000, origin: "online" },
+  { id: "pl6", name: "Indie Rising", description: "Fresh finds, updated weekly", trackIds: pick("t13", "t07", "t05", "t15", "t08"), createdAt: Date.now() - 1 * 86400000, origin: "online" },
 ];
 
 export const INITIAL_QUEUES: QueueDef[] = [

@@ -145,7 +145,7 @@ function BottomNav() {
   const setView = useWavely((s) => s.setView);
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-border bg-background/95 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-xl"
+      className="glass-strong fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex h-14 items-center justify-around rounded-full shadow-[0_10px_36px_rgba(0,0,0,0.65)]"
       aria-label="Main"
     >
       {NAV.map((n) => {
@@ -156,13 +156,15 @@ function BottomNav() {
             key={n.id}
             onClick={() => setView(n.id)}
             className={cn(
-              "flex min-h-[44px] min-w-[44px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 text-[10px] font-medium transition-colors",
-              active ? "text-primary" : "text-muted-foreground",
+              "flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200",
+              active
+                ? "scale-105 bg-primary text-primary-foreground shadow-md shadow-primary/30"
+                : "text-muted-foreground hover:text-foreground",
             )}
             aria-current={active ? "page" : undefined}
           >
-            <Icon className={cn("h-5 w-5", active && "drop-shadow-[0_0_6px_rgba(29,185,84,0.5)]")} />
-            {n.label}
+            <Icon className="h-5 w-5" />
+            <span className="sr-only">{n.label}</span>
           </button>
         );
       })}
@@ -180,7 +182,7 @@ function ViewContent() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.18, ease: "easeOut" }}
-        className="wavely-scroll min-h-0 flex-1"
+        className="wavely-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain"
       >
         {view === "home" && <HomeView />}
         {view === "library" && <LibraryView />}
@@ -198,6 +200,7 @@ export function AppShell() {
   const nowPlayingOpen = useWavely((s) => s.nowPlayingOpen);
   const eqOpen = useWavely((s) => s.eqOpen);
   const setEqOpen = useWavely((s) => s.setEqOpen);
+  const showMini = !!currentTrack && !nowPlayingOpen;
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
@@ -211,8 +214,8 @@ export function AppShell() {
       {/* bottom of screen: player + nav (mobile) or player bar (desktop) */}
       {isMobile ? (
         <>
-          <AnimatePresence>{currentTrack && !nowPlayingOpen && <MiniPlayer />}</AnimatePresence>
-          <div className="h-[4.25rem] shrink-0" aria-hidden="true" />
+          <AnimatePresence>{showMini && <MiniPlayer />}</AnimatePresence>
+          <div className={cn("shrink-0", showMini ? "h-[8.75rem]" : "h-[4.5rem]")} aria-hidden="true" />
           <BottomNav />
         </>
       ) : (

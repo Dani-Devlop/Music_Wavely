@@ -7,7 +7,6 @@ import { useWavely, useCurrentTrack, useActiveQueue } from "@/lib/wavely/store";
 import { albumCover, fmtTime } from "@/lib/wavely/data";
 import { LyricsPanel } from "./lyrics-panel";
 import { EqBars } from "./eq-bars";
-import { SleepTimerDialog } from "./sleep-timer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
@@ -124,9 +123,9 @@ export function NowPlaying() {
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/75 to-background" />
       </div>
 
-      <div className="relative flex h-full flex-col">
+      <div className="relative flex h-full min-h-0 flex-col">
         {/* top bar */}
-        <header className="flex items-center gap-3 px-4 pt-4 md:px-6">
+        <header className="flex shrink-0 items-center gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-6">
           <Button
             variant="ghost"
             size="icon"
@@ -151,38 +150,40 @@ export function NowPlaying() {
           </Button>
         </header>
 
-        {/* cover / lyrics */}
-        <div className="relative mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col px-6 md:max-w-lg">
-          {showLyrics ? (
-            <div className="-mx-6 mt-2 flex-1 md:-mx-10">
+        {/* cover / lyrics — height is fully constrained so nothing can spill over the controls */}
+        {showLyrics ? (
+          <div className="relative mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col px-5 pt-2 md:max-w-xl md:px-8">
+            <div className="relative min-h-0 flex-1">
               <LyricsPanel />
+              {/* soft fade edges so lines dissolve instead of clipping */}
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-8 bg-gradient-to-b from-background/90 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t from-background/90 to-transparent" />
             </div>
-          ) : (
-            <div className="flex flex-1 items-center justify-center py-4">
-              <motion.div
-                key={track.id}
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.35, ease: "easeOut" }}
-                className="relative aspect-square w-full overflow-hidden rounded-2xl cover-shadow"
-                style={{ maxWidth: "min(100%, 380px)" }}
-              >
-                <Image
-                  src={albumCover(track.albumId)}
-                  alt={`${track.album} cover art`}
-                  fill
-                  sizes="(max-width: 768px) 90vw, 380px"
-                  className="object-cover"
-                  priority
-                />
-              </motion.div>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-3">
+            <motion.div
+              key={track.id}
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="relative aspect-square h-full max-h-[min(82vw,380px)] w-auto overflow-hidden rounded-2xl cover-shadow md:max-h-[420px]"
+            >
+              <Image
+                src={albumCover(track.albumId)}
+                alt={`${track.album} cover art`}
+                fill
+                sizes="(max-width: 768px) 82vw, 420px"
+                className="object-cover"
+                priority
+              />
+            </motion.div>
+          </div>
+        )}
 
         {/* info + controls */}
-        <div className="mx-auto w-full max-w-md px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:max-w-lg md:px-8">
-          <div className="mt-2 flex items-center gap-3">
+        <div className="mx-auto w-full max-w-md shrink-0 px-6 pb-[max(1rem,env(safe-area-inset-bottom))] md:max-w-xl md:px-8">
+          <div className="mt-1 flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="truncate font-display text-2xl font-bold tracking-tight">{track.title}</h1>
               <p className="truncate text-sm text-muted-foreground">
@@ -204,7 +205,7 @@ export function NowPlaying() {
           </div>
 
           {/* progress */}
-          <div className="mt-4">
+          <div className="mt-3">
             <Slider
               value={[Math.min(position, track.duration)]}
               min={0}
@@ -220,7 +221,7 @@ export function NowPlaying() {
           </div>
 
           {/* main controls */}
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-2 flex items-center justify-between">
             <Button
               variant="ghost"
               size="icon"
@@ -259,7 +260,7 @@ export function NowPlaying() {
           </div>
 
           {/* function row — Musicolet goodies */}
-          <div className="mt-4 flex items-center justify-between rounded-2xl bg-black/25 px-3 py-2 backdrop-blur-sm">
+          <div className="mt-3 flex items-center justify-between rounded-2xl bg-black/25 px-3 py-2 backdrop-blur-sm">
             {fnRow.map((f) => (
               <button
                 key={f.label}
@@ -285,7 +286,6 @@ export function NowPlaying() {
         </div>
       </div>
 
-      <SleepTimerDialog />
     </motion.div>
   );
 }

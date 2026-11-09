@@ -50,28 +50,28 @@ export function LyricsPanel() {
   return (
     <div
       ref={containerRef}
-      className="wavely-scroll h-full overflow-y-auto scroll-smooth px-6 py-10 md:px-10"
+      className="wavely-scroll h-full min-h-0 overflow-y-auto overscroll-contain scroll-smooth px-5 py-10 md:px-8"
     >
-      <div className="mx-auto max-w-xl space-y-4">
+      <div className="mx-auto max-w-xl space-y-3 md:space-y-4">
         {track.lyrics.map((line, i) => (
           <button
             key={i}
             data-line={i}
             onClick={() => seek(line.time)}
             className={cn(
-              "block w-full text-left font-display font-bold leading-snug transition-all duration-300",
+              "block w-full break-words text-left font-display font-bold leading-snug transition-all duration-300",
               i === activeIndex
-                ? "scale-[1.02] text-2xl text-primary md:text-3xl"
+                ? "text-xl text-primary md:text-3xl"
                 : i < activeIndex
-                  ? "text-lg text-foreground/50 md:text-xl"
-                  : "text-lg text-foreground/30 md:text-xl",
+                  ? "text-base text-foreground/45 md:text-xl"
+                  : "text-base text-foreground/28 md:text-xl",
             )}
             aria-current={i === activeIndex ? "true" : undefined}
           >
             {line.text}
           </button>
         ))}
-        <p className="pt-6 text-center text-xs text-muted-foreground">
+        <p className="pb-2 pt-4 text-center text-xs text-muted-foreground">
           Tap a line to jump • synced via embedded tags
         </p>
       </div>

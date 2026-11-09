@@ -19,7 +19,11 @@ export interface Track {
   playCount: number;
   lastPlayedAt?: number;
   lyrics?: LyricLine[];
+  /** where the track comes from — "local" = file on device, "online" = streaming */
+  origin: TrackOrigin;
 }
+
+export type TrackOrigin = "local" | "online";
 
 export interface Album {
   id: string;
@@ -44,6 +48,8 @@ export interface Playlist {
   description: string;
   trackIds: string[];
   createdAt: number;
+  /** "local" = built from on-device music, "online" = streaming/editorial */
+  origin: TrackOrigin;
 }
 
 /** Musicolet-style queue: 20 slots, position retention per queue. */

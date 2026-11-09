@@ -30,7 +30,7 @@ export function MiniPlayer() {
       exit={{ y: 80, opacity: 0 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
       className="fixed inset-x-2 z-30"
-      style={{ bottom: "calc(env(safe-area-inset-bottom) + 4.25rem)" }}
+      style={{ bottom: "calc(env(safe-area-inset-bottom) + 4.75rem)" }}
     >
       <div className="glass overflow-hidden rounded-xl">
         {/* progress line */}
@@ -56,7 +56,7 @@ export function MiniPlayer() {
               <p className="truncate text-sm font-semibold">{track.title}</p>
               <p className="truncate text-xs text-muted-foreground">{track.artist}</p>
             </div>
-            {isPlaying && <EqBars className="mr-1 hidden xs:flex" />}
+            {isPlaying && <EqBars className="mr-1" />}
           </button>
           <button
             onClick={togglePlay}
