@@ -105,8 +105,7 @@ function HomeHeader() {
 
 /* ---------------------------------------------------------------- */
 /* Liked & favorites — one combined home for both worlds             */
-/* online rows keep their ☁ badge; every liked row gets the green    */
-/* Spotify-style heart on the right.                                 */
+/* online rows keep their ☁ badge; liking happens via the ⋯ sheet.   */
 /* ---------------------------------------------------------------- */
 function LikedSection({
   favIds,
@@ -178,7 +177,6 @@ function LikedSection({
                 key={id}
                 track={t}
                 compact
-                showFavHeart
                 onPlay={() => playContext("Liked songs", favIds, favIds.indexOf(id))}
               />
             );
@@ -443,7 +441,6 @@ function ExploreSection() {
                   track={t}
                   index={i}
                   compact
-                  showFavHeart
                   onPlay={() => playContext("Cached songs", cachedIds, i)}
                 />
               ))}
@@ -513,7 +510,6 @@ function ExploreSection() {
                   track={t}
                   index={i}
                   compact
-                  showFavHeart
                   onPlay={() => playContext("Top streaming now", topStreams.map((x) => x.id), i)}
                 />
               ))}

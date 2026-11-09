@@ -125,10 +125,14 @@ interface WavelyState {
   queueSheetOpen: boolean;
   eqOpen: boolean;
   sleepTimerOpen: boolean;
+  /** Spotify-style "⋯" track actions sheet — the track it is open for */
+  actionsTrackId: string | null;
   setNowPlayingOpen: (v: boolean) => void;
   setQueueSheetOpen: (v: boolean) => void;
   setEqOpen: (v: boolean) => void;
   setSleepTimerOpen: (v: boolean) => void;
+  openActions: (trackId: string) => void;
+  closeActions: () => void;
 
   /* equalizer */
   eqEnabled: boolean;
@@ -277,10 +281,13 @@ export const useWavely = create<WavelyState>((set, get) => ({
   queueSheetOpen: false,
   eqOpen: false,
   sleepTimerOpen: false,
+  actionsTrackId: null,
   setNowPlayingOpen: (v) => set({ nowPlayingOpen: v }),
   setQueueSheetOpen: (v) => set({ queueSheetOpen: v }),
   setEqOpen: (v) => set({ eqOpen: v }),
   setSleepTimerOpen: (v) => set({ sleepTimerOpen: v }),
+  openActions: (trackId) => set({ actionsTrackId: trackId }),
+  closeActions: () => set({ actionsTrackId: null }),
 
   eqEnabled: true,
   eqPreset: "Flat",

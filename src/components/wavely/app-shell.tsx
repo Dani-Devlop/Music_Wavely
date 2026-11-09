@@ -16,6 +16,7 @@ import { SettingsView } from "./views/settings-view";
 import { EqualizerView } from "./views/equalizer-view";
 import { NowPlaying } from "./now-playing";
 import { QueueSheet } from "./queue-sheet";
+import { TrackActionsSheet } from "./track-actions-sheet";
 import { SleepTimerDialog } from "./sleep-timer";
 import { PlayerBar } from "./player-bar";
 import { MiniPlayer } from "./mini-player";
@@ -247,6 +248,7 @@ export function AppShell() {
       {/* overlays */}
       <AnimatePresence>{nowPlayingOpen && <NowPlaying key="np" />}</AnimatePresence>
       <QueueSheet />
+      <TrackActionsSheet />
       <SleepTimerDialog />
 
       <Dialog open={eqOpen} onOpenChange={setEqOpen}>

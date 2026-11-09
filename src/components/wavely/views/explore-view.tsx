@@ -126,7 +126,6 @@ export function ExploreView() {
                   track={t}
                   index={i}
                   compact
-                  showFavHeart
                   onPlay={() => playContext("Cached songs", cachedIds, i)}
                 />
               ))}
@@ -237,7 +236,6 @@ export function ExploreView() {
                   key={t.id}
                   track={t}
                   index={i}
-                  showFavHeart
                   onPlay={() => playContext("Top streaming now", topStreams.map((x) => x.id), i)}
                 />
               ))}

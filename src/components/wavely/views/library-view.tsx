@@ -90,12 +90,9 @@ function sortTracks(tracks: Track[], mode: SongSortMode): Track[] {
 function TrackList({
   tracks,
   contextName,
-  favList = false,
 }: {
   tracks: Track[];
   contextName: string;
-  /** liked list → always-visible green hearts on the right */
-  favList?: boolean;
 }) {
   const playContext = useWavely((s) => s.playContext);
   const ids = tracks.map((t) => t.id);
@@ -107,7 +104,6 @@ function TrackList({
           track={t}
           index={i}
           showIndex
-          showFavHeart={favList}
           onPlay={() => playContext(contextName, ids, i)}
         />
       ))}
@@ -569,7 +565,7 @@ export function LibraryView() {
               <p className="px-1 pb-2 text-xs text-muted-foreground">
                 Everything you love — device files and ☁ online streams side by side.
               </p>
-              <TrackList tracks={favTracks} contextName="Favorites" favList />
+              <TrackList tracks={favTracks} contextName="Favorites" />
             </>
           ) : (
             <EmptyState icon={Heart} text="Songs you love will live here" />
