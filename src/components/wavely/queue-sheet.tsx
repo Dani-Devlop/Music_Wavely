@@ -7,7 +7,7 @@ import { trackById } from "@/lib/wavely/data";
 import { Cover } from "./cover";
 import { EqBars } from "./eq-bars";
 import { OriginBadge } from "./origin-badge";
-import { fmtTime, albumCover } from "@/lib/wavely/data";
+import { fmtTime, fmtLongTime, albumCover } from "@/lib/wavely/data";
 import {
   DndContext,
   closestCenter,
@@ -29,6 +29,8 @@ import {
   GripVertical,
   ListMusic,
   Plus,
+  Save,
+  Search,
   Shuffle,
   Trash2,
   X,
@@ -114,6 +116,8 @@ export function QueueSheet() {
 
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
+  /** Musicolet-style "search in this queue" bar */
+  const [query, setQuery] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -124,6 +128,13 @@ export function QueueSheet() {
     () => (activeQueue?.trackIds ?? []).map((id) => trackById.get(id)!).filter(Boolean),
     [activeQueue],
   );
+  const totalTime = useMemo(() => tracks.reduce((a, t) => a + t.duration, 0), [tracks]);
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return tracks
+      .map((t, i) => ({ t, i }))
+      .filter(({ t }) => !q || `${t.title} ${t.artist} ${t.album}`.toLowerCase().includes(q));
+  }, [tracks, query]);
 
   function onDragEnd(e: DragEndEvent) {
     const { active, over } = e;
@@ -135,12 +146,41 @@ export function QueueSheet() {
   }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    <Drawer
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) setQuery("");
+      }}
+    >
       <DrawerContent className="z-[70] mx-auto max-h-[85dvh] w-full max-w-lg rounded-t-2xl border-border bg-popover/95 backdrop-blur-2xl">
         <DrawerHeader className="pb-2 pt-3">
           <DrawerTitle className="flex items-center justify-center gap-2 font-display text-base">
             <ListMusic className="h-4 w-4 text-primary" /> Queue
           </DrawerTitle>
+          {/* Musicolet queue header — position counter + total time + save */}
+          {tracks.length > 0 && (
+            <div className="flex items-center justify-center gap-2.5 text-xs text-muted-foreground">
+              <span className="tabular-nums">
+                {index + 1} / {tracks.length}
+              </span>
+              <span aria-hidden="true">•</span>
+              <span className="tabular-nums">⏱ {fmtLongTime(totalTime)}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-full"
+                onClick={() =>
+                  toast({
+                    description: `Queue “${activeQueue?.name}” saved as a playlist`,
+                  })
+                }
+                aria-label="Save queue as playlist"
+              >
+                <Save className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
         </DrawerHeader>
 
         {/* Queue switcher — Musicolet multi-queue */}
@@ -195,6 +235,19 @@ export function QueueSheet() {
         </div>
 
         <div className="wavely-scroll min-h-0 flex-1 overflow-y-auto px-3 pb-6">
+          {/* Musicolet-style search within the queue */}
+          {tracks.length > 0 && (
+            <div className="relative px-1 pb-2">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search in this queue…"
+                className="h-9 rounded-full bg-secondary pl-9 text-sm"
+                aria-label="Search in this queue"
+              />
+            </div>
+          )}
           {/* Current */}
           {currentTrack && (
             <div className="mb-1 mt-1 flex items-center gap-2.5 rounded-xl bg-primary/10 px-2 py-2 ring-1 ring-primary/30">
@@ -245,13 +298,18 @@ export function QueueSheet() {
               <ListMusic className="h-8 w-8" />
               <p className="text-sm">Queue is empty — play something!</p>
             </div>
+          ) : visible.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+              <Search className="h-8 w-8" />
+              <p className="text-sm">No match for “{query}” in this queue</p>
+            </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext
-                items={tracks.map((t, i) => `${t.id}:${i}`)}
+                items={visible.map(({ t, i }) => `${t.id}:${i}`)}
                 strategy={verticalListSortingStrategy}
               >
-                {tracks.map((t, i) =>
+                {visible.map(({ t, i }) =>
                   i === index ? (
                     <div key={`${t.id}:${i}`} className="h-0" />
                   ) : (

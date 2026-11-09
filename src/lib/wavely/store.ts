@@ -127,12 +127,16 @@ interface WavelyState {
   sleepTimerOpen: boolean;
   /** Spotify-style "⋯" track actions sheet — the track it is open for */
   actionsTrackId: string | null;
+  /** Musicolet-style "long-press a folder" sheet — the folder path it is open for */
+  folderActionsPath: string | null;
   setNowPlayingOpen: (v: boolean) => void;
   setQueueSheetOpen: (v: boolean) => void;
   setEqOpen: (v: boolean) => void;
   setSleepTimerOpen: (v: boolean) => void;
   openActions: (trackId: string) => void;
   closeActions: () => void;
+  openFolderActions: (path: string) => void;
+  closeFolderActions: () => void;
 
   /* equalizer */
   eqEnabled: boolean;
@@ -162,7 +166,13 @@ interface WavelyState {
   setSleepTimer: (minutes: number | "track" | null) => void;
   toggleFavorite: (trackId: string) => void;
   playNext: (trackId: string) => void;
+  /** insert several tracks (in order) right after the current one */
+  playNextMany: (trackIds: string[]) => void;
   addToQueue: (trackId: string) => void;
+  /** append several tracks to the currently playing queue */
+  addToQueueMany: (trackIds: string[]) => void;
+  /** append several tracks to a specific queue (Musicolet "add to a queue") */
+  addIdsToQueue: (queueId: string, trackIds: string[]) => void;
   removeFromQueue: (index: number) => void;
   moveInQueue: (from: number, to: number) => void;
   reorderQueue: (ids: string[]) => void;
@@ -288,6 +298,8 @@ export const useWavely = create<WavelyState>((set, get) => ({
   setSleepTimerOpen: (v) => set({ sleepTimerOpen: v }),
   openActions: (trackId) => set({ actionsTrackId: trackId }),
   closeActions: () => set({ actionsTrackId: null }),
+  openFolderActions: (path) => set({ folderActionsPath: path }),
+  closeFolderActions: () => set({ folderActionsPath: null }),
 
   eqEnabled: true,
   eqPreset: "Flat",
@@ -567,6 +579,22 @@ export const useWavely = create<WavelyState>((set, get) => ({
       return { queues };
     }),
 
+  playNextMany: (trackIds) =>
+    set((s) => ({
+      queues: s.queues.map((q) =>
+        q.id === s.activeQueueId
+          ? {
+              ...q,
+              trackIds: [
+                ...q.trackIds.slice(0, s.index + 1),
+                ...trackIds,
+                ...q.trackIds.slice(s.index + 1),
+              ],
+            }
+          : q,
+      ),
+    })),
+
   addToQueue: (trackId) =>
     set((s) => {
       const queues = s.queues.map((q) =>
@@ -574,6 +602,20 @@ export const useWavely = create<WavelyState>((set, get) => ({
       );
       return { queues };
     }),
+
+  addToQueueMany: (trackIds) =>
+    set((s) => ({
+      queues: s.queues.map((q) =>
+        q.id === s.activeQueueId ? { ...q, trackIds: [...q.trackIds, ...trackIds] } : q,
+      ),
+    })),
+
+  addIdsToQueue: (queueId, trackIds) =>
+    set((s) => ({
+      queues: s.queues.map((q) =>
+        q.id === queueId ? { ...q, trackIds: [...q.trackIds, ...trackIds] } : q,
+      ),
+    })),
 
   removeFromQueue: (index) =>
     set((s) => {

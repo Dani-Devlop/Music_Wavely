@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { EqBars } from "../eq-bars";
 import { SongRow } from "../song-row";
 import { OfflineBanner } from "../source-mode-chips";
@@ -40,6 +40,7 @@ import {
   ListMusic,
   ListPlus,
   MicVocal,
+  MoreVertical,
   Music2,
   Play,
   Plus,
@@ -219,8 +220,36 @@ function GenreList() {
   );
 }
 
+/** Musicolet-style long-press → opens the folder actions sheet. */
+function useLongPress(onLongPress: () => void, ms = 450) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const start = () => {
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      onLongPress();
+    }, ms);
+  };
+  const cancel = () => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+  return {
+    onPointerDown: start,
+    onPointerUp: cancel,
+    onPointerLeave: cancel,
+    onPointerCancel: cancel,
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      onLongPress();
+    },
+  };
+}
+
 function FolderList() {
   const playContext = useWavely((s) => s.playContext);
+  const openFolderActions = useWavely((s) => s.openFolderActions);
   // on-device scan targets + every organised Wavely download folder in use
   const folders = useMemo(() => {
     const dlFolders = Array.from(
@@ -230,41 +259,68 @@ function FolderList() {
   }, []);
   return (
     <div className="space-y-2">
-      {folders.map((f) => {
-        const tracks = TRACKS_IN_FOLDER(f);
-        const short = f.split("/").filter(Boolean).slice(-1)[0];
-        const isWavely = f.includes("/Music/Wavely");
-        return (
-          <button
-            key={f}
-            onClick={() => playContext(short, tracks.map((t) => t.id), 0)}
-            className="flex w-full items-center gap-4 rounded-xl bg-wav-surface p-4 text-left transition hover:bg-accent"
-          >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-              <Folder className="h-6 w-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">
-                /{short}
-                {isWavely && (
-                  <span className="ml-2 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
-                    Wavely downloads
-                  </span>
-                )}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">{f}</p>
-            </div>
-            <span className="shrink-0 text-xs text-muted-foreground">{tracks.length} songs</span>
-            <Play className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </button>
-        );
-      })}
+      <p className="px-1 text-xs text-muted-foreground">
+        Tap to play • long-press or ⋯ for folder options — playing a folder names the queue after
+        it, Musicolet style.
+      </p>
+      {folders.map((f) => (
+        <FolderRow key={f} folder={f} subfolders={folders.filter((x) => x !== f && x.startsWith(f + "/")).length} />
+      ))}
+    </div>
+  );
+}
+
+function FolderRow({ folder: f, subfolders }: { folder: string; subfolders: number }) {
+  const playContext = useWavely((s) => s.playContext);
+  const openFolderActions = useWavely((s) => s.openFolderActions);
+  const tracks = TRACKS_IN_FOLDER(f);
+  const short = f.split("/").filter(Boolean).slice(-1)[0];
+  const isWavely = f.includes("/Music/Wavely");
+  const total = tracks.reduce((a, t) => a + t.duration, 0);
+  const longPress = useLongPress(() => openFolderActions(f));
+  return (
+    <div
+      {...longPress}
+      onClick={() => playContext(short, tracks.map((t) => t.id), 0)}
+      className="group flex w-full cursor-pointer items-center gap-4 rounded-xl bg-wav-surface p-4 text-left transition hover:bg-accent"
+    >
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+        <Folder className="h-6 w-6" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">
+          /{short}
+          {isWavely && (
+            <span className="ml-2 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+              Wavely downloads
+            </span>
+          )}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          {f}
+          {subfolders > 0 && ` • ${subfolders} subfolder${subfolders > 1 ? "s" : ""}`}
+        </p>
+        <p className="truncate text-[11px] text-muted-foreground/80">
+          {tracks.length} songs • {fmtLongTime(total)}
+        </p>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          openFolderActions(f);
+        }}
+        aria-label={`Folder options for ${short}`}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
     </div>
   );
 }
 
 function TRACKS_IN_FOLDER(folder: string): Track[] {
-  return TRACKS_ALL.filter((t) => t.folder === folder);
+  // Musicolet semantics: the folder AND its subfolders
+  return TRACKS_ALL.filter((t) => t.folder === folder || t.folder.startsWith(folder + "/"));
 }
 
 function PlaylistList() {

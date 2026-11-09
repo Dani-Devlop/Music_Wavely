@@ -9,6 +9,7 @@ import { OfflineBanner } from "../source-mode-chips";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
 import {
   ALBUMS,
+  ARTISTS,
   PLAYLISTS,
   TRACKS,
   fmtAge,
@@ -26,15 +27,16 @@ import {
   Compass,
   Disc3,
   Flame,
+  Folder,
   Heart,
   History,
   LibraryBig,
   ListMusic,
-  ListPlus,
   MicVocal,
   Play,
   Smartphone,
   Sparkles,
+  UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -196,43 +198,39 @@ function LikedSection({
 }
 
 /* ---------------------------------------------------------------- */
-/* LOCAL world — Musicolet-style flat rows ("My Music")              */
-/* Folder browsing lives inside My Music → Folders, not on Home.     */
+/* LOCAL world — Musicolet function, Spotify polish.                  */
+/* Compact smart tiles + browse pills instead of six long rows.       */
 /* ---------------------------------------------------------------- */
-function MusicoletRow({
+function SmartTile({
   icon: Icon,
   label,
   detail,
+  tint,
   onClick,
-  active,
 }: {
   icon: React.ElementType;
   label: string;
-  detail?: string;
+  detail: string;
+  tint: string;
   onClick: () => void;
-  active?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-4 rounded-xl px-2.5 py-2 text-left transition hover:bg-accent/60",
-        active && "bg-accent/40",
-      )}
+      className="flex items-center gap-2.5 rounded-2xl bg-wav-surface p-3 text-left transition hover:bg-accent active:scale-[0.98]"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", tint)}>
         <Icon className="h-5 w-5" />
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-semibold leading-tight">{label}</span>
-        {detail && <span className="block truncate text-xs text-muted-foreground">{detail}</span>}
+      <span className="min-w-0">
+        <span className="block truncate text-xs font-bold leading-tight">{label}</span>
+        <span className="block truncate text-[11px] text-muted-foreground">{detail}</span>
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
     </button>
   );
 }
 
-function QuickLink({
+function BrowsePill({
   icon: Icon,
   label,
   count,
@@ -240,20 +238,18 @@ function QuickLink({
 }: {
   icon: React.ElementType;
   label: string;
-  count: string;
+  count: string | number;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-3 rounded-xl bg-wav-surface px-3 py-2.5 text-left transition hover:bg-accent"
+      className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-secondary/60 px-3.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
-        <Icon className="h-4 w-4" />
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-[13px] font-semibold leading-tight">{label}</span>
-        <span className="block text-[11px] text-muted-foreground">{count}</span>
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+      <span className="rounded-full bg-accent px-1.5 text-[10px] font-bold text-foreground/80">
+        {count}
       </span>
     </button>
   );
@@ -271,15 +267,23 @@ function LocalSection({
   const favorites = useWavely((s) => s.favorites);
   const history = useWavely((s) => s.history);
   const queues = useWavely((s) => s.queues);
-  const currentTrack = useCurrentTrack();
 
   const deviceFavorites = favorites.filter(onDevice).length;
   const deviceHistory = history.filter(onDevice).length;
   const deviceAlbums = ALBUMS.filter((a) => a.origin !== "online").length;
+  const deviceArtists = ARTISTS.filter((a) =>
+    a.albumIds.some((id) => {
+      const al = ALBUMS.find((x) => x.id === id)!;
+      return al.origin !== "online" || TRACKS.some((t) => t.albumId === id && t.downloaded);
+    }),
+  ).length;
   const deviceGenres = new Set(
     TRACKS.filter((t) => t.origin === "local" || t.downloaded).map((t) => t.genre),
   ).size;
   const wavelyDownloads = TRACKS.filter((t) => t.downloaded).length;
+  const deviceFolders = new Set(
+    TRACKS.filter((t) => t.origin === "local" || t.downloaded).map((t) => t.folder),
+  ).size;
 
   return (
     <section>
@@ -304,66 +308,60 @@ function LocalSection({
         </Button>
       </div>
 
-      <div className="rounded-2xl bg-wav-surface/50 p-1.5">
-        <MusicoletRow
+      {/* smart lists — compact grid, colour-coded at a glance */}
+      <div className="grid grid-cols-2 gap-2">
+        <SmartTile
           icon={LibraryBig}
           label="All songs"
-          detail={`${deviceCount} songs on device`}
+          detail={`${deviceCount} songs`}
+          tint="bg-primary/12 text-primary"
           onClick={() => openMyMusic({ tab: "songs", sort: "title-asc" })}
         />
-        <MusicoletRow
+        <SmartTile
           icon={Heart}
           label="Favorites"
           detail={`${deviceFavorites} songs`}
+          tint="bg-rose-500/12 text-rose-300"
           onClick={() => openMyMusic({ tab: "favorites" })}
         />
-        <MusicoletRow
+        <SmartTile
           icon={ClockPlus}
           label="Recently added"
-          detail="newest imports first"
+          detail="newest first"
+          tint="bg-amber-500/12 text-amber-300"
           onClick={() => openMyMusic({ tab: "songs", sort: "date-added" })}
         />
-        <MusicoletRow
+        <SmartTile
           icon={History}
           label="Recently played"
-          detail={`${deviceHistory} in device history`}
+          detail={`${deviceHistory} in history`}
+          tint="bg-teal-500/12 text-teal-300"
           onClick={() => openMyMusic({ tab: "history" })}
         />
-        <MusicoletRow
+        <SmartTile
           icon={Flame}
           label="Most played"
-          detail="sorted by play count"
+          detail="sorted by plays"
+          tint="bg-orange-500/12 text-orange-300"
           onClick={() => openMyMusic({ tab: "songs", sort: "play-count" })}
         />
-        <MusicoletRow
+        <SmartTile
           icon={Ban}
           label="Not played"
-          detail={`${notPlayedCount} songs waiting for you`}
+          detail={`${notPlayedCount} waiting`}
+          tint="bg-violet-500/12 text-violet-300"
           onClick={() => openMyMusic({ tab: "songs", filter: "not-played" })}
         />
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <QuickLink icon={Disc3} label="Albums" count={`${deviceAlbums}`} onClick={() => openMyMusic({ tab: "albums" })} />
-        <QuickLink icon={MicVocal} label="Artists" count="8 on device" onClick={() => openMyMusic({ tab: "artists" })} />
-        <QuickLink icon={ListPlus} label="Playlists" count={`${PLAYLISTS.length}`} onClick={() => openMyMusic({ tab: "playlists" })} />
-        <QuickLink icon={ListMusic} label="Queues" count={`${queues.length}/20`} onClick={() => openMyMusic({ tab: "queues" })} />
-        <QuickLink
-          icon={currentTrack ? ListMusic : Sparkles}
-          label={currentTrack ? "Now playing queue" : "Ask Wavely AI"}
-          count={currentTrack ? "open the queue sheet" : "build a playlist by chat"}
-          onClick={() =>
-            currentTrack
-              ? useWavely.getState().setQueueSheetOpen(true)
-              : useWavely.getState().setView("ai")
-          }
-        />
-        <QuickLink
-          icon={MicVocal}
-          label="Genres"
-          count={`${deviceGenres} on device`}
-          onClick={() => openMyMusic({ tab: "genres" })}
-        />
+      {/* browse everything else — one tidy pill row */}
+      <div className="no-scrollbar -mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-0.5 md:mx-0 md:flex-wrap md:px-0">
+        <BrowsePill icon={Disc3} label="Albums" count={deviceAlbums} onClick={() => openMyMusic({ tab: "albums" })} />
+        <BrowsePill icon={UserRound} label="Artists" count={deviceArtists} onClick={() => openMyMusic({ tab: "artists" })} />
+        <BrowsePill icon={MicVocal} label="Genres" count={deviceGenres} onClick={() => openMyMusic({ tab: "genres" })} />
+        <BrowsePill icon={Folder} label="Folders" count={deviceFolders} onClick={() => openMyMusic({ tab: "folders" })} />
+        <BrowsePill icon={ListMusic} label="Playlists" count={PLAYLISTS.length} onClick={() => openMyMusic({ tab: "playlists" })} />
+        <BrowsePill icon={LibraryBig} label="Queues" count={`${queues.length}/20`} onClick={() => openMyMusic({ tab: "queues" })} />
       </div>
     </section>
   );
