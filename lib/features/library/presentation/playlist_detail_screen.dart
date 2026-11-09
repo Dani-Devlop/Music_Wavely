@@ -7,6 +7,7 @@ import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/library/data/track_launcher.dart';
 import 'package:wavely/features/library/presentation/library_providers.dart';
+import 'package:wavely/features/player/presentation/song_options_sheet.dart';
 
 /// Detail screen for one playlist: track list in persisted order, play-all,
 /// remove-track and rename.
@@ -110,6 +111,9 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                               List<Track>.of(tracks),
                               startIndex: index,
                             ),
+                      ),
+                      onLongPress: () => unawaited(
+                        showSongOptionsSheet(context, ref, track),
                       ),
                     );
                   },

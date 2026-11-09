@@ -67,8 +67,14 @@ Future<(ProviderContainer, FakeTrackLauncher, RecordingQueueBridge)>
   return (container, launcher, bridge);
 }
 
+/// v1.0.2: long-press opens the Musicolet 14-option context sheet now, so
+/// the multi-select mode is entered through the dedicated toggle next to
+/// the quick-search box, then the first row is tapped to select it.
+/// (Same net state the old long-press produced: bar visible, 1 selected.)
 Future<void> _longPressFirstTile(WidgetTester tester) async {
-  await tester.longPress(find.text('Aurora Skies'));
+  await tester.tap(find.byKey(const Key('select-mode-toggle')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Aurora Skies'));
   await tester.pumpAndSettle();
 }
 

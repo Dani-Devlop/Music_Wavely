@@ -14,6 +14,9 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:drift/native.dart';
+import 'package:wavely/data/local/db/app_database.dart';
+import 'package:wavely/data/local/db/database_provider.dart';
 import 'package:wavely/design_system/design_system.dart';
 import 'package:wavely/domain/entities/entities.dart';
 import 'package:wavely/features/lyrics/data/lyrics_cache.dart';
@@ -32,13 +35,29 @@ Future<(ProviderContainer, FakePlaybackEngine)> _pumpScreen(
 }) async {
   final FakePlaybackEngine engine = FakePlaybackEngine();
   final FakeLyricsCache cache = lyricsCache ?? FakeLyricsCache();
+  // v1.0.2: the Musicolet player's Favorite heart reads the playlists DAO
+  // — mount a memory-backed database so no platform/FS handles leak into
+  // the test (a real AppDatabase would leave pending timers behind).
+  final AppDatabase db = AppDatabase(NativeDatabase.memory());
+  addTearDown(db.close);
   final ProviderContainer container = ProviderContainer(
     overrides: <Override>[
       playbackEngineProvider.overrideWithValue(engine),
       lyricsCacheProvider.overrideWithValue(cache),
+      databaseProvider.overrideWithValue(db),
     ],
   );
   addTearDown(container.dispose);
+  // v1.0.2 responsive split: these tests exercise the MOBILE (Musicolet)
+  // now-playing layout — pin a phone viewport (< 800 px).
+  tester.view
+    ..devicePixelRatio = 1.0
+    ..physicalSize = const Size(390, 844);
+  addTearDown(() {
+    tester.view
+      ..resetPhysicalSize()
+      ..resetDevicePixelRatio();
+  });
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
@@ -89,15 +108,21 @@ void main() {
     // Position and duration labels (180 s -> 03:00).
     expect(find.text('00:00'), findsOneWidget);
     expect(find.text('03:00'), findsOneWidget);
-    expect(find.text('1.0x'), findsOneWidget);
+    // v1.0.2 Musicolet layout: the speed text moved into the 14-option
+    // context sheet; transport gained Rewind / Forward / EQ.
     for (final String tooltip in <String>[
       'Shuffle',
+      'Repeat',
+      'Rewind',
       'Previous',
       'Play or pause',
       'Next',
-      'Repeat',
-      'Queue',
-      'Playback speed',
+      'Forward',
+      'Equalizer',
+      'Favorite',
+      'Song info',
+      'Add to queue',
+      'More options',
       'Sleep timer',
     ]) {
       expect(find.byTooltip(tooltip), findsOneWidget, reason: tooltip);
@@ -123,13 +148,15 @@ void main() {
     final (ProviderContainer container, FakePlaybackEngine _) =
         await _pumpWithTrack(tester);
 
-    await tester.tap(find.text('1.0x'));
+    // v1.0.2: speed lives in the 14-option Musicolet sheet (3-dots).
+    await tester.tap(find.byTooltip('More options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Play speed and pitch'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('1.25x'));
     await tester.pumpAndSettle();
 
     expect(container.read(queueManagerProvider).speed, 1.25);
-    expect(find.text('1.25x'), findsOneWidget);
   });
 
   testWidgets('sleep timer starts from the sheet and cancels with Off',
@@ -137,9 +164,11 @@ void main() {
     final (ProviderContainer container, FakePlaybackEngine _) =
         await _pumpWithTrack(tester);
 
+    // v1.0.2 Musicolet dialog: preset buttons 0:15:00 / 1:30:00 / h:mm /
+    // N=5 / N=10 / After a specific song + Cancel timer when armed.
     await tester.tap(find.byTooltip('Sleep timer'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('5 min'));
+    await tester.tap(find.text('0:15:00'));
     await tester.pumpAndSettle();
 
     expect(
@@ -149,7 +178,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Sleep timer'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Off'));
+    await tester.tap(find.text('Cancel timer'));
     await tester.pumpAndSettle();
 
     expect(

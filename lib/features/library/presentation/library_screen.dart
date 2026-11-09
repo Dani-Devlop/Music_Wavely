@@ -37,10 +37,21 @@ class LibraryScreen extends ConsumerWidget {
     final colors = context.wavelyColors;
     final config = ref.watch(libraryTabsProvider);
     final tabs = config.visibleTabs;
+    // One-shot tab intent from the desktop shell's sidebar ("Playlists").
+    final pendingTab = ref.watch(pendingLibraryTabProvider);
+    final initialIndex = pendingTab == null
+        ? 0
+        : tabs.indexOf(pendingTab).clamp(0, tabs.length - 1);
+    if (pendingTab != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(pendingLibraryTabProvider.notifier).state = null;
+      });
+    }
 
     return DefaultTabController(
       key: ValueKey<String>('library-tabs-${tabs.join('-')}'),
       length: tabs.length,
+      initialIndex: initialIndex,
       child: Scaffold(
         backgroundColor: colors.bgBase,
         body: SafeArea(

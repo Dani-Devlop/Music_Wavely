@@ -12,6 +12,7 @@ import 'package:wavely/features/library/presentation/library_tab_manager.dart';
 import 'package:wavely/features/library/presentation/quick_search_box.dart';
 import 'package:wavely/features/library/presentation/selection_controller.dart';
 import 'package:wavely/features/library/presentation/sort_menu.dart';
+import 'package:wavely/features/player/presentation/song_options_sheet.dart';
 
 /// Vertical distance (logical px) at which the next page starts loading.
 const double _loadMoreThreshold = 400;
@@ -173,10 +174,42 @@ class _TrackListTabState extends ConsumerState<TrackListTab> {
         Expanded(
           child: _buildList(loaded, visible, selection),
         ),
-        QuickSearchBox(
-          filterKey: ValueKey<String>('quick-search-${widget.tab.name}'),
-          hintText: 'Filter ${libraryTabMeta[widget.tab]?.label ?? ''}…',
-          onQueryChanged: (query) => setState(() => _query = query),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: QuickSearchBox(
+                filterKey:
+                    ValueKey<String>('quick-search-${widget.tab.name}'),
+                hintText:
+                    'Filter ${libraryTabMeta[widget.tab]?.label ?? ''}…',
+                onQueryChanged: (query) => setState(() => _query = query),
+              ),
+            ),
+            // v1.0.2: multi-select entry point (long-press now opens the
+            // Musicolet 14-option context sheet instead).
+            IconButton(
+              key: const Key('select-mode-toggle'),
+              tooltip: selection.selectionMode
+                  ? 'Exit selection'
+                  : 'Select multiple',
+              icon: Icon(
+                selection.selectionMode
+                    ? Icons.close_rounded
+                    : Icons.checklist_rounded,
+                color: selection.selectionMode
+                    ? context.wavelyColors.accentColors.accent
+                    : context.wavelyColors.textSecondary,
+              ),
+              onPressed: () {
+                final controller = ref.read(
+                  selectionControllerProvider(scopeKey).notifier,
+                );
+                selection.selectionMode
+                    ? controller.exitSelectionMode()
+                    : controller.enterSelectionMode();
+              },
+            ),
+          ],
         ),
       ],
     );
@@ -237,11 +270,8 @@ class _TrackListTabState extends ConsumerState<TrackListTab> {
                     .playTracks(List<Track>.of(visible), startIndex: index),
               );
             },
-            onLongPress: () {
-              ref
-                  .read(selectionControllerProvider(scopeKey).notifier)
-                  .toggle(key);
-            },
+            onLongPress: () =>
+                unawaited(showSongOptionsSheet(context, ref, track)),
           );
         },
       ),

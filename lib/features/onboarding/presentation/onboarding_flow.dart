@@ -474,27 +474,33 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                   label: const Text('Back'),
                 ),
               ),
+              // v1.0.2: FittedBox keeps the page dots on narrow (Android,
+              // < 800 px) viewports — the row used to overflow on 390 px.
               Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    for (var i = 0; i < _pageCount; i++)
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: Spacing.xs + 1,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      for (var i = 0; i < _pageCount; i++)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: Spacing.xs + 1,
+                          ),
+                          width: i == _page ? 18 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            borderRadius: AppRadii.bPill,
+                            color: i == _page
+                                ? colors.accentColors.accent
+                                : colors.textTertiary
+                                    .withValues(alpha: 0.45),
+                          ),
                         ),
-                        width: i == _page ? 18 : 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          borderRadius: AppRadii.bPill,
-                          color: i == _page
-                              ? colors.accentColors.accent
-                              : colors.textTertiary.withValues(alpha: 0.45),
-                        ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               SizedBox(

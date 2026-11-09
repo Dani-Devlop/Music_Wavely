@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wavely/app/desktop_shell.dart';
+import 'package:wavely/app/layout_breakpoints.dart';
 import 'package:wavely/core/constants/app_constants.dart' show AppConstants;
 import 'package:wavely/data/sync/sync_providers.dart';
 import 'package:wavely/design_system/design_system.dart';
@@ -34,11 +36,16 @@ const double _navButtonHeight = 56;
 /// content and must stay legible over album art.
 const double _navBlurSigma = 26;
 
-/// Main app shell: body (stateful shell branch) + mini player + floating
-/// glass bottom navigation with exactly FOUR destinations
-/// (Playlist | Now Playing | Search | Settings) and a glowing active icon.
+/// Main app shell — PLATFORM-ADAPTIVE (v1.0.2 owner spec):
 ///
-/// v1.0.1-beta3 owner spec: the former Local and Online tabs moved inside
+/// - **width < 800** → the MOBILE shell: body (stateful shell branch) +
+///   mini player + floating glass bottom navigation with exactly FOUR
+///   destinations (Playlist | Now Playing | Search | Settings) and a
+///   glowing active icon — the Musicolet-style Android experience.
+/// - **width >= 800** → [DesktopShell], the Spotify-style three-column
+///   desktop layout with the fixed glass bottom playbar.
+///
+/// v1.0.1-beta3 parity note: the former Local and Online tabs live inside
 /// the Search tab (see SearchHubShell); the second tab is the full player.
 ///
 /// Backdrop-filter budget: one GlassCard for the bar plus the mini player's
@@ -113,6 +120,11 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Platform-adaptive split (owner spec: < 800 px → Musicolet-style
+    // Android layout; >= 800 px → Spotify-style desktop layout).
+    if (isDesktopLayout(MediaQuery.sizeOf(context).width)) {
+      return DesktopShell(navigationShell: widget.navigationShell);
+    }
     final hasTrack = ref.watch(
       queueManagerProvider.select((state) => state.currentTrack != null),
     );

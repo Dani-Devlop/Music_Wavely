@@ -41,6 +41,8 @@ import 'package:wavely/features/onboarding/presentation/onboarding_flow.dart';
 import 'package:wavely/features/online/presentation/online_screen.dart';
 import 'package:wavely/features/parental/presentation/parental_screen.dart';
 import 'package:wavely/features/player/presentation/now_playing_screen.dart';
+import 'package:wavely/features/player/presentation/equalizer_screen.dart'
+    show kEqualizerRoute;
 import 'package:wavely/features/player/presentation/now_playing_tab.dart';
 import 'package:wavely/features/search/presentation/search_screen.dart';
 import 'package:wavely/features/settings/data/settings_provider.dart';
@@ -112,6 +114,8 @@ void main() {
         SettingsScreen.route,
         // Root-navigator fullscreen routes.
         NowPlayingScreen.route,
+        // v1.0.2: dedicated Musicolet-style equalizer screen.
+        kEqualizerRoute,
         OnboardingFlow.route,
         WelcomeScreen.route,
         LoginScreen.route,

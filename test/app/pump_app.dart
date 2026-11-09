@@ -35,7 +35,7 @@
 /// ever touches supabase_flutter initialization.
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart' show Locale;
+import 'package:flutter/material.dart' show Locale, Size;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -108,6 +108,10 @@ class WavelyTestHarness {
 ///   override list is built before the first pump — so the test creates the
 ///   database, wires it into its fakes, and hands it in here. The harness
 ///   `tearDown()` still closes it; the test must not close it too.
+/// - [viewport]: logical-viewport size the app pumps at. Defaults to a
+///   phone shape (390×844) so the MOBILE (Musicolet) shell renders; pass
+///   `Size(1280, 800)` or wider to exercise the DESKTOP (Spotify) shell —
+///   the v1.0.2 platform split kicks in at exactly 800 logical px.
 Future<WavelyTestHarness> pumpWavelyApp(
   WidgetTester tester, {
   bool onboardingCompleted = false,
@@ -117,8 +121,24 @@ Future<WavelyTestHarness> pumpWavelyApp(
   List<Override> extraOverrides = const <Override>[],
   bool settle = true,
   AppDatabase? db,
+  Size viewport = const Size(390, 844),
+  double devicePixelRatio = 1.0,
 }) async {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // v1.0.2 responsive split: pin the logical viewport BEFORE the first
+  // pump so the shell renders the intended layout deterministically.
+  tester.view
+    ..devicePixelRatio = devicePixelRatio
+    ..physicalSize = Size(
+      viewport.width * devicePixelRatio,
+      viewport.height * devicePixelRatio,
+    );
+  addTearDown(() {
+    tester.view
+      ..resetPhysicalSize()
+      ..resetDevicePixelRatio();
+  });
 
   // SharedPreferences: the package's own mock; must be installed before
   // the first `SharedPreferences.getInstance()`.
