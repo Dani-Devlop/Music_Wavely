@@ -37,6 +37,10 @@ export const ALBUMS: Album[] = [
   { id: "al6", title: "Velvet Static", artist: "Neon Riot", artistId: "ar5", year: 2023, cover: "/covers/velvet-static.png", genre: "Rock" },
   { id: "al7", title: "Golden Hour", artist: "Sola", artistId: "ar6", year: 2025, cover: "/covers/golden-hour.png", genre: "Pop" },
   { id: "al8", title: "Echoes of Tehran", artist: "Ava Rostami", artistId: "ar7", year: 2024, cover: "/covers/persian-echoes.png", genre: "World" },
+  // ---- online-only catalogue (streaming, not on device) ----
+  { id: "al9", title: "Chrome City", artist: "Midnight Arcade", artistId: "ar8", year: 2025, cover: "/covers/online-chrome-city.png", genre: "Synthpop", origin: "online" },
+  { id: "al10", title: "Violet Summer", artist: "Luna Waves", artistId: "ar9", year: 2024, cover: "/covers/online-violet-summer.png", genre: "Dream Pop", origin: "online" },
+  { id: "al11", title: "Golden Retro", artist: "Aria Vance", artistId: "ar10", year: 2025, cover: "/covers/online-golden-retro.png", genre: "Pop", origin: "online" },
 ];
 
 export const ARTISTS: Artist[] = [
@@ -47,6 +51,9 @@ export const ARTISTS: Artist[] = [
   { id: "ar5", name: "Neon Riot", image: "/covers/velvet-static.png", albumIds: ["al6"] },
   { id: "ar6", name: "Sola", image: "/covers/golden-hour.png", albumIds: ["al7"] },
   { id: "ar7", name: "Ava Rostami", image: "/covers/persian-echoes.png", albumIds: ["al8"] },
+  { id: "ar8", name: "Midnight Arcade", image: "/covers/online-chrome-city.png", albumIds: ["al9"] },
+  { id: "ar9", name: "Luna Waves", image: "/covers/online-violet-summer.png", albumIds: ["al10"] },
+  { id: "ar10", name: "Aria Vance", image: "/covers/online-golden-retro.png", albumIds: ["al11"] },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -56,6 +63,13 @@ export const ARTISTS: Artist[] = [
 const F_MAIN = "/storage/emulated/0/Music";
 const F_DL = "/storage/emulated/0/Music/Downloads";
 const F_FLAC = "/storage/emulated/0/Music/FLAC";
+const F_ONLINE = "online"; // virtual — streamed, no file on disk
+/** Wavely download root — user-configurable in Settings (prototype value). */
+export const DOWNLOAD_ROOT = "/storage/emulated/0/Music/Wavely";
+/** Resolves the organised path for a downloaded track: {Country}/{Genre} template. */
+export function downloadedFolder(country: string, genre: string): string {
+  return `${DOWNLOAD_ROOT}/${country}/${genre}`;
+}
 
 interface Seed {
   id: string;
@@ -188,10 +202,72 @@ const SEEDS: Seed[] = [
   { id: "t32", title: "Bazaar Nights", albumId: "al8", n: 2, d: 227 },
   { id: "t33", title: "Damavand", albumId: "al8", n: 3, d: 312 },
   { id: "t34", title: "Saffron Sky", albumId: "al8", n: 4, d: 238 },
+  // al9 — Chrome City (online: Midnight Arcade, US)
+  { id: "t35", title: "Chrome City", albumId: "al9", n: 1, d: 231, lyrics: [
+    "Headlights melting on the boulevard",
+    "Every window is a movie screen",
+    "We drive until the city turns to chrome",
+    "Nothing here is quite what it seems",
+    "Chrome city, take me higher",
+    "Streetlights painting lines of fire",
+    "Chrome city, don't look down",
+    "We're electric tonight",
+  ]},
+  { id: "t36", title: "Night Circuit", albumId: "al9", n: 2, d: 205 },
+  { id: "t37", title: "Static Love", albumId: "al9", n: 3, d: 247 },
+  { id: "t38", title: "Drive Forever", albumId: "al9", n: 4, d: 274 },
+  // al10 — Violet Summer (online: Luna Waves, UK)
+  { id: "t39", title: "Violet Summer", albumId: "al10", n: 1, d: 256, lyrics: [
+    "The tide came in with violet light",
+    "We stayed until the stars burned through",
+    "You said the summer felt like you",
+    "Soft and endless, out of view",
+    "Violet summer, hold me under",
+    "Salt and static, waves of wonder",
+    "Violet summer, don't let go",
+    "The night is ours, take it slow",
+  ]},
+  { id: "t40", title: "Undertow", albumId: "al10", n: 2, d: 223 },
+  { id: "t41", title: "Glass Coast", albumId: "al10", n: 3, d: 268 },
+  { id: "t42", title: "Slow Tide", albumId: "al10", n: 4, d: 241 },
+  // al11 — Golden Retro (online: Aria Vance, SE)
+  { id: "t43", title: "Golden Retro", albumId: "al11", n: 1, d: 214 },
+  { id: "t44", title: "Sugar Static", albumId: "al11", n: 2, d: 198 },
+  { id: "t45", title: "Neon Heart", albumId: "al11", n: 3, d: 236, lyrics: [
+    "You wear your heart in neon light",
+    "A sign that flickers every night",
+    "I read it from across the room",
+    "Buzzing like a cheap perfume",
+    "Neon heart, don't fade out on me",
+    "Buzz if you still believe",
+  ]},
+  { id: "t46", title: "Afterglow", albumId: "al11", n: 4, d: 252 },
 ];
+
+/** per-track metadata for online tracks (source, country, quality, downloads) */
+const ONLINE_META: Record<
+  string,
+  { source: Track["source"]; country: string; quality: string; downloaded?: boolean }
+> = {
+  t35: { source: "spotify", country: "US", quality: "320" },
+  t36: { source: "ytmusic", country: "US", quality: "320", downloaded: true },
+  t37: { source: "spotify", country: "US", quality: "320" },
+  t38: { source: "soundcloud", country: "US", quality: "256" },
+  t39: { source: "jamendo", country: "UK", quality: "FLAC" },
+  t40: { source: "jamendo", country: "UK", quality: "FLAC", downloaded: true },
+  t41: { source: "jamendo", country: "UK", quality: "FLAC" },
+  t42: { source: "soundcloud", country: "UK", quality: "256" },
+  t43: { source: "spotify", country: "SE", quality: "320" },
+  t44: { source: "ytmusic", country: "SE", quality: "320" },
+  t45: { source: "spotify", country: "SE", quality: "320", downloaded: true },
+  t46: { source: "ytmusic", country: "SE", quality: "256" },
+};
 
 export const TRACKS: Track[] = SEEDS.map((s, i) => {
   const album = ALBUMS.find((a) => a.id === s.albumId)!;
+  const online = album.origin === "online";
+  const meta = online ? ONLINE_META[s.id] : undefined;
+  const isDownloaded = !!meta?.downloaded;
   return {
     id: s.id,
     title: s.title,
@@ -200,8 +276,11 @@ export const TRACKS: Track[] = SEEDS.map((s, i) => {
     album: album.title,
     albumId: album.id,
     genre: album.genre,
-    folder:
-      album.id === "al2" || album.id === "al6" || album.id === "al7"
+    folder: online
+      ? isDownloaded
+        ? downloadedFolder(meta!.country, album.genre) // organised save path
+        : F_ONLINE
+      : album.id === "al2" || album.id === "al6" || album.id === "al7"
         ? F_DL
         : album.id === "al4" || album.id === "al5"
           ? F_FLAC
@@ -210,10 +289,14 @@ export const TRACKS: Track[] = SEEDS.map((s, i) => {
     year: album.year,
     trackNumber: s.n,
     addedAt: Date.now() - (SEEDS.length - i) * 86400000,
-    playCount: ((i * 7 + 3) % 14) + 1,
-    lastPlayedAt: Date.now() - (i % 9) * 3600000,
+    playCount: online && !isDownloaded ? ((i * 3) % 4) + 1 : ((i * 7 + 3) % 14) + 1,
+    lastPlayedAt: online ? undefined : Date.now() - (i % 9) * 3600000,
     lyrics: s.lyrics ? mkLyrics(s.lyrics, s.d) : undefined,
-    origin: "local",
+    origin: online ? "online" : "local",
+    source: meta?.source,
+    downloaded: isDownloaded || undefined,
+    country: meta?.country,
+    quality: meta?.quality,
   };
 });
 
@@ -233,6 +316,7 @@ export function tracksOfArtist(artistId: string): Track[] {
 
 export const GENRES = Array.from(new Set(ALBUMS.map((a) => a.genre))).sort();
 
+/** On-device folders (scanned by Musicolet-style folder view). */
 export const FOLDERS = [F_MAIN, F_DL, F_FLAC];
 
 /* ------------------------------------------------------------------ */
@@ -246,8 +330,10 @@ export const PLAYLISTS: Playlist[] = [
   { id: "pl2", name: "Late Night Coding", description: "Deep flow, zero vocals", trackIds: pick("t17", "t18", "t19", "t20", "t21", "t12"), createdAt: Date.now() - 22 * 86400000, origin: "local" },
   { id: "pl3", name: "Persian Vibes", description: "Home, in melodies", trackIds: pick("t31", "t32", "t33", "t34"), createdAt: Date.now() - 10 * 86400000, origin: "local" },
   { id: "pl4", name: "Workout Beast", description: "Push one more rep", trackIds: pick("t22", "t23", "t24", "t10", "t25"), createdAt: Date.now() - 3 * 86400000, origin: "local" },
-  { id: "pl5", name: "Global Top Hits", description: "Charting around the world", trackIds: pick("t03", "t28", "t24", "t26", "t29", "t12"), createdAt: Date.now() - 2 * 86400000, origin: "online" },
-  { id: "pl6", name: "Indie Rising", description: "Fresh finds, updated weekly", trackIds: pick("t13", "t07", "t05", "t15", "t08"), createdAt: Date.now() - 1 * 86400000, origin: "online" },
+  // mixed → local files + online streams in one playlist (badges show which is which)
+  { id: "pl5", name: "Global Top Hits", description: "Charts + your device picks, mixed", trackIds: pick("t03", "t35", "t26", "t43", "t24", "t38"), createdAt: Date.now() - 2 * 86400000, origin: "mixed" },
+  { id: "pl6", name: "Indie Rising", description: "Fresh finds, updated weekly", trackIds: pick("t39", "t41", "t44", "t46", "t42"), createdAt: Date.now() - 1 * 86400000, origin: "online" },
+  { id: "pl7", name: "Road Trip Mix", description: "Yours + the world's, shuffled", trackIds: pick("t02", "t36", "t28", "t45", "t31", "t37"), createdAt: Date.now() - 12 * 3600000, origin: "mixed" },
 ];
 
 export const INITIAL_QUEUES: QueueDef[] = [
@@ -258,6 +344,6 @@ export const INITIAL_QUEUES: QueueDef[] = [
   { id: "q-chill", name: "Sunday Chill", trackIds: pick("t26", "t27", "t29", "t30", "t13", "t14"), savedIndex: 0, savedPosition: 0 },
 ];
 
-export const INITIAL_FAVORITES = ["t01", "t09", "t17", "t26", "t31", "t13"];
+export const INITIAL_FAVORITES = ["t01", "t09", "t17", "t26", "t31", "t13", "t39"];
 
-export const INITIAL_HISTORY = ["t26", "t17", "t01", "t31", "t09", "t13", "t22", "t28"];
+export const INITIAL_HISTORY = ["t26", "t17", "t35", "t01", "t31", "t09", "t13", "t22", "t28"];

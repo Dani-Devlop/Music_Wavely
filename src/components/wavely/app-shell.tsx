@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
 import { PLAYLISTS, trackById } from "@/lib/wavely/data";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 import { WavelyLogo } from "./logo";
 import { HomeView } from "./views/home-view";
 import { LibraryView } from "./views/library-view";
@@ -45,6 +46,20 @@ function PlaybackTicker() {
     }, 250);
     return () => clearInterval(id);
   }, []);
+  return null;
+}
+
+/** Surfaces store-level notices (offline blocks, download results) as toasts. */
+function NoticeBridge() {
+  const notice = useWavely((s) => s.playbackNotice);
+  const clear = useWavely((s) => s.clearPlaybackNotice);
+  const { toast } = useToast();
+  useEffect(() => {
+    if (notice) {
+      toast({ description: notice });
+      clear();
+    }
+  }, [notice, toast, clear]);
   return null;
 }
 
@@ -205,6 +220,7 @@ export function AppShell() {
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <PlaybackTicker />
+      <NoticeBridge />
 
       <div className="flex min-h-0 flex-1">
         {!isMobile && <Sidebar />}

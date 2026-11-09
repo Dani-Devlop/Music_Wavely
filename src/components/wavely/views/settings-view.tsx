@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   Bell,
   ChevronRight,
   Download,
   Folder,
+  FolderDown,
+  FolderSync,
   Github,
   Heart,
   Info,
@@ -25,6 +28,7 @@ import {
   SlidersHorizontal,
   Timer,
   Waves,
+  WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -75,9 +79,32 @@ function Row({
   );
 }
 
+function previewTemplate(template: string, sample: { country: string; genre: string; artist: string; album: string; year: number; title: string; ext: string }) {
+  const dir = template
+    .replace(/\{\s*Country\s*\}/gi, sample.country)
+    .replace(/\{\s*Genre\s*\}/gi, sample.genre)
+    .replace(/\{\s*Artist\s*\}/gi, sample.artist)
+    .replace(/\{\s*Album\s*\}/gi, sample.album)
+    .replace(/\{\s*Year\s*\}/gi, String(sample.year))
+    .replace(/\{\s*Title\s*\}/gi, sample.title)
+    .replace(/\/+/g, "/")
+    .replace(/^\/|\/$/g, "");
+  return `${dir}/${sample.artist} - ${sample.title}.${sample.ext}`;
+}
+
 export function SettingsView() {
   const [page, setPage] = useState<"root" | "eq">("root");
   const { toast } = useToast();
+
+  // downloads & storage (store-backed so the whole app sees them)
+  const downloadPath = useWavely((s) => s.downloadPath);
+  const setDownloadPath = useWavely((s) => s.setDownloadPath);
+  const folderTemplate = useWavely((s) => s.folderTemplate);
+  const setFolderTemplate = useWavely((s) => s.setFolderTemplate);
+  const audioFormat = useWavely((s) => s.audioFormat);
+  const setAudioFormat = useWavely((s) => s.setAudioFormat);
+  const isOffline = useWavely((s) => s.isOffline);
+  const setOffline = useWavely((s) => s.setOffline);
 
   // playback prefs (prototype-local)
   const [gapless, setGapless] = useState(true);
@@ -88,6 +115,7 @@ export function SettingsView() {
   const [notif, setNotif] = useState(true);
   const [parental, setParental] = useState(false);
   const [autoDownload, setAutoDownload] = useState(false);
+  const [mobileData, setMobileData] = useState(true);
   const [lyricsPriority] = useState(["Embedded (USLT/SYLT)", ".lrc sidecar file", "Web / LRCLIB"]);
 
   const speed = useWavely((s) => s.speed);
@@ -177,6 +205,112 @@ export function SettingsView() {
         <Row icon={Download} title="Auto-save lyrics" subtitle="Cache web lyrics to .lrc" control={<Switch defaultChecked />} />
       </div>
 
+      <SectionHeader icon={FolderDown} title="Downloads & storage" />
+      <div className="overflow-hidden rounded-2xl bg-wav-surface">
+        <div className="px-3 py-3">
+          <p className="mb-2 text-sm font-medium">Download location</p>
+          <div className="flex gap-2">
+            <Input
+              value={downloadPath}
+              onChange={(e) => setDownloadPath(e.target.value)}
+              className="h-10 flex-1 font-mono text-xs"
+              aria-label="Download path"
+              spellCheck={false}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 shrink-0"
+              onClick={() => toast({ description: "SAF folder picker opens here in the Flutter app" })}
+              aria-label="Choose folder"
+            >
+              <Folder className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Default: /storage/emulated/0/Music/Wavely — Musicolet can play straight from this folder.
+          </p>
+        </div>
+        <Separator />
+        <div className="px-3 py-3">
+          <p className="mb-1 text-sm font-medium">Folder organisation</p>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Build the folder structure for saved songs — your {"{Country}/{Genre}"} idea:
+          </p>
+          <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto pb-1">
+            {["{Country}", "{Genre}", "{Artist}", "{Album}", "{Year}", "{Title}"].map((tok) => (
+              <button
+                key={tok}
+                onClick={() => {
+                  setFolderTemplate(folderTemplate ? `${folderTemplate}/${tok}` : tok);
+                  toast({ description: `Added ${tok} to the template` });
+                }}
+                className="shrink-0 rounded-full bg-secondary px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                {tok}
+              </button>
+            ))}
+            <button
+              onClick={() => setFolderTemplate("")}
+              className="shrink-0 rounded-full px-2.5 py-1.5 text-[11px] text-muted-foreground transition hover:text-foreground"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="rounded-lg bg-secondary/60 p-2.5 font-mono text-[11px]">
+            <p className="mb-1 text-muted-foreground">Preview</p>
+            <p className="break-all text-primary" aria-live="polite">
+              {downloadPath.replace(/\/$/, "")}/{previewTemplate(folderTemplate || "--", {
+                country: "US",
+                genre: "Synthpop",
+                artist: "Midnight Arcade",
+                album: "Chrome City",
+                year: 2025,
+                title: "Night Circuit",
+                ext: audioFormat === "flac" ? "flac" : "mp3",
+              })}
+            </p>
+          </div>
+        </div>
+        <Separator />
+        <Row
+          icon={Download}
+          title="Audio format"
+          subtitle="Quality of saved songs"
+          control={
+            <div className="flex overflow-hidden rounded-full bg-secondary text-xs font-medium">
+              {(["mp3-320", "flac"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setAudioFormat(f)}
+                  className={cn("px-3 py-1.5 transition", audioFormat === f && "bg-primary text-primary-foreground")}
+                >
+                  {f === "flac" ? "FLAC" : "MP3 320"}
+                </button>
+              ))}
+            </div>
+          }
+        />
+        <Separator />
+        <Row icon={WifiOff} title="Download only on Wi-Fi" subtitle="Skip downloads on mobile data" control={<Switch checked={mobileData} onCheckedChange={setMobileData} />} />
+        <Separator />
+        <Row icon={Download} title="Auto-download favorites" subtitle="From online sources when available" control={<Switch checked={autoDownload} onCheckedChange={setAutoDownload} />} />
+        <Separator />
+        <Row icon={FolderSync} title="Keep organised on move" subtitle="Re-shelve files if the template changes" control={<Switch defaultChecked />} />
+      </div>
+
+      <SectionHeader icon={WifiOff} title="Connection (prototype)" />
+      <div className="overflow-hidden rounded-2xl bg-wav-surface">
+        <Row
+          icon={WifiOff}
+          title="Simulate offline mode"
+          subtitle={isOffline ? "ON — app locked to on-device music" : "Preview how Wavely becomes an offline player"}
+          control={<Switch checked={isOffline} onCheckedChange={setOffline} />}
+        />
+        <Separator />
+        <Row icon={Info} title="In the real app" subtitle="Offline state is detected automatically (no connection)" />
+      </div>
+
       <SectionHeader icon={ListMusic} title="Queues & library" />
       <div className="overflow-hidden rounded-2xl bg-wav-surface">
         <Row icon={ListMusic} title="Queue slots" subtitle="Up to 20 queues, positions saved" />
@@ -184,8 +318,6 @@ export function SettingsView() {
         <Row icon={ScanLine} title="Scan library" subtitle="Rescan folders for new songs" onClick={() => toast({ description: "Library scan started — 34 songs found" })} arrow />
         <Separator />
         <Row icon={Folder} title="Blacklist folders" subtitle="Hide folders from the library" onClick={() => toast({ description: "Folder picker in the full app" })} arrow />
-        <Separator />
-        <Row icon={Download} title="Auto-download favorites" subtitle="From online sources when available" control={<Switch checked={autoDownload} onCheckedChange={setAutoDownload} />} />
       </div>
 
       <SectionHeader icon={Lock} title="Parental controls" />

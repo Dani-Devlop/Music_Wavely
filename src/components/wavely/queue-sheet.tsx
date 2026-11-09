@@ -6,7 +6,8 @@ import { useWavely, useActiveQueue, useCurrentTrack } from "@/lib/wavely/store";
 import { trackById } from "@/lib/wavely/data";
 import { Cover } from "./cover";
 import { EqBars } from "./eq-bars";
-import { fmtTime } from "@/lib/wavely/data";
+import { OriginBadge } from "./origin-badge";
+import { fmtTime, albumCover } from "@/lib/wavely/data";
 import {
   DndContext,
   closestCenter,
@@ -73,7 +74,10 @@ function QueueItem({
       </button>
       <QueueItemCover track={track} />
       <div className="min-w-0 flex-1">
-        <p className={cn("truncate text-sm font-medium", isCurrent && "text-primary")}>{track.title}</p>
+        <p className={cn("flex items-center gap-1.5 truncate text-sm font-medium", isCurrent && "text-primary")}>
+          <span className="truncate">{track.title}</span>
+          <OriginBadge track={track} compact />
+        </p>
         <p className="truncate text-xs text-muted-foreground">{track.artist}</p>
       </div>
       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{fmtTime(track.duration)}</span>
@@ -89,11 +93,7 @@ function QueueItem({
 }
 
 function QueueItemCover({ track }: { track: Track }) {
-  const covers: Record<string, string> = {
-    al1: "neon-horizon", al2: "midnight-bloom", al3: "green-circuit", al4: "paper-planes",
-    al5: "deep-focus", al6: "velvet-static", al7: "golden-hour", al8: "persian-echoes",
-  };
-  return <Cover src={`/covers/${covers[track.albumId] ?? "neon-horizon"}.png`} alt={track.album} size={38} />;
+  return <Cover src={albumCover(track.albumId)} alt={track.album} size={38} />;
 }
 
 export function QueueSheet() {
@@ -201,7 +201,10 @@ export function QueueSheet() {
               <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-primary">Now</span>
               <QueueItemCover track={currentTrack} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-primary">{currentTrack.title}</p>
+                <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-primary">
+                  <span className="truncate">{currentTrack.title}</span>
+                  <OriginBadge track={currentTrack} compact />
+                </p>
                 <p className="truncate text-xs text-muted-foreground">{currentTrack.artist}</p>
               </div>
               <EqBars />

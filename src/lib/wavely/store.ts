@@ -1,7 +1,15 @@
 "use client";
 
 import { create } from "zustand";
-import type { AppView, LibraryTab, QueueDef, RepeatMode, SongSortMode, Track } from "./types";
+import type {
+  AppView,
+  LibraryTab,
+  QueueDef,
+  RepeatMode,
+  SongSortMode,
+  SourceMode,
+  Track,
+} from "./types";
 import {
   INITIAL_FAVORITES,
   INITIAL_HISTORY,
@@ -32,6 +40,31 @@ interface WavelyState {
   setView: (v: AppView) => void;
   setLibraryTab: (t: LibraryTab) => void;
   setSongSort: (s: SongSortMode) => void;
+
+  /* source modes — local vs online organisation */
+  sourceMode: SourceMode; // browsing filter (all / local / online)
+  isOffline: boolean; // simulated connection loss → forces local-only
+  setSourceMode: (m: SourceMode) => void;
+  setOffline: (v: boolean) => void;
+  /** browsing mode after applying the offline constraint */
+  effectiveMode: () => SourceMode;
+  /** can this track actually play right now? */
+  canPlayTrack: (t: Track | undefined) => boolean;
+  /** true → set the track's downloaded flag (save to organised folder) */
+  toggleDownload: (trackId: string) => void;
+  /** bumped on every download toggle so badge subscribers re-render */
+  downloadVersion: number;
+  /** transient notice surfaced as a toast by AppShell (store can't use hooks) */
+  playbackNotice: string | null;
+  clearPlaybackNotice: () => void;
+
+  /* downloads & storage */
+  downloadPath: string;
+  folderTemplate: string; // e.g. "{Country}/{Genre}"
+  audioFormat: "mp3-320" | "flac";
+  setDownloadPath: (p: string) => void;
+  setFolderTemplate: (t: string) => void;
+  setAudioFormat: (f: "mp3-320" | "flac") => void;
 
   /* player core */
   queues: QueueDef[];
@@ -94,6 +127,20 @@ interface WavelyState {
 
 const now = () => Date.now();
 
+/** Offline simulation toggles force-browse the local side of the library. */
+export const isTrackPlayable = (t: Track | undefined, isOffline: boolean): boolean => {
+  if (!t) return false;
+  if (t.origin === "local" || t.downloaded) return true; // files always work
+  return !isOffline; // streamed tracks need a connection
+};
+
+/** Which tracks survive the current browsing mode (badge-aware filtering). */
+const filterByMode = (tracks: Track[], mode: SourceMode): Track[] => {
+  if (mode === "all") return tracks;
+  if (mode === "local") return tracks.filter((t) => t.origin === "local" || t.downloaded);
+  return tracks.filter((t) => t.origin === "online");
+};
+
 export const useWavely = create<WavelyState>((set, get) => ({
   view: "home",
   libraryTab: "songs",
@@ -101,6 +148,51 @@ export const useWavely = create<WavelyState>((set, get) => ({
   setView: (v) => set({ view: v }),
   setLibraryTab: (t) => set({ libraryTab: t }),
   setSongSort: (s) => set({ songSort: s }),
+
+  sourceMode: "all",
+  isOffline: false,
+  setSourceMode: (m) => {
+    if (m !== "local" && get().isOffline) {
+      set({ playbackNotice: "You're offline — only on-device music is available" });
+      return;
+    }
+    set({ sourceMode: m });
+  },
+  setOffline: (v) =>
+    set({
+      isOffline: v,
+      ...(v ? { sourceMode: "local" as SourceMode } : {}),
+      playbackNotice: v
+        ? "You're offline — Wavely is now an offline player"
+        : "Back online — streaming sources reconnected",
+    }),
+  effectiveMode: () => (get().isOffline ? "local" : get().sourceMode),
+  canPlayTrack: (t) => isTrackPlayable(t, get().isOffline),
+  toggleDownload: (trackId) => {
+    const t = trackById.get(trackId);
+    if (!t || t.origin !== "online") return;
+    if (t.downloaded) {
+      set({ playbackNotice: `Removed from device: ${t.title}` });
+    } else {
+      set({ playbackNotice: `Saved to ${get().downloadPath}/${t.country ?? "--"}/${t.genre}` });
+    }
+    // mutate the catalog entry so the badge flips everywhere
+    t.downloaded = t.downloaded ? undefined : true;
+    t.folder = t.downloaded
+      ? `${get().downloadPath}/${t.country ?? "--"}/${t.genre}`
+      : "online";
+    set((s) => ({ downloadVersion: s.downloadVersion + 1 }));
+  },
+  playbackNotice: null,
+  clearPlaybackNotice: () => set({ playbackNotice: null }),
+  downloadVersion: 0,
+
+  downloadPath: "/storage/emulated/0/Music/Wavely",
+  folderTemplate: "{Country}/{Genre}",
+  audioFormat: "flac",
+  setDownloadPath: (p) => set({ downloadPath: p }),
+  setFolderTemplate: (t) => set({ folderTemplate: t }),
+  setAudioFormat: (f) => set({ audioFormat: f }),
 
   queues: INITIAL_QUEUES.map((q) => ({ ...q, trackIds: [...q.trackIds] })),
   activeQueueId: "q-main",
@@ -150,43 +242,56 @@ export const useWavely = create<WavelyState>((set, get) => ({
   playContext: (name, trackIds, startIndex = 0) => {
     if (trackIds.length === 0) return;
     const s = get();
+    // hard-block unavailable (offline) tracks from starting playback
+    const available = trackIds.filter((id) => isTrackPlayable(trackById.get(id), s.isOffline));
+    if (available.length === 0) {
+      set({
+        playbackNotice: s.isOffline
+          ? `Can't play offline — download it or go back online`
+          : `Can't play ${name}`,
+      });
+      return;
+    }
+    const ids = available;
+    const startId = trackIds[startIndex];
+    const safeIndex = startId && ids.includes(startId) ? ids.indexOf(startId) : 0;
     // Persist the queue we're leaving (Musicolet position retention)
     const queues = s.queues.map((q) =>
       q.id === s.activeQueueId
         ? { ...q, savedIndex: s.index, savedPosition: s.position }
         : q,
     );
-    // Reuse a queue with the same name, else take an empty/unused slot (max 20, Musicolet-style)
+    // reuse a queue with the same name, else take an empty/unused slot (max 20, Musicolet-style)
     let target = queues.find((q) => q.name === name && !q.pinned);
     if (!target) {
       const empty = queues.find((q) => q.trackIds.length === 0 && !q.pinned);
       if (empty) {
-        target = { ...empty, name, trackIds, savedIndex: 0, savedPosition: 0 };
+        target = { ...empty, name, trackIds: ids, savedIndex: 0, savedPosition: 0 };
         queues[queues.indexOf(empty)] = target;
       } else if (queues.length < 20) {
         target = {
           id: `q-${now()}`,
           name,
-          trackIds,
+          trackIds: ids,
           savedIndex: 0,
           savedPosition: 0,
         };
         queues.push(target);
       } else {
         const slot = queues[queues.length - 1];
-        target = { ...slot, name, trackIds, savedIndex: 0, savedPosition: 0 };
+        target = { ...slot, name, trackIds: ids, savedIndex: 0, savedPosition: 0 };
         queues[queues.indexOf(slot)] = target;
       }
     } else {
-      target = { ...target, trackIds, savedIndex: startIndex, savedPosition: 0 };
+      target = { ...target, trackIds: ids, savedIndex: safeIndex, savedPosition: 0 };
       queues[queues.indexOf(target)] = target;
     }
-    const firstId = trackIds[startIndex] ?? trackIds[0];
+    const firstId = ids[safeIndex] ?? ids[0];
     const t = trackById.get(firstId);
     set({
       queues,
       activeQueueId: target.id,
-      index: startIndex,
+      index: safeIndex,
       position: 0,
       isPlaying: true,
       history: t ? [t.id, ...s.history.filter((h) => h !== t.id)].slice(0, 24) : s.history,
@@ -234,20 +339,41 @@ export const useWavely = create<WavelyState>((set, get) => ({
       set({ position: 0 });
       return;
     }
-    let nextIndex: number;
-    if (s.shuffle && q.trackIds.length > 1) {
-      do {
-        nextIndex = Math.floor(Math.random() * q.trackIds.length);
-      } while (nextIndex === s.index);
-    } else {
-      nextIndex = s.index + 1;
-      if (nextIndex >= q.trackIds.length) {
-        if (s.repeat === "all" || !auto) nextIndex = 0;
-        else {
-          set({ position: q.trackIds.length ? 0 : 0, isPlaying: false });
-          return;
-        }
+    // skip unavailable (offline / not-downloaded) tracks when advancing
+    const pickNext = (): number => {
+      if (s.shuffle && q.trackIds.length > 1) {
+        let idx = s.index;
+        let guard = 0;
+        do {
+          idx = Math.floor(Math.random() * q.trackIds.length);
+          guard++;
+        } while (
+          idx === s.index &&
+          guard < 50 &&
+          !isTrackPlayable(trackById.get(q.trackIds[idx]), s.isOffline)
+        );
+        return idx;
       }
+      let idx = s.index;
+      for (let step = 0; step < q.trackIds.length; step++) {
+        idx = idx + 1 >= q.trackIds.length ? 0 : idx + 1;
+        if (isTrackPlayable(trackById.get(q.trackIds[idx]), s.isOffline)) return idx;
+        if (!auto) break; // manual skip just wraps once like before
+      }
+      return idx;
+    };
+    let nextIndex: number;
+    const immediate = s.index + 1;
+    if (immediate < q.trackIds.length && isTrackPlayable(trackById.get(q.trackIds[immediate]), s.isOffline)) {
+      nextIndex = immediate;
+    } else if (immediate >= q.trackIds.length && !auto) {
+      nextIndex = 0;
+    } else {
+      nextIndex = pickNext();
+    }
+    if (auto && nextIndex === s.index && q.trackIds.length > 1 && !isTrackPlayable(trackById.get(q.trackIds[nextIndex]), s.isOffline)) {
+      set({ isPlaying: false });
+      return;
     }
     const t = trackById.get(q.trackIds[nextIndex]);
     set((st) => ({
@@ -385,5 +511,10 @@ export const useWavely = create<WavelyState>((set, get) => ({
 /** Convenience selector hooks */
 export const useCurrentTrack = () => useWavely((s) => s.currentTrack());
 export const useActiveQueue = () => useWavely((s) => s.activeQueue());
+export const useEffectiveMode = () =>
+  useWavely((s) => (s.isOffline ? "local" : s.sourceMode));
+export const useIsTrackPlayable = (t: Track | undefined) =>
+  useWavely((s) => isTrackPlayable(t, s.isOffline));
 
+export { filterByMode };
 export const allTracks = TRACKS;

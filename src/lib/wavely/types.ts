@@ -3,6 +3,27 @@ export interface LyricLine {
   text: string;
 }
 
+/** Streaming provider the track was found on. */
+export type MusicSource = "spotify" | "ytmusic" | "jamendo" | "soundcloud";
+
+export const SOURCE_LABELS: Record<MusicSource, string> = {
+  spotify: "Spotify",
+  ytmusic: "YT Music",
+  jamendo: "Jamendo",
+  soundcloud: "SoundCloud",
+};
+
+/**
+ * Browsing mode — what the library shows.
+ *  all    → everything, mixed, badges visible
+ *  local  → on-device files + downloaded songs (offline-player feel)
+ *  online → streaming catalogue (discovery feel)
+ */
+export type SourceMode = "all" | "local" | "online";
+
+/** Where a track lives. "downloaded" tracks are online tracks saved to disk. */
+export type TrackOrigin = "local" | "online";
+
 export interface Track {
   id: string;
   title: string;
@@ -21,18 +42,14 @@ export interface Track {
   lyrics?: LyricLine[];
   /** where the track comes from — "local" = file on device, "online" = streaming */
   origin: TrackOrigin;
-}
-
-export type TrackOrigin = "local" | "online";
-
-export interface Album {
-  id: string;
-  title: string;
-  artist: string;
-  artistId: string;
-  year: number;
-  cover: string;
-  genre: string;
+  /** streaming provider (only for online tracks) */
+  source?: MusicSource;
+  /** online track saved to disk → behaves like a local file, playable offline */
+  downloaded?: boolean;
+  /** market/country tag — used by the {Country} folder-organisation token */
+  country?: string;
+  /** audio quality label shown in badges (e.g. "320", "FLAC") */
+  quality?: string;
 }
 
 export interface Artist {
@@ -48,8 +65,20 @@ export interface Playlist {
   description: string;
   trackIds: string[];
   createdAt: number;
-  /** "local" = built from on-device music, "online" = streaming/editorial */
-  origin: TrackOrigin;
+  /** "local" = on-device songs only, "online" = streaming only, "mixed" = both */
+  origin: TrackOrigin | "mixed";
+}
+
+export interface Album {
+  id: string;
+  title: string;
+  artist: string;
+  artistId: string;
+  year: number;
+  cover: string;
+  genre: string;
+  /** online-only albums never live on the device */
+  origin?: TrackOrigin;
 }
 
 /** Musicolet-style queue: 20 slots, position retention per queue. */
