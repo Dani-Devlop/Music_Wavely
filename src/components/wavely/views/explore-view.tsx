@@ -83,7 +83,7 @@ export function ExploreView() {
     playContext(title, tracksOfAlbum(albumId).map((t) => t.id), 0);
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-7 px-4 pb-10 pt-4 md:max-w-3xl md:px-8 md:pt-6 lg:max-w-5xl">
+    <div className="mx-auto w-full space-y-7 px-4 pb-10 pt-4 md:max-w-3xl md:px-8 md:pt-6 lg:max-w-5xl">
       {/* header */}
       <header className="flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-400/12 text-sky-300">

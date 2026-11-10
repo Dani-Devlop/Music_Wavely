@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import { SongRow } from "../song-row";
 import { CuratedCard, ReleaseCard } from "../cards";
 import { OfflineBanner } from "../source-mode-chips";
@@ -21,7 +20,6 @@ import {
 } from "@/lib/wavely/data";
 import type { MoodDef } from "@/lib/wavely/data";
 import type { Artist } from "@/lib/wavely/types";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -29,10 +27,11 @@ import {
   ArrowRight,
   Brain,
   Car,
-  ChevronRight,
   CloudDownload,
   CloudOff,
   Coffee,
+  Compass,
+  Disc3,
   Dumbbell,
   Flame,
   Heart,
@@ -52,22 +51,13 @@ function greeting(): string {
   return "Good night";
 }
 
-function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
-  return (
-    <div className="mb-3 flex items-center justify-between">
-      <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">{title}</h2>
-      {action}
-    </div>
-  );
-}
-
 /** Rail: horizontal snap-scroll on mobile → auto-fill grid on desktop (no scroll). */
 function Rail({ children, label }: { children: React.ReactNode; label: string }) {
   return (
     <div
       role="group"
       aria-label={label}
-      className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:snap-none md:grid md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] md:overflow-visible md:px-0"
+      className="no-scrollbar -mx-4 flex snap-x snap-proximity scroll-pl-4 gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:snap-none md:grid md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] md:overflow-visible md:px-0"
     >
       {children}
     </div>
@@ -146,170 +136,203 @@ function HomeHeader() {
 }
 
 /* ---------------------------------------------------------------- */
-/* Shortcut chips — one-tap jumps into the library's smart views     */
+/* Quick access — swipeable smart cards, each with an inline play    */
+/* button (replaces the old shortcut chips + liked hero section)     */
 /* ---------------------------------------------------------------- */
-function ShortcutChips() {
+function QuickAccessRow() {
   const setView = useWavely((s) => s.setView);
   const setLibraryTab = useWavely((s) => s.setLibraryTab);
   const setSongSort = useWavely((s) => s.setSongSort);
   const setSongFilter = useWavely((s) => s.setSongFilter);
-  const favCount = useWavely((s) => s.favorites.length);
-  const cachedCount = useWavely((s) => s.cachedIds.length);
-  // recomputed on every render (Home remounts on navigation) → stays fresh after saves
-  const savedCount = TRACKS.filter((t) => t.downloaded).length;
-
-  const chip =
-    "flex h-9 shrink-0 snap-start items-center gap-1.5 rounded-full bg-secondary/70 px-4 text-xs font-semibold transition hover:bg-accent active:scale-[0.98]";
-  const count = "rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold tabular-nums";
-
-  return (
-    <div
-      className="no-scrollbar -mx-4 flex snap-x gap-2 overflow-x-auto px-4 md:mx-0 md:px-0"
-      role="group"
-      aria-label="Library shortcuts"
-    >
-      <button
-        className={chip}
-        onClick={() => {
-          setLibraryTab("favorites");
-          setSongFilter("all");
-          setView("library");
-        }}
-        aria-label="Open liked songs in library"
-      >
-        <Heart className="h-3.5 w-3.5" /> Liked songs
-        <span className={count}>{favCount}</span>
-      </button>
-      <button
-        className={chip}
-        onClick={() => {
-          setLibraryTab("songs");
-          setSongSort("date-added");
-          setSongFilter("saved");
-          setView("library");
-        }}
-        aria-label="Open saved downloads in library"
-      >
-        <ArrowDownToLine className="h-3.5 w-3.5" /> Saved
-        <span className={count}>{savedCount}</span>
-      </button>
-      <button
-        className={chip}
-        onClick={() => {
-          setLibraryTab("songs");
-          setSongFilter("all");
-          setSongSort("play-count");
-          setView("library");
-        }}
-        aria-label="Open most played songs in library"
-      >
-        <Flame className="h-3.5 w-3.5" /> Most played
-      </button>
-      <button
-        className={chip}
-        onClick={() => {
-          setLibraryTab("songs");
-          setSongFilter("cached");
-          setView("library");
-        }}
-        aria-label="Open cached streaming songs in library"
-      >
-        <CloudDownload className="h-3.5 w-3.5" /> Cached
-        <span className={count}>{cachedCount}</span>
-      </button>
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------- */
-/* Liked & favorites — one combined home for both worlds             */
-/* online rows keep their ☁ badge; liking happens via the ⋯ sheet.   */
-/* ---------------------------------------------------------------- */
-function LikedSection({
-  favIds,
-  onOpen,
-}: {
-  favIds: string[];
-  onOpen: () => void;
-}) {
   const playContext = useWavely((s) => s.playContext);
   const toggleShuffle = useWavely((s) => s.toggleShuffle);
+  const isOffline = useWavely((s) => s.isOffline);
+  const favIds = useWavely((s) => s.favorites);
+  const cachedIds = useWavely((s) => s.cachedIds);
+  const { toast } = useToast();
 
-  const shuffleLiked = () => {
-    if (favIds.length === 0) return;
-    playContext("Liked songs", favIds, Math.floor(Math.random() * favIds.length));
-    if (!useWavely.getState().shuffle) toggleShuffle();
+  // offline shrinks every pool to what can actually play right now
+  const playable = (ids: string[]) =>
+    isOffline
+      ? ids.filter((id) => {
+          const t = trackById.get(id);
+          return !!t && (t.origin === "local" || !!t.downloaded);
+        })
+      : ids;
+
+  const playIds = (name: string, ids: string[]) => {
+    const list = playable(ids);
+    if (list.length === 0) {
+      toast({ description: isOffline ? "This mix needs internet" : "Nothing here yet" });
+      return;
+    }
+    playContext(name, list, Math.floor(Math.random() * list.length));
   };
 
-  return (
-    <section>
-      <SectionHeader
-        title="Liked & favorites"
-        action={
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={onOpen}>
-            See all
-          </Button>
-        }
-      />
-      <div className="grid gap-2 sm:grid-cols-2">
-        <motion.button
-          whileTap={{ scale: 0.985 }}
-          onClick={onOpen}
-          className="group relative flex min-h-40 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-primary/45 via-primary/18 to-transparent p-4 text-left md:min-h-32"
-          aria-label="Open liked songs"
-        >
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg accent-glow">
-            <Heart className="h-5 w-5 fill-primary-foreground" />
-          </span>
-          <span className="mt-4 block">
-            <span className="block font-display text-lg font-bold">Liked songs</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              {favIds.length} songs — whatever you love, in one place
-            </span>
-          </span>
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              shuffleLiked();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.stopPropagation();
-                shuffleLiked();
-              }
-            }}
-            className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-xl transition-all hover:scale-105 focus-visible:opacity-100 group-hover:opacity-100"
-            aria-label="Shuffle liked songs"
-          >
-            <Play className="ml-0.5 h-5 w-5 fill-primary-foreground" />
-          </span>
-        </motion.button>
+  const saved = useMemo(() => TRACKS.filter((t) => t.downloaded).map((t) => t.id), []);
+  const mostPlayed = useMemo(
+    () => [...TRACKS].sort((a, b) => b.playCount - a.playCount).slice(0, 12).map((t) => t.id),
+    [],
+  );
+  const newMusic = useMemo(
+    () => [...TRACKS].sort((a, b) => b.addedAt - a.addedAt).slice(0, 12).map((t) => t.id),
+    [],
+  );
 
-        <div className="flex flex-col justify-center rounded-2xl bg-wav-surface/60 p-1.5">
-          {favIds.slice(0, 3).map((id) => {
-            const t = trackById.get(id)!;
-            return (
-              <SongRow
-                key={id}
-                track={t}
-                compact
-                onPlay={() => playContext("Liked songs", favIds, favIds.indexOf(id))}
-              />
-            );
-          })}
-          {favIds.length > 3 && (
+  interface QuickCard {
+    key: string;
+    label: string;
+    meta: string;
+    icon: LucideIcon;
+    tile: string;
+    solid?: boolean;
+    open: () => void;
+    play: () => void;
+  }
+
+  const cards: QuickCard[] = [
+    {
+      key: "liked",
+      label: "Liked songs",
+      meta: `${favIds.length} songs`,
+      icon: Heart,
+      tile: "bg-primary text-primary-foreground shadow-md accent-glow",
+      solid: true,
+      open: () => {
+        setLibraryTab("favorites");
+        setSongFilter("all");
+        setView("library");
+      },
+      play: () => {
+        if (playable(favIds).length === 0) {
+          toast({ description: isOffline ? "Liked songs need internet" : "No liked songs yet" });
+          return;
+        }
+        playContext("Liked songs", favIds, Math.floor(Math.random() * favIds.length));
+        if (!useWavely.getState().shuffle) toggleShuffle();
+      },
+    },
+    {
+      key: "most",
+      label: "Most played",
+      meta: "Your top plays",
+      icon: Flame,
+      tile: "bg-amber-500/15 text-amber-300",
+      open: () => {
+        setLibraryTab("songs");
+        setSongFilter("all");
+        setSongSort("play-count");
+        setView("library");
+      },
+      play: () => playIds("Most played", mostPlayed),
+    },
+    {
+      key: "new",
+      label: "New music",
+      meta: "Just added",
+      icon: Disc3,
+      tile: "bg-violet-500/15 text-violet-300",
+      open: () => {
+        setLibraryTab("songs");
+        setSongFilter("all");
+        setSongSort("date-added");
+        setView("library");
+      },
+      play: () => playIds("New music", newMusic),
+    },
+    {
+      key: "discover",
+      label: "Discovery",
+      meta: "Fresh finds",
+      icon: Compass,
+      tile: "bg-sky-400/15 text-sky-300",
+      open: () => setView("explore"),
+      play: () => playIds("Discovery mix", DISCOVER_MIX),
+    },
+    {
+      key: "saved",
+      label: "Saved",
+      meta: `${saved.length} downloads`,
+      icon: ArrowDownToLine,
+      tile: "bg-teal-500/15 text-teal-300",
+      open: () => {
+        setLibraryTab("songs");
+        setSongFilter("saved");
+        setView("library");
+      },
+      play: () => playIds("Saved songs", saved),
+    },
+    {
+      key: "cached",
+      label: "Cached",
+      meta: `${cachedIds.length} songs`,
+      icon: CloudDownload,
+      tile: "bg-rose-500/15 text-rose-300",
+      open: () => {
+        setLibraryTab("songs");
+        setSongFilter("cached");
+        setView("library");
+      },
+      play: () => playIds("Cached songs", cachedIds),
+    },
+  ];
+
+  return (
+    <Rail label="Quick access">
+      {cards.map((c) => {
+        const Icon = c.icon;
+        return (
+          <div
+            key={c.key}
+            className={cn(
+              "group relative h-36 w-36 shrink-0 snap-start overflow-hidden rounded-2xl transition md:w-auto md:snap-none",
+              c.solid
+                ? "bg-gradient-to-br from-primary/55 via-primary/22 to-transparent"
+                : "bg-wav-surface hover:bg-accent",
+            )}
+          >
             <button
-              onClick={onOpen}
-              className="flex items-center gap-1.5 px-2 pb-1.5 pt-1 text-xs font-semibold text-muted-foreground transition hover:text-primary"
+              onClick={c.open}
+              className="flex h-full w-full flex-col justify-between p-3 text-left"
+              aria-label={`Open ${c.label}`}
             >
-              +{favIds.length - 3} more <ChevronRight className="h-3 w-3" />
+              <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", c.tile)}>
+                <Icon className={cn("h-[18px] w-[18px]", c.solid && "fill-current")} />
+              </span>
+              <span className="block pr-9">
+                <span className="block text-[13px] font-bold leading-tight">{c.label}</span>
+                <span
+                  className={cn(
+                    "mt-0.5 block text-[10px] text-muted-foreground",
+                    c.solid && "text-foreground/70",
+                  )}
+                >
+                  {c.meta}
+                </span>
+              </span>
             </button>
-          )}
-        </div>
-      </div>
-    </section>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                c.play();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.stopPropagation();
+                  c.play();
+                }
+              }}
+              className="absolute right-2.5 bottom-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 focus-visible:opacity-100 active:scale-95 md:opacity-0 md:group-hover:opacity-100"
+              aria-label={`Play ${c.label}`}
+            >
+              <Play className="ml-0.5 h-4 w-4 fill-primary-foreground" />
+            </span>
+          </div>
+        );
+      })}
+    </Rail>
   );
 }
 
@@ -734,28 +757,17 @@ export function HomeView() {
   const setView = useWavely((s) => s.setView);
   const isOffline = useWavely((s) => s.isOffline);
 
-  const favIds = useWavely((s) => s.favorites);
-
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 px-4 pb-10 md:max-w-3xl md:px-8 lg:max-w-5xl">
+    <div className="mx-auto w-full space-y-6 px-4 pb-10 md:max-w-3xl md:px-8 lg:max-w-5xl">
       <HomeHeader />
 
       <OfflineBanner />
 
-      {/* one-tap library shortcuts */}
-      <ShortcutChips />
+      {/* swipeable quick access — liked · most played · new · discovery · saved · cached */}
+      <QuickAccessRow />
 
       {/* offline: cached streaming songs stay playable (replaces online discovery) */}
       {isOffline && <OfflineCachedSection />}
-
-      {/* combined likes — local & online side by side */}
-      <LikedSection
-        favIds={favIds}
-        onOpen={() => {
-          useWavely.getState().setLibraryTab("favorites");
-          useWavely.getState().setView("library");
-        }}
-      />
 
       {/* online world — Spotify style */}
       {!isOffline && <NewForYou />}
