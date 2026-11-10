@@ -70,6 +70,10 @@ interface WavelyState {
   setView: (v: AppView) => void;
   setLibraryTab: (t: LibraryTab) => void;
   setSongSort: (s: SongSortMode) => void;
+  libraryTabsOrder: LibraryTab[];
+  setLibraryTabsOrder: (order: LibraryTab[]) => void;
+  moveLibraryTab: (from: number, to: number) => void;
+  resetLibraryTabs: () => void;
 
   /* source modes — local vs online organisation */
   sourceMode: SourceMode; // browsing filter (all / local / online)
@@ -207,6 +211,18 @@ export const useWavely = create<WavelyState>((set, get) => ({
   setView: (v) => set({ view: v }),
   setLibraryTab: (t) => set({ libraryTab: t }),
   setSongSort: (s) => set({ songSort: s }),
+  libraryTabsOrder: ["songs", "albums", "artists", "genres", "folders", "playlists", "queues", "favorites", "history"],
+  setLibraryTabsOrder: (order) => set({ libraryTabsOrder: order }),
+  moveLibraryTab: (from, to) =>
+    set((s) => {
+      if (to < 0 || to >= s.libraryTabsOrder.length || from === to) return {};
+      const order = [...s.libraryTabsOrder];
+      const [moved] = order.splice(from, 1);
+      order.splice(to, 0, moved);
+      return { libraryTabsOrder: order };
+    }),
+  resetLibraryTabs: () =>
+    set({ libraryTabsOrder: ["songs", "albums", "artists", "genres", "folders", "playlists", "queues", "favorites", "history"] }),
 
   sourceMode: "all",
   isOffline: false,
@@ -237,6 +253,7 @@ export const useWavely = create<WavelyState>((set, get) => ({
     set({ cacheProgress: {}, cachedIds: [], playbackNotice: "Streaming cache cleared" }),
   songFilter: "all",
   setSongFilter: (f) => set({ songFilter: f }),
+  folderActionsPath: null,
 
   toggleDownload: (trackId) => {
     const t = trackById.get(trackId);

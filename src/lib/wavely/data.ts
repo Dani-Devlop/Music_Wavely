@@ -353,6 +353,21 @@ export const INITIAL_HISTORY = ["t26", "t17", "t35", "t01", "t31", "t09", "t13",
 /** Artists the user follows — Explore surfaces their new releases first. */
 export const FOLLOWED_ARTIST_IDS = ["ar1", "ar8", "ar9"];
 
+/** Moods & moments — one-tap radios built from genres (Home). */
+export interface MoodDef {
+  id: string;
+  label: string;
+  genres: string[];
+}
+export const MOODS: MoodDef[] = [
+  { id: "focus", label: "Focus", genres: ["Lo-Fi", "Electronic"] },
+  { id: "workout", label: "Workout", genres: ["Rock", "Synthwave"] },
+  { id: "drive", label: "Drive", genres: ["Synthpop", "Synthwave"] },
+  { id: "chill", label: "Chill", genres: ["Dream Pop", "Indie Folk"] },
+  { id: "party", label: "Party", genres: ["Pop", "Electronic"] },
+  { id: "tehran", label: "Tehran Nights", genres: ["World"] },
+];
+
 /** The app was last online 10 days ago — "since last visit" shows everything newer. */
 export const LAST_ONLINE_AT = Date.now() - 10 * 86400000;
 

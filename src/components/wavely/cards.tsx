@@ -92,12 +92,15 @@ export function ReleaseCard({
   cover,
   title,
   meta,
+  // default "online" keeps the streaming badge for callers that don't opt out (Explore)
+  badge = "online",
   playing,
   onPlay,
 }: {
   cover: string;
   title: string;
   meta: string;
+  badge?: "online" | "ai";
   playing?: boolean;
   onPlay: () => void;
 }) {
@@ -108,9 +111,16 @@ export function ReleaseCard({
     >
       <div className="relative mb-3 aspect-square overflow-hidden rounded-lg bg-secondary">
         <Image src={cover} alt={title} fill sizes="160px" className="object-cover" />
-        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-sky-300 backdrop-blur">
-          <Cloud className="h-3 w-3" /> Online
-        </span>
+        {badge === "online" && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-sky-300 backdrop-blur">
+            <Cloud className="h-3 w-3" /> Online
+          </span>
+        )}
+        {badge === "ai" && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-primary/25 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-primary backdrop-blur">
+            <Sparkles className="h-3 w-3" /> AI mix
+          </span>
+        )}
         <span className="absolute bottom-2 right-2 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-xl transition-all group-hover:translate-y-0 group-hover:opacity-100">
           {playing ? <EqBars barClassName="bg-primary-foreground" /> : <Play className="h-5 w-5 fill-primary-foreground" />}
         </span>

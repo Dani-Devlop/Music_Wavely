@@ -19,7 +19,7 @@ import {
   tracksOfAlbum,
   tracksOfArtist,
 } from "@/lib/wavely/data";
-import { SONG_SORT_LABELS, type LibraryTab, type SongSortMode, type Track } from "@/lib/wavely/types";
+import { SONG_FILTER_LABELS, SONG_SORT_LABELS, type LibraryTab, type SongSortMode, type Track } from "@/lib/wavely/types";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,6 +33,8 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowDownUp,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Disc3,
   Folder,
   History,
@@ -44,12 +46,13 @@ import {
   Music2,
   Play,
   Plus,
+  RotateCcw,
   UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-const TABS: { id: LibraryTab; label: string; icon: React.ElementType }[] = [
+const DEFAULT_TABS: { id: LibraryTab; label: string; icon: React.ElementType }[] = [
   { id: "songs", label: "Songs", icon: Music2 },
   { id: "albums", label: "Albums", icon: Disc3 },
   { id: "artists", label: "Artists", icon: UserRound },
@@ -481,7 +484,20 @@ export function LibraryView() {
   const favorites = useWavely((s) => s.favorites);
   const history = useWavely((s) => s.history);
   const playContext = useWavely((s) => s.playContext);
+  const cachedIds = useWavely((s) => s.cachedIds);
+  const libraryTabsOrder = useWavely((s) => s.libraryTabsOrder);
+  const moveLibraryTab = useWavely((s) => s.moveLibraryTab);
+  const resetLibraryTabs = useWavely((s) => s.resetLibraryTabs);
   const [query, setQuery] = useState("");
+  const [editingTabs, setEditingTabs] = useState(false);
+  const dragIndex = useRef<number | null>(null);
+
+  const orderedTabs = useMemo(() => {
+    const byId = new Map(DEFAULT_TABS.map((t) => [t.id, t]));
+    const main = libraryTabsOrder.map((id) => byId.get(id)).filter(Boolean) as typeof DEFAULT_TABS;
+    const missing = DEFAULT_TABS.filter((t) => !libraryTabsOrder.includes(t.id));
+    return [...main, ...missing];
+  }, [libraryTabsOrder]);
 
   // Library = the device (Musicolet world): local files + songs saved from online
   const isDeviceTrack = (t: Track) => t.origin === "local" || !!t.downloaded;
@@ -491,7 +507,12 @@ export function LibraryView() {
       sortTracks(
         [...TRACKS_ALL]
           .filter(isDeviceTrack)
-          .filter((t) => (songFilter === "not-played" ? t.playCount === 0 : true))
+          .filter((t) =>
+            songFilter === "not-played" ? t.playCount === 0
+            : songFilter === "saved" ? !!t.downloaded
+            : songFilter === "cached" ? cachedIds.includes(t.id)
+            : true,
+          )
           .filter(
             (t) =>
               t.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -500,7 +521,7 @@ export function LibraryView() {
           ),
         songSort,
       ),
-    [query, songSort, songFilter],
+    [query, songSort, songFilter, cachedIds],
   );
 
   // Favorites span both worlds — liked online streams stay in the list,
@@ -570,13 +591,13 @@ export function LibraryView() {
           Online browsing lives on Home + Search. */}
       <OfflineBanner />
 
-      {songFilter === "not-played" && libraryTab === "songs" && (
+      {libraryTab === "songs" && songFilter !== "all" && (
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSongFilter("all")}
             className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/25"
           >
-            Filter: Not played
+            Filter: {SONG_FILTER_LABELS[songFilter]}
             <span aria-hidden="true">×</span>
             <span className="sr-only">Clear filter</span>
           </button>
@@ -585,9 +606,46 @@ export function LibraryView() {
 
       {/* Tabs */}
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
-        {TABS.map((t) => {
+        {orderedTabs.map((t, i) => {
           const Icon = t.icon;
           const active = libraryTab === t.id;
+          if (editingTabs) {
+            // edit mode: pill body is inert — it's a drag handle with arrow buttons
+            return (
+              <div
+                key={t.id}
+                draggable
+                onDragStart={() => (dragIndex.current = i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (dragIndex.current !== null) moveLibraryTab(dragIndex.current, i);
+                  dragIndex.current = null;
+                }}
+                className="flex shrink-0 cursor-grab items-center gap-1.5 rounded-full border border-dashed border-primary/50 bg-secondary px-4 py-2 text-sm font-medium transition-all"
+              >
+                <Icon className="h-4 w-4" />
+                {t.label}
+                <button
+                  type="button"
+                  onClick={() => moveLibraryTab(i, i - 1)}
+                  disabled={i === 0}
+                  aria-label={`Move ${t.label} earlier`}
+                  className="flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-accent disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveLibraryTab(i, i + 1)}
+                  disabled={i === orderedTabs.length - 1}
+                  aria-label={`Move ${t.label} later`}
+                  className="flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-accent disabled:opacity-40"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          }
           return (
             <button
               key={t.id}
@@ -605,10 +663,41 @@ export function LibraryView() {
             </button>
           );
         })}
+        {editingTabs && (
+          <button
+            type="button"
+            onClick={resetLibraryTabs}
+            aria-label="Reset tab order"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-all hover:bg-accent"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reset
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setEditingTabs((v) => !v)}
+          aria-label="Customize tab order"
+          aria-pressed={editingTabs}
+          title="Customize tab order"
+          className={cn(
+            "flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium transition-all",
+            editingTabs
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "bg-secondary text-secondary-foreground hover:bg-accent",
+          )}
+        >
+          <ArrowDownUp className="h-4 w-4" />
+        </button>
       </div>
 
       <div className="min-h-[40vh]">
-        {libraryTab === "songs" && <TrackList tracks={songs} contextName="Songs" />}
+        {libraryTab === "songs" &&
+          (songs.length ? (
+            <TrackList tracks={songs} contextName="Songs" />
+          ) : (
+            <EmptyState icon={Music2} text="No songs match this filter" />
+          ))}
         {libraryTab === "albums" && <AlbumGrid />}
         {libraryTab === "artists" && <ArtistList />}
         {libraryTab === "genres" && <GenreList />}

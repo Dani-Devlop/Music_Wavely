@@ -110,7 +110,14 @@ export type LibraryTab =
 
 export type AppView = "home" | "explore" | "search" | "library" | "ai" | "settings";
 
-export type SongFilter = "all" | "not-played";
+export type SongFilter = "all" | "not-played" | "saved" | "cached";
+
+export const SONG_FILTER_LABELS: Record<SongFilter, string> = {
+  "all": "All songs",
+  "not-played": "Not played",
+  "saved": "Saved from online",
+  "cached": "Cached (streaming)",
+};
 
 export type SongSortMode =
   | "title-asc"
