@@ -87,7 +87,9 @@ export function CuratedCard({
   );
 }
 
-/** Square album card for release rails — optional age meta ("3d ago"). */
+/** Square album card for release rails — optional age meta ("3d ago").
+ *  `fluid`: on md+ the rail becomes an auto-fill grid → card fills the cell.
+ *  `cover` is optional: without one an AI gradient tile is rendered. */
 export function ReleaseCard({
   cover,
   title,
@@ -95,22 +97,33 @@ export function ReleaseCard({
   // default "online" keeps the streaming badge for callers that don't opt out (Explore)
   badge = "online",
   playing,
+  fluid,
   onPlay,
 }: {
-  cover: string;
+  cover?: string;
   title: string;
   meta: string;
   badge?: "online" | "ai";
   playing?: boolean;
+  fluid?: boolean;
   onPlay: () => void;
 }) {
   return (
     <button
       onClick={onPlay}
-      className="group w-40 shrink-0 snap-start rounded-xl bg-wav-surface p-3 text-left transition hover:bg-accent"
+      className={cn(
+        "group w-40 shrink-0 snap-start rounded-xl bg-wav-surface p-3 text-left transition hover:bg-accent",
+        fluid && "md:w-auto md:snap-none",
+      )}
     >
       <div className="relative mb-3 aspect-square overflow-hidden rounded-lg bg-secondary">
-        <Image src={cover} alt={title} fill sizes="160px" className="object-cover" />
+        {cover ? (
+          <Image src={cover} alt={title} fill sizes="160px" className="object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/50 via-primary/15 to-transparent">
+            <Sparkles className="h-10 w-10 text-primary" strokeWidth={1.2} aria-hidden="true" />
+          </div>
+        )}
         {badge === "online" && (
           <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-sky-300 backdrop-blur">
             <Cloud className="h-3 w-3" /> Online

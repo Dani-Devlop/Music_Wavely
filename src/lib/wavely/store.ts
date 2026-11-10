@@ -70,6 +70,9 @@ interface WavelyState {
   setView: (v: AppView) => void;
   setLibraryTab: (t: LibraryTab) => void;
   setSongSort: (s: SongSortMode) => void;
+  /** desktop sidebar: collapsed to an icon rail (Spotify-style toggle) */
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (v: boolean) => void;
   libraryTabsOrder: LibraryTab[];
   setLibraryTabsOrder: (order: LibraryTab[]) => void;
   moveLibraryTab: (from: number, to: number) => void;
@@ -308,6 +311,8 @@ export const useWavely = create<WavelyState>((set, get) => ({
   queueSheetOpen: false,
   eqOpen: false,
   sleepTimerOpen: false,
+  sidebarCollapsed: false,
+  setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
   actionsTrackId: null,
   setNowPlayingOpen: (v) => set({ nowPlayingOpen: v }),
   setQueueSheetOpen: (v) => set({ queueSheetOpen: v }),

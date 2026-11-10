@@ -61,6 +61,19 @@ function SectionHeader({ title, action }: { title: string; action?: React.ReactN
   );
 }
 
+/** Rail: horizontal snap-scroll on mobile → auto-fill grid on desktop (no scroll). */
+function Rail({ children, label }: { children: React.ReactNode; label: string }) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:snap-none md:grid md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] md:overflow-visible md:px-0"
+    >
+      {children}
+    </div>
+  );
+}
+
 /** Shared pill toggle for section-level windows ("1 week / 2 weeks / 1 month"). */
 function Segmented<T extends string | number>({
   options,
@@ -242,7 +255,7 @@ function LikedSection({
         <motion.button
           whileTap={{ scale: 0.985 }}
           onClick={onOpen}
-          className="group relative flex min-h-40 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-primary/45 via-primary/18 to-transparent p-4 text-left"
+          className="group relative flex min-h-40 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-primary/45 via-primary/18 to-transparent p-4 text-left md:min-h-32"
           aria-label="Open liked songs"
         >
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg accent-glow">
@@ -380,10 +393,11 @@ function NewForYou() {
           Nothing dropped in this window — try 1 month
         </p>
       ) : (
-        <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+        <Rail label="New releases">
           {releases.map((a) => (
             <ReleaseCard
               key={a.id}
+              fluid
               cover={a.cover}
               title={a.title}
               meta={`${a.artist} • ${fmtAge(a.releasedAt!)}`}
@@ -397,7 +411,7 @@ function NewForYou() {
               }
             />
           ))}
-        </div>
+        </Rail>
       )}
     </section>
   );
@@ -439,10 +453,11 @@ function DailyMixes() {
           <Sparkles className="h-3 w-3" /> AI-built
         </span>
       </div>
-      <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+      <Rail label="Daily mixes">
         {mixes.map((m) => (
           <ReleaseCard
             key={m.name}
+            fluid
             cover={m.cover}
             title={m.name}
             meta={m.meta}
@@ -450,7 +465,7 @@ function DailyMixes() {
             onPlay={() => playContext(m.name, m.ids, Math.floor(Math.random() * m.ids.length))}
           />
         ))}
-      </div>
+      </Rail>
     </section>
   );
 }
@@ -467,7 +482,8 @@ function MadeForYou() {
   return (
     <section>
       <h3 className="mb-2 text-sm font-bold text-muted-foreground">Made for you</h3>
-      <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+      {/* mobile / tablet: wide banner cards */}
+      <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:hidden">
         <CuratedCard
           image="/wavely/curated-1.png"
           badge="ai"
@@ -479,6 +495,24 @@ function MadeForYou() {
           badge="ai"
           title="Wavely AI DJ"
           subtitle="Ask for a playlist, song facts, or just say “surprise me”."
+          onPlay={() => setView("ai")}
+        />
+      </div>
+      {/* desktop: compact Spotify-style cards (smaller than any hero, play on hover) */}
+      <div className="hidden gap-3 md:grid md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]">
+        <ReleaseCard
+          fluid
+          cover="/wavely/curated-1.png"
+          badge="ai"
+          title="Wavely Weekly"
+          meta="Fresh Monday picks"
+          onPlay={() => playContext("Wavely Weekly", DISCOVER_MIX, 0)}
+        />
+        <ReleaseCard
+          fluid
+          badge="ai"
+          title="Wavely AI DJ"
+          meta="Ask, discover, be surprised"
           onPlay={() => setView("ai")}
         />
       </div>

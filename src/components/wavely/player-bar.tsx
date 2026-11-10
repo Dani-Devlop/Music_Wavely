@@ -50,7 +50,7 @@ export function PlayerBar() {
   const RepeatIcon = repeat === "one" ? Repeat1 : Repeat;
 
   return (
-    <footer className="z-30 border-t border-border bg-background/95 backdrop-blur-xl">
+    <footer className="z-30 border-t border-border/70 bg-transparent">
       <div className="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3 md:grid-cols-[minmax(180px,1fr)_minmax(320px,2fr)_minmax(180px,1fr)] md:px-6">
         {/* track info */}
         <div

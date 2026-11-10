@@ -28,6 +28,8 @@ import {
   Compass,
   Home,
   LibraryBig,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
   Settings,
 } from "lucide-react";
@@ -77,14 +79,44 @@ function Sidebar() {
   const queues = useWavely((s) => s.queues);
   const selectQueue = useWavely((s) => s.selectQueue);
   const setQueueSheetOpen = useWavely((s) => s.setQueueSheetOpen);
+  const collapsed = useWavely((s) => s.sidebarCollapsed);
+  const setCollapsed = useWavely((s) => s.setSidebarCollapsed);
 
   return (
-    <aside className="wavely-scroll flex h-full w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar px-3 pb-4 pt-5">
-      <button className="mb-5 px-2 text-left" onClick={() => setView("home")} aria-label="Wavely home">
-        <WavelyLogo size={32} />
-      </button>
+    <aside
+      className={cn(
+        "wavely-scroll flex h-full shrink-0 flex-col overflow-hidden rounded-2xl bg-sidebar transition-[width] duration-300 ease-in-out",
+        collapsed ? "w-[76px]" : "w-64",
+      )}
+      aria-label="Primary"
+    >
+      {/* brand + collapse toggle */}
+      <div className={cn("flex items-center pt-5", collapsed ? "flex-col gap-3 px-2" : "justify-between px-4")}>
+        <button
+          className="shrink-0"
+          onClick={() => setView("home")}
+          aria-label="Wavely home"
+        >
+          <WavelyLogo size={32} showWordmark={!collapsed} />
+        </button>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent/60 hover:text-foreground",
+            collapsed && "",
+          )}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+          title={collapsed ? "Expand" : "Collapse"}
+        >
+          {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}
+        </button>
+      </div>
 
-      <nav className="space-y-1" aria-label="Main">
+      <nav
+        className={cn("mt-5 space-y-1", collapsed && "flex flex-col items-center space-y-1.5")}
+        aria-label="Main"
+      >
         {NAV.map((n) => {
           const Icon = n.icon;
           const active = view === n.id;
@@ -92,15 +124,19 @@ function Sidebar() {
             <button
               key={n.id}
               onClick={() => setView(n.id)}
+              title={n.label}
               className={cn(
-                "flex w-full items-center gap-3.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                "flex items-center rounded-lg text-sm font-semibold transition-colors",
+                collapsed
+                  ? cn("h-11 w-11 justify-center", active && "bg-accent/70")
+                  : "w-full gap-3.5 px-3 py-2.5",
                 active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
               aria-current={active ? "page" : undefined}
             >
-              <Icon className={cn("h-5 w-5", active && "text-primary")} />
-              {n.label}
-              {n.id === "ai" && (
+              <Icon className={cn("h-5 w-5 shrink-0", active && "text-primary")} />
+              {!collapsed && n.label}
+              {!collapsed && n.id === "ai" && (
                 <span className="ml-auto rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">
                   DJ
                 </span>
@@ -110,54 +146,58 @@ function Sidebar() {
         })}
       </nav>
 
-      <div className="my-4 border-t border-border" />
+      {!collapsed && (
+        <>
+          <div className="my-4 border-t border-border" />
 
-      {/* queues quick access */}
-      <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        My Music — queues
-      </p>
-      <div className="space-y-0.5">
-        {queues.slice(0, 5).map((q) => (
-          <button
-            key={q.id}
-            onClick={() => {
-              selectQueue(q.id);
-              setQueueSheetOpen(true);
-            }}
-            className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] text-muted-foreground transition hover:bg-accent/60 hover:text-foreground"
-          >
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-            <span className="truncate">{q.name}</span>
-          </button>
-        ))}
-      </div>
+          {/* queues quick access */}
+          <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            My Music — queues
+          </p>
+          <div className="space-y-0.5">
+            {queues.slice(0, 5).map((q) => (
+              <button
+                key={q.id}
+                onClick={() => {
+                  selectQueue(q.id);
+                  setQueueSheetOpen(true);
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] text-muted-foreground transition hover:bg-accent/60 hover:text-foreground"
+              >
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+                <span className="truncate">{q.name}</span>
+              </button>
+            ))}
+          </div>
 
-      <p className="px-3 pb-1.5 pt-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        Playlists
-      </p>
-      <div className="space-y-0.5">
-        {PLAYLISTS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => {
-              setLibraryTab("playlists");
-              setView("library");
-            }}
-            className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] text-muted-foreground transition hover:bg-accent/60 hover:text-foreground"
-          >
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-            <span className="truncate">{p.name}</span>
-          </button>
-        ))}
-      </div>
+          <p className="px-3 pb-1.5 pt-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Playlists
+          </p>
+          <div className="space-y-0.5">
+            {PLAYLISTS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setLibraryTab("playlists");
+                  setView("library");
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] text-muted-foreground transition hover:bg-accent/60 hover:text-foreground"
+              >
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+                <span className="truncate">{p.name}</span>
+              </button>
+            ))}
+          </div>
 
-      <div className="mt-auto px-3 pt-5">
-        <p className="text-[11px] leading-relaxed text-muted-foreground/70">
-          Wavely prototype
-          <br />
-          My Music × Explore
-        </p>
-      </div>
+          <div className="mt-auto px-3 pb-2 pt-5">
+            <p className="text-[11px] leading-relaxed text-muted-foreground/70">
+              Wavely prototype
+              <br />
+              My Music × Explore
+            </p>
+          </div>
+        </>
+      )}
     </aside>
   );
 }
@@ -226,13 +266,26 @@ export function AppShell() {
   const showMini = !!currentTrack && !nowPlayingOpen;
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+    <div
+      className={cn(
+        "flex h-dvh flex-col overflow-hidden text-foreground",
+        isMobile ? "bg-background" : "bg-black md:gap-2",
+      )}
+    >
       <PlaybackTicker />
       <NoticeBridge />
 
-      <div className="flex min-h-0 flex-1">
+      {/* desktop: sidebar + content float as rounded panels on black (Spotify shell) */}
+      <div className={cn("flex min-h-0 flex-1", !isMobile && "gap-2 px-2 pt-2")}>
         {!isMobile && <Sidebar />}
-        <ViewContent />
+        <div
+          className={cn(
+            "min-w-0 flex-1",
+            !isMobile && "flex overflow-hidden rounded-2xl bg-background",
+          )}
+        >
+          <ViewContent />
+        </div>
       </div>
 
       {/* bottom of screen: player + nav (mobile) or player bar (desktop) */}
