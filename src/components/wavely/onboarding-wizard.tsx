@@ -9,6 +9,10 @@ import {
   REGIONS,
   MUSIC_LANGUAGES,
   renderFolderTemplate,
+  renderFileTemplate,
+  BACKUP_AUTO_LABELS,
+  DEFAULT_BACKUP_PATH,
+  type BackupAuto,
   type DownloadQuality,
 } from "@/lib/wavely/store";
 import { TRACKS } from "@/lib/wavely/data";
@@ -34,6 +38,7 @@ import {
   ChevronRight,
   CircleHelp,
   Compass,
+  DatabaseBackup,
   Disc3,
   Folder,
   FolderPlus,
@@ -61,8 +66,15 @@ const STEPS = [
   "Parental mode",
   "AI features",
   "Music folders",
+  "Backup & restore",
   "Ready",
 ] as const;
+
+/** leaving this step triggers the first library scan ("scan starts after setup") */
+const MUSIC_FOLDERS_STEP = STEPS.indexOf("Music folders");
+/** the backup & restore step (#11) — sits right before "Ready" */
+const BACKUP_STEP = STEPS.indexOf("Backup & restore");
+const FILENAME_TOKENS = ["{track}", "{title}", "{artist}", "{album}", "{year}"];
 
 const QUALITY_OPTIONS: {
   q: DownloadQuality;
@@ -89,14 +101,17 @@ const LAYOUT_SAMPLE = {
   year: 2025,
   genre: "Synthwave",
   country: "US",
+  track: 7,
 };
 
 /**
  * First-run setup wizard — the design blueprint for the Android onboarding.
- * 10 steps, matching the installed build the user loved: welcome → language +
+ * 11 steps, matching the installed build the user loved: welcome → language +
  * lyrics-translation opt-in (#16, any language) → region → music-language
- * priority & never-play → download quality → storage layout → parental mode →
- * AI features → music folders (MULTIPLE paths — users own several) → ready.
+ * priority & never-play → download quality → storage layout (folders from the
+ * template, file name from its own template) → parental mode → AI features →
+ * music folders (MULTIPLE paths — users own several) → backup & restore
+ * (#11: auto on/off, default/custom path, weekly/monthly/launch/exit) → ready.
  * Re-runnable from Settings → About → "Replay setup wizard".
  */
 
@@ -130,6 +145,14 @@ function WizardBody() {
   const setDownloadQuality = useWavely((s) => s.setDownloadQuality);
   const folderTemplate = useWavely((s) => s.folderTemplate);
   const setFolderTemplate = useWavely((s) => s.setFolderTemplate);
+  const fileTemplate = useWavely((s) => s.fileTemplate);
+  const setFileTemplate = useWavely((s) => s.setFileTemplate);
+  const backupEnabled = useWavely((s) => s.backupEnabled);
+  const setBackupEnabled = useWavely((s) => s.setBackupEnabled);
+  const backupPath = useWavely((s) => s.backupPath);
+  const setBackupPath = useWavely((s) => s.setBackupPath);
+  const backupAuto = useWavely((s) => s.backupAuto);
+  const setBackupAuto = useWavely((s) => s.setBackupAuto);
   const parentalMode = useWavely((s) => s.parentalMode);
   const setParentalMode = useWavely((s) => s.setParentalMode);
   const aiFeatures = useWavely((s) => s.aiFeatures);
@@ -188,7 +211,7 @@ function WizardBody() {
 
   const next = () => {
     // leaving the music-folders step → the first scan starts right after setup
-    if (step === STEPS.length - 2) startScan();
+    if (step === MUSIC_FOLDERS_STEP) startScan();
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
   const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -213,7 +236,13 @@ function WizardBody() {
     lyricsTargetLang;
 
   const regionName = REGIONS.find((r) => r.code === region)?.name ?? region;
+  /* every template segment is a FOLDER — the audio file from the file-name
+     template sits INSIDE the last one (user fix: {year} must stay a folder) */
   const previewParts = renderFolderTemplate(folderTemplate || "--", LAYOUT_SAMPLE).split("/");
+  const previewFile = `${renderFileTemplate(fileTemplate, LAYOUT_SAMPLE)}.${
+    downloadQuality === "flac" ? "flac" : "mp3"
+  }`;
+  const usingDefaultBackupPath = backupPath === DEFAULT_BACKUP_PATH;
   const qualityLabel =
     downloadQuality === "320" ? "320 kbps" : downloadQuality === "flac" ? "FLAC" : "Ask every time";
   const rootFolderName = downloadPath.replace(/\/+$/, "").split("/").pop() || "Music";
@@ -595,12 +624,13 @@ function WizardBody() {
                 <div>
                   <h1 className="font-display text-3xl font-bold tracking-tight">Storage layout</h1>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    How downloads are organised on disk.
+                    Folders from the template — every song file lands inside the
+                    last folder.
                   </p>
 
                   <div className="relative mt-5 rounded-xl border border-border bg-wav-surface px-3 pb-2 pt-3">
                     <span className="absolute -top-2 left-3 bg-background px-1.5 text-[11px] text-muted-foreground">
-                      Template
+                      Folders
                     </span>
                     <Input
                       value={folderTemplate}
@@ -623,7 +653,34 @@ function WizardBody() {
                     ))}
                   </p>
 
-                  {/* live preview tree */}
+                  {/* the actual audio file inside the last folder */}
+                  <div className="relative mt-4 rounded-xl border border-border bg-wav-surface px-3 pb-2 pt-3">
+                    <span className="absolute -top-2 left-3 bg-background px-1.5 text-[11px] text-muted-foreground">
+                      File name
+                    </span>
+                    <Input
+                      value={fileTemplate}
+                      onChange={(e) => setFileTemplate(e.target.value)}
+                      className="h-7 border-0 bg-transparent p-0 font-mono text-sm shadow-none focus-visible:ring-0"
+                      aria-label="File name template"
+                      spellCheck={false}
+                    />
+                  </div>
+                  <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                    Tokens:
+                    {FILENAME_TOKENS.map((tok) => (
+                      <button
+                        key={tok}
+                        onClick={() => setFileTemplate(fileTemplate ? `${fileTemplate} ${tok}` : tok)}
+                        className="rounded-full bg-secondary px-2 py-0.5 font-mono transition hover:bg-accent hover:text-foreground"
+                      >
+                        {tok}
+                      </button>
+                    ))}
+                  </p>
+
+                  {/* live preview tree — every template segment is a folder,
+                      the file sits inside the last one */}
                   <div className="mt-5 rounded-2xl bg-wav-surface p-4">
                     <p className="text-sm font-bold">Preview</p>
                     <div className="mt-3 space-y-1.5 text-sm">
@@ -631,30 +688,23 @@ function WizardBody() {
                         <Folder className="h-4 w-4 text-primary" />
                         {rootFolderName}/
                       </div>
-                      {previewParts.map((part, i) => {
-                        const isFile = i === previewParts.length - 1;
-                        return (
-                          <div
-                            key={`${part}-${i}`}
-                            className="flex items-center gap-2 text-muted-foreground"
-                            style={{ paddingInlineStart: `${(i + 1) * 1.25}rem` }}
-                          >
-                            {isFile ? (
-                              <>
-                                <Music2 className="h-4 w-4 text-primary/70" />
-                                <span className="text-foreground/80">
-                                  {part}.{downloadQuality === "flac" ? "flac" : "mp3"}
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <Folder className="h-4 w-4 text-primary/70" />
-                                <span>{part}/</span>
-                              </>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {previewParts.map((part, i) => (
+                        <div
+                          key={`${part}-${i}`}
+                          className="flex items-center gap-2 text-muted-foreground"
+                          style={{ paddingInlineStart: `${(i + 1) * 1.25}rem` }}
+                        >
+                          <Folder className="h-4 w-4 text-primary/70" />
+                          <span>{part}/</span>
+                        </div>
+                      ))}
+                      <div
+                        className="flex items-center gap-2"
+                        style={{ paddingInlineStart: `${(previewParts.length + 1) * 1.25}rem` }}
+                      >
+                        <Music2 className="h-4 w-4 text-primary/70" />
+                        <span className="text-foreground/80">{previewFile}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -774,8 +824,142 @@ function WizardBody() {
                 </div>
               )}
 
-              {/* ---------- step 9 · ready ---------- */}
-              {step === 9 && (
+              {/* ---------- step 9 · backup & restore (#11) ---------- */}
+              {step === BACKUP_STEP && (
+                <div>
+                  <h1 className="font-display text-3xl font-bold tracking-tight">Backup &amp; restore</h1>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    One archive with your whole setup — playlists, queues, play
+                    counts and settings.
+                  </p>
+
+                  {/* master switch */}
+                  <div className="mt-5 rounded-2xl bg-wav-surface p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className={cn(
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                            backupEnabled ? "bg-primary/15" : "bg-accent",
+                          )}
+                        >
+                          <DatabaseBackup
+                            className={cn("h-5 w-5", backupEnabled ? "text-primary" : "text-muted-foreground")}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold">Back up automatically</p>
+                          <p className="text-xs text-muted-foreground">
+                            Library · playlists · queues · settings
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={backupEnabled}
+                        onCheckedChange={setBackupEnabled}
+                        aria-label="Back up automatically"
+                      />
+                    </div>
+                  </div>
+
+                  {backupEnabled ? (
+                    <>
+                      {/* schedule */}
+                      <p className="mt-5 text-sm font-bold">How often?</p>
+                      <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Backup schedule">
+                        {(Object.keys(BACKUP_AUTO_LABELS) as BackupAuto[]).map((f) => {
+                          const active = backupAuto === f;
+                          return (
+                            <button
+                              key={f}
+                              onClick={() => setBackupAuto(f)}
+                              role="radio"
+                              aria-checked={active}
+                              className={cn(
+                                "flex items-center justify-between rounded-xl bg-wav-surface px-3.5 py-3 text-sm font-semibold transition",
+                                active ? "ring-2 ring-primary" : "hover:bg-accent/60",
+                              )}
+                            >
+                              <span>{BACKUP_AUTO_LABELS[f]}</span>
+                              {active && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* location — default or a custom path */}
+                      <p className="mt-5 text-sm font-bold">Where?</p>
+                      <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Backup location">
+                        <button
+                          onClick={() => setBackupPath(DEFAULT_BACKUP_PATH)}
+                          role="radio"
+                          aria-checked={usingDefaultBackupPath}
+                          className={cn(
+                            "flex items-center justify-between rounded-xl bg-wav-surface px-3.5 py-3 text-sm font-semibold transition",
+                            usingDefaultBackupPath ? "ring-2 ring-primary" : "hover:bg-accent/60",
+                          )}
+                        >
+                          <span>Default path</span>
+                          {usingDefaultBackupPath && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (usingDefaultBackupPath) setBackupPath("");
+                          }}
+                          role="radio"
+                          aria-checked={!usingDefaultBackupPath}
+                          className={cn(
+                            "flex items-center justify-between rounded-xl bg-wav-surface px-3.5 py-3 text-sm font-semibold transition",
+                            !usingDefaultBackupPath ? "ring-2 ring-primary" : "hover:bg-accent/60",
+                          )}
+                        >
+                          <span>Custom path</span>
+                          {!usingDefaultBackupPath && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                        </button>
+                      </div>
+                      {usingDefaultBackupPath ? (
+                        <div className="mt-2 flex items-center gap-2 rounded-xl bg-wav-surface px-3 py-2.5">
+                          <Folder className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="min-w-0 flex-1 break-all font-mono text-xs">{DEFAULT_BACKUP_PATH}</span>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex gap-2">
+                          <Input
+                            value={backupPath}
+                            onChange={(e) => setBackupPath(e.target.value)}
+                            placeholder="/storage/emulated/0/MyBackups"
+                            className="h-10 flex-1 font-mono text-xs"
+                            aria-label="Custom backup path"
+                            spellCheck={false}
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-10 w-10 shrink-0"
+                            onClick={() => toast({ description: "SAF folder picker opens here in the Flutter app" })}
+                            aria-label="Choose backup folder"
+                          >
+                            <Folder className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+
+                      <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
+                        New phone? Wavely restores everything on first launch —
+                        same library, same counts, zero setup.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                      No problem — manual backup &amp; restore stays available in
+                      Settings → Backup &amp; restore, any time.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ---------- step 10 · ready ---------- */}
+              {step === STEPS.length - 1 && (
                 <div className="flex flex-col items-center text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/15">
                     <Check className="h-8 w-8 text-primary" />
@@ -824,6 +1008,7 @@ function WizardBody() {
                       { k: "Download quality", v: qualityLabel },
                       { k: "Storage layout", v: folderTemplate || "--" },
                       { k: "Music folders", v: `${musicFolders.length} — ${musicFolders[0] ?? "--"}` },
+                      { k: "Backup", v: backupEnabled ? BACKUP_AUTO_LABELS[backupAuto] : "Manual only" },
                       ...(parentalMode ? [{ k: "Parental mode", v: "On" }] : []),
                       ...(aiFeatures ? [{ k: "AI features", v: "On" }] : []),
                     ].map((r) => (

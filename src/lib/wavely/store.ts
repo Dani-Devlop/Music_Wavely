@@ -133,6 +133,17 @@ export const MUSIC_LANGUAGES = [
 
 export type DownloadQuality = "320" | "flac" | "ask";
 
+/** Automatic-backup schedule (#11): off = manual only, still from Settings. */
+export type BackupAuto = "weekly" | "monthly" | "onLaunch" | "onExit";
+export const BACKUP_AUTO_LABELS: Record<BackupAuto, string> = {
+  weekly: "Weekly",
+  monthly: "Monthly",
+  onLaunch: "Every launch",
+  onExit: "On exit",
+};
+/** Where archives land unless the user picks a custom path (wizard choice). */
+export const DEFAULT_BACKUP_PATH = "/storage/emulated/0/Music/Wavely/Backups";
+
 /**
  * Expand the storage-layout template for a track — shared by the "save to
  * folder" action, the settings preview and the wizard preview tree.
@@ -151,6 +162,27 @@ export function renderFolderTemplate(template: string, t: Pick<Track, "artist" |
     .map((p) => p.trim())
     .filter(Boolean)
     .join("/");
+}
+
+/**
+ * Expand the FILE-NAME template — the audio file that lives INSIDE the last
+ * folder of the storage layout (user fix: "{year}" is a folder, never the
+ * file). Android-unsafe characters are stripped.
+ * Tokens (case-insensitive): {track} {title} {artist} {album} {year}
+ */
+export function renderFileTemplate(
+  template: string,
+  t: Pick<Track, "artist" | "album" | "title" | "year"> & { track?: number },
+): string {
+  const clean = (v: string) => v.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
+  const name = template
+    .replace(/\{\s*track\s*\}/gi, String(t.track ?? 1).padStart(2, "0"))
+    .replace(/\{\s*title\s*\}/gi, clean(t.title))
+    .replace(/\{\s*artist\s*\}/gi, clean(t.artist))
+    .replace(/\{\s*album\s*\}/gi, clean(t.album))
+    .replace(/\{\s*year\s*\}/gi, String(t.year))
+    .replace(/\{\s*[a-z]+\s*\}/gi, ""); // drop unknown/empty tokens
+  return clean(name) || clean(t.title) || "track";
 }
 
 /** Rough per-track cache footprint by quality label (prototype estimate). */
@@ -223,11 +255,25 @@ interface WavelyState {
 
   /* downloads & storage */
   downloadPath: string;
-  folderTemplate: string; // e.g. "{artist}/{album}/{title}"
+  /** folder structure ONLY — the audio file is saved inside the last folder */
+  folderTemplate: string; // e.g. "{artist}/{album}"
+  /** file name inside the last folder, e.g. "{artist} - {title}" */
+  fileTemplate: string;
   audioFormat: "mp3-320" | "flac";
   setDownloadPath: (p: string) => void;
   setFolderTemplate: (t: string) => void;
+  setFileTemplate: (t: string) => void;
   setAudioFormat: (f: "mp3-320" | "flac") => void;
+
+  /* backup & restore (#11) — wizard step + Settings section write these.
+     Everything (library, playlists, queues, play counts, settings) goes into
+     one archive; manual backup/restore stays available even when auto is off */
+  backupEnabled: boolean;
+  backupPath: string;
+  backupAuto: BackupAuto;
+  setBackupEnabled: (v: boolean) => void;
+  setBackupPath: (p: string) => void;
+  setBackupAuto: (f: BackupAuto) => void;
 
   /* setup wizard prefs (installed-app parity) */
   /** metadata/legal-source market, e.g. "IR" — auto-detected from timezone */
@@ -423,8 +469,10 @@ export const useWavely = create<WavelyState>((set, get) => ({
   toggleDownload: (trackId) => {
     const t = trackById.get(trackId);
     if (!t || t.origin !== "online") return;
-    // shelve the file under the storage-layout template ({artist}/{album}/{title} …)
+    // shelve the file under the storage layout: folders from folderTemplate,
+    // the audio file itself from fileTemplate (inside the last folder)
     const relFolder = renderFolderTemplate(get().folderTemplate, t) || "--";
+    const relFile = `${renderFileTemplate(get().fileTemplate, t)}.${t.quality === "FLAC" ? "flac" : "mp3"}`;
     if (t.downloaded) {
       set({ playbackNotice: `Removed from device: ${t.title}` });
     } else {
@@ -436,8 +484,8 @@ export const useWavely = create<WavelyState>((set, get) => ({
           Object.entries(s.cacheProgress).filter(([id]) => id !== trackId),
         ),
         playbackNotice: inCache
-          ? `Saved from cache to ${get().downloadPath}/${relFolder} — cache space freed`
-          : `Saved to ${get().downloadPath}/${relFolder}`,
+          ? `Saved from cache to ${get().downloadPath}/${relFolder}/${relFile} — cache space freed`
+          : `Saved to ${get().downloadPath}/${relFolder}/${relFile}`,
       }));
     }
     // mutate the catalog entry so the row flips everywhere
@@ -450,11 +498,20 @@ export const useWavely = create<WavelyState>((set, get) => ({
   downloadVersion: 0,
 
   downloadPath: "/storage/emulated/0/Music/Wavely",
-  folderTemplate: "{artist}/{album}/{title}",
+  folderTemplate: "{artist}/{album}",
+  fileTemplate: "{artist} - {title}",
   audioFormat: "flac",
   setDownloadPath: (p) => set({ downloadPath: p }),
   setFolderTemplate: (t) => set({ folderTemplate: t }),
+  setFileTemplate: (t) => set({ fileTemplate: t }),
   setAudioFormat: (f) => set({ audioFormat: f }),
+
+  backupEnabled: true,
+  backupPath: DEFAULT_BACKUP_PATH,
+  backupAuto: "weekly",
+  setBackupEnabled: (v) => set({ backupEnabled: v }),
+  setBackupPath: (p) => set({ backupPath: p.trim().replace(/\/+$/, "") }),
+  setBackupAuto: (f) => set({ backupAuto: f }),
 
   region: detectRegion(),
   setRegion: (c) => set({ region: c.toUpperCase().slice(0, 2) }),

@@ -8,7 +8,13 @@ import {
   LYRICS_TARGET_LANGS,
   REGIONS,
   MUSIC_LANGUAGES,
+  renderFolderTemplate,
+  renderFileTemplate,
+  BACKUP_AUTO_LABELS,
+  DEFAULT_BACKUP_PATH,
+  type BackupAuto,
 } from "@/lib/wavely/store";
+import { TRACKS } from "@/lib/wavely/data";
 import { EqualizerView } from "./equalizer-view";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -28,6 +34,7 @@ import {
   ChevronRight,
   CloudDownload,
   Compass,
+  DatabaseBackup,
   Download,
   Folder,
   FolderDown,
@@ -35,6 +42,7 @@ import {
   FolderSync,
   Github,
   Heart,
+  History,
   Info,
   Languages,
   ListMusic,
@@ -100,18 +108,16 @@ function Row({
   );
 }
 
-function previewTemplate(template: string, sample: { country: string; genre: string; artist: string; album: string; year: number; title: string; ext: string }) {
-  const dir = template
-    .replace(/\{\s*Country\s*\}/gi, sample.country)
-    .replace(/\{\s*Genre\s*\}/gi, sample.genre)
-    .replace(/\{\s*Artist\s*\}/gi, sample.artist)
-    .replace(/\{\s*Album\s*\}/gi, sample.album)
-    .replace(/\{\s*Year\s*\}/gi, String(sample.year))
-    .replace(/\{\s*Title\s*\}/gi, sample.title)
-    .replace(/\/+/g, "/")
-    .replace(/^\/|\/$/g, "");
-  return `${dir}/${sample.artist} - ${sample.title}.${sample.ext}`;
-}
+/** sample track for the storage-organisation preview (wizard uses the same idea) */
+const SAMPLE_TRACK = {
+  country: "US",
+  genre: "Synthpop",
+  artist: "Midnight Arcade",
+  album: "Chrome City",
+  year: 2025,
+  title: "Night Circuit",
+  track: 7,
+};
 
 export function SettingsView() {
   const [page, setPage] = useState<"root" | "eq">("root");
@@ -122,6 +128,14 @@ export function SettingsView() {
   const setDownloadPath = useWavely((s) => s.setDownloadPath);
   const folderTemplate = useWavely((s) => s.folderTemplate);
   const setFolderTemplate = useWavely((s) => s.setFolderTemplate);
+  const fileTemplate = useWavely((s) => s.fileTemplate);
+  const setFileTemplate = useWavely((s) => s.setFileTemplate);
+  const backupEnabled = useWavely((s) => s.backupEnabled);
+  const setBackupEnabled = useWavely((s) => s.setBackupEnabled);
+  const backupPath = useWavely((s) => s.backupPath);
+  const setBackupPath = useWavely((s) => s.setBackupPath);
+  const backupAuto = useWavely((s) => s.backupAuto);
+  const setBackupAuto = useWavely((s) => s.setBackupAuto);
   const downloadQuality = useWavely((s) => s.downloadQuality);
   const setDownloadQuality = useWavely((s) => s.setDownloadQuality);
 
@@ -385,18 +399,43 @@ export function SettingsView() {
               Clear
             </button>
           </div>
+          {/* the audio file itself — lives INSIDE the last folder, never a folder */}
+          <p className="mb-1 text-sm font-medium">File names</p>
+          <p className="mb-2 text-xs text-muted-foreground">
+            The saved audio file lands inside the last folder:
+          </p>
+          <Input
+            value={fileTemplate}
+            onChange={(e) => setFileTemplate(e.target.value)}
+            className="mb-2 h-10 font-mono text-xs"
+            aria-label="File name template"
+            spellCheck={false}
+          />
+          <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto pb-1">
+            {["{track}", "{title}", "{artist}", "{album}", "{year}"].map((tok) => (
+              <button
+                key={tok}
+                onClick={() => {
+                  setFileTemplate(fileTemplate ? `${fileTemplate} ${tok}` : tok);
+                  toast({ description: `Added ${tok} to the file name` });
+                }}
+                className="shrink-0 rounded-full bg-secondary px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                {tok}
+              </button>
+            ))}
+            <button
+              onClick={() => setFileTemplate("{artist} - {title}")}
+              className="shrink-0 rounded-full px-2.5 py-1.5 text-[11px] text-muted-foreground transition hover:text-foreground"
+            >
+              Reset
+            </button>
+          </div>
           <div className="rounded-lg bg-secondary/60 p-2.5 font-mono text-[11px]">
             <p className="mb-1 text-muted-foreground">Preview</p>
             <p className="break-all text-primary" aria-live="polite">
-              {downloadPath.replace(/\/$/, "")}/{previewTemplate(folderTemplate || "--", {
-                country: "US",
-                genre: "Synthpop",
-                artist: "Midnight Arcade",
-                album: "Chrome City",
-                year: 2025,
-                title: "Night Circuit",
-                ext: downloadQuality === "flac" ? "flac" : "mp3",
-              })}
+              {downloadPath.replace(/\/$/, "")}/{renderFolderTemplate(folderTemplate || "--", SAMPLE_TRACK)}/
+              {renderFileTemplate(fileTemplate, SAMPLE_TRACK)}.{downloadQuality === "flac" ? "flac" : "mp3"}
             </p>
           </div>
         </div>
@@ -473,6 +512,82 @@ export function SettingsView() {
           title="Scan all folders"
           subtitle={`Rescans ${musicFolders.length} folder${musicFolders.length === 1 ? "" : "s"} for new songs`}
           onClick={() => toast({ description: `Library scan started — ${musicFolders.length} folder${musicFolders.length === 1 ? "" : "s"}, 34 songs found` })}
+          arrow
+        />
+      </div>
+
+      <SectionHeader icon={DatabaseBackup} title="Backup & restore" />
+      <div className="overflow-hidden rounded-2xl bg-wav-surface">
+        <Row
+          icon={DatabaseBackup}
+          title="Automatic backups"
+          subtitle="Playlists, queues, play counts & settings"
+          control={<Switch checked={backupEnabled} onCheckedChange={setBackupEnabled} aria-label="Automatic backups" />}
+        />
+        {backupEnabled && (
+          <>
+            <Separator />
+            <Row
+              icon={Timer}
+              title="Schedule"
+              subtitle={`Runs ${BACKUP_AUTO_LABELS[backupAuto].toLowerCase()}`}
+              control={
+                <div className="flex overflow-hidden rounded-full bg-secondary text-[11px] font-medium">
+                  {(Object.keys(BACKUP_AUTO_LABELS) as BackupAuto[]).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setBackupAuto(f)}
+                      className={cn("px-2 py-1.5 transition", backupAuto === f && "bg-primary text-primary-foreground")}
+                    >
+                      {f === "onLaunch" ? "Launch" : f === "onExit" ? "Exit" : BACKUP_AUTO_LABELS[f]}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
+          </>
+        )}
+        <Separator />
+        <div className="px-3 py-3">
+          <p className="mb-2 text-sm font-medium">Backup location</p>
+          <div className="flex gap-2">
+            <Input
+              value={backupPath}
+              onChange={(e) => setBackupPath(e.target.value)}
+              className="h-10 flex-1 font-mono text-xs"
+              aria-label="Backup path"
+              spellCheck={false}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 shrink-0"
+              onClick={() => toast({ description: "SAF folder picker opens here in the Flutter app" })}
+              aria-label="Choose backup folder"
+            >
+              <Folder className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">Default: {DEFAULT_BACKUP_PATH}</p>
+        </div>
+        <Separator />
+        <Row
+          icon={DatabaseBackup}
+          title="Back up now"
+          subtitle="One archive — library, playlists, counts, settings"
+          onClick={() =>
+            toast({
+              description: `Backup saved to ${backupPath || DEFAULT_BACKUP_PATH} — ${TRACKS.length} songs, playlists & settings included`,
+            })
+          }
+          arrow
+        />
+        <Separator />
+        <Row
+          icon={History}
+          title="Restore from backup"
+          subtitle="Pick a backup file — everything comes back"
+          onClick={() => toast({ description: "Restore runs on the installed app — pick a .wavely backup file" })}
           arrow
         />
       </div>
