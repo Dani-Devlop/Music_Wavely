@@ -15,6 +15,7 @@ import { AiChatView } from "./views/ai-chat-view";
 import { SettingsView } from "./views/settings-view";
 import { EqualizerView } from "./views/equalizer-view";
 import { NowPlaying } from "./now-playing";
+import { NowPlayingPanel } from "./now-playing-panel";
 import { QueueSheet } from "./queue-sheet";
 import { TrackActionsSheet } from "./track-actions-sheet";
 import { FolderActionsSheet } from "./folder-actions-sheet";
@@ -261,9 +262,23 @@ export function AppShell() {
   const isMobile = useIsMobile();
   const currentTrack = useCurrentTrack();
   const nowPlayingOpen = useWavely((s) => s.nowPlayingOpen);
+  const nowPlayingPanelOpen = useWavely((s) => s.nowPlayingPanelOpen);
   const eqOpen = useWavely((s) => s.eqOpen);
   const setEqOpen = useWavely((s) => s.setEqOpen);
   const showMini = !!currentTrack && !nowPlayingOpen;
+
+  /* tablets (768–1023px) share the phone's OS but get the desktop shell —
+     Spotify-iPad style. Auto-collapse the sidebar to the icon rail so the
+     content keeps room; the user can still expand it manually. */
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 768px) and (max-width: 1023px)");
+    const apply = () => {
+      if (mql.matches) useWavely.getState().setSidebarCollapsed(true);
+    };
+    apply();
+    mql.addEventListener("change", apply);
+    return () => mql.removeEventListener("change", apply);
+  }, []);
 
   return (
     <div
@@ -275,13 +290,18 @@ export function AppShell() {
       <PlaybackTicker />
       <NoticeBridge />
 
-      {/* desktop: sidebar + content float as rounded panels on black (Spotify shell) */}
+      {/* desktop/tablet: sidebar (+ optional now-playing panel) + content float as rounded panels on black (Spotify shell) */}
       <div className={cn("flex min-h-0 flex-1", !isMobile && "gap-2 px-2 pt-2")}>
         {!isMobile && <Sidebar />}
+        <AnimatePresence>
+          {!isMobile && nowPlayingPanelOpen && <NowPlayingPanel key="np-panel" />}
+        </AnimatePresence>
         <div
           className={cn(
-            "min-w-0 flex-1",
-            !isMobile && "flex overflow-hidden rounded-2xl bg-background",
+            // flex + overflow-hidden on every size: on phones without them the
+            // content pane grows past the shell and the page can never scroll
+            "flex min-w-0 flex-1 overflow-hidden",
+            !isMobile && "rounded-2xl bg-background",
           )}
         >
           <ViewContent />

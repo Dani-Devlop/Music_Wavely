@@ -380,3 +380,24 @@ export function fmtAge(releasedAt: number): string {
   if (days < 30) return `${Math.floor(days / 7)}w ago`;
   return `${Math.floor(days / 30)}mo ago`;
 }
+
+/** "1.2M" / "840K" style compact number label for global stream / reels counts. */
+export function fmtCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return `${n}`;
+}
+
+/**
+ * Instagram Reels trending — viral online picks ranked by reels usage.
+ * Each trend gets its own dedicated artwork so the cards read like
+ * real viral covers (user request: images as distinct as the Daily Mixes).
+ */
+export const INSTAGRAM_TRENDING: { trackId: string; cover: string; reels: number }[] = [
+  { trackId: "t35", cover: "/covers/insta-1.png", reels: 1_842_000 },
+  { trackId: "t44", cover: "/covers/insta-2.png", reels: 1_297_000 },
+  { trackId: "t39", cover: "/covers/insta-3.png", reels: 964_000 },
+  { trackId: "t43", cover: "/covers/insta-4.png", reels: 731_000 },
+  { trackId: "t37", cover: "/covers/insta-5.png", reels: 512_000 },
+  { trackId: "t46", cover: "/covers/insta-6.png", reels: 388_000 },
+];

@@ -89,7 +89,10 @@ export function CuratedCard({
 
 /** Square album card for release rails — optional age meta ("3d ago").
  *  `fluid`: on md+ the rail becomes an auto-fill grid → card fills the cell.
- *  `cover` is optional: without one an AI gradient tile is rendered. */
+ *  `cover` is optional: without one an AI gradient tile is rendered.
+ *  `rank` renders a chart position chip ("Top players" style cards).
+ *  The play FAB is hover-revealed on pointer devices and always visible on
+ *  touch devices (phones + tablets use the desktop grid without hover). */
 export function ReleaseCard({
   cover,
   title,
@@ -98,14 +101,16 @@ export function ReleaseCard({
   badge = "online",
   playing,
   fluid,
+  rank,
   onPlay,
 }: {
   cover?: string;
   title: string;
   meta: string;
-  badge?: "online" | "ai";
+  badge?: "online" | "ai" | "none";
   playing?: boolean;
   fluid?: boolean;
+  rank?: number;
   onPlay: () => void;
 }) {
   return (
@@ -134,7 +139,20 @@ export function ReleaseCard({
             <Sparkles className="h-3 w-3" /> AI mix
           </span>
         )}
-        <span className="absolute bottom-2 right-2 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-xl transition-all group-hover:translate-y-0 group-hover:opacity-100">
+        {typeof rank === "number" && (
+          <span
+            className={cn(
+              "absolute right-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 font-display text-xs font-extrabold tabular-nums backdrop-blur",
+              rank === 1
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/40"
+                : "bg-black/60 text-foreground",
+            )}
+            aria-label={`Rank ${rank}`}
+          >
+            {rank}
+          </span>
+        )}
+        <span className="absolute bottom-2 right-2 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-xl transition-all group-hover:translate-y-0 group-hover:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100">
           {playing ? <EqBars barClassName="bg-primary-foreground" /> : <Play className="h-5 w-5 fill-primary-foreground" />}
         </span>
       </div>

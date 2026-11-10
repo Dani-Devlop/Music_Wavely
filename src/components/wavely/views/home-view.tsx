@@ -10,11 +10,13 @@ import {
   ALBUMS,
   ARTISTS,
   FOLLOWED_ARTIST_IDS,
+  INSTAGRAM_TRENDING,
   MOODS,
   TRACKS,
   albumCover,
   artistById,
   fmtAge,
+  fmtCompact,
   trackById,
   tracksOfArtist,
 } from "@/lib/wavely/data";
@@ -35,6 +37,7 @@ import {
   Dumbbell,
   Flame,
   Heart,
+  Instagram,
   MoonStar,
   PartyPopper,
   Play,
@@ -626,14 +629,15 @@ function MoodsRow() {
   );
 }
 
-/* ---------------------------------------------------------------- */
-/* Charts — deterministic simulated ranking per week / month         */
-/* ---------------------------------------------------------------- */
-function ChartsSection() {
+/* ------------------------------------------------------------------ */
+/* Top players — the world's most streamed songs, per week / month      */
+/* ------------------------------------------------------------------ */
+function TopPlayersSection() {
   const playContext = useWavely((s) => s.playContext);
+  const currentTrack = useCurrentTrack();
   const [period, setPeriod] = useState<"week" | "month">("week");
 
-  const top5 = useMemo(() => {
+  const top = useMemo(() => {
     const bucket = period === "week" ? 604800000 : 2592000000;
     const slot = Math.floor(Date.now() / bucket);
     return TRACKS.filter((t) => t.origin === "online")
@@ -645,13 +649,13 @@ function ChartsSection() {
         return { t, score: t.playCount + (h % 37) };
       })
       .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
+      .slice(0, 6);
   }, [period]);
 
   return (
     <section>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-bold text-muted-foreground">Top streaming</h3>
+        <h3 className="text-sm font-bold text-muted-foreground">Top players</h3>
         <Segmented
           ariaLabel="Chart period"
           value={period}
@@ -662,32 +666,70 @@ function ChartsSection() {
           ]}
         />
       </div>
-      <div className="rounded-2xl bg-wav-surface/50 p-1.5">
-        {top5.map(({ t }, i) => (
-          <div key={t.id} className="flex items-center gap-3">
-            <span
-              className={cn(
-                "w-6 shrink-0 text-center font-display text-lg font-extrabold tabular-nums",
-                i === 0 ? "text-primary" : "text-muted-foreground",
-              )}
-              aria-hidden="true"
-            >
-              {i + 1}
-            </span>
-            <SongRow
-              track={t}
-              compact
-              onPlay={() =>
-                playContext(
-                  period === "week" ? "Top streaming · this week" : "Top streaming · this month",
-                  top5.map((x) => x.t.id),
-                  i,
-                )
-              }
-            />
-          </div>
+      <Rail label="Top players chart">
+        {top.map(({ t, score }, i) => (
+          <ReleaseCard
+            key={`${period}-${t.id}`}
+            fluid
+            rank={i + 1}
+            cover={albumCover(t.albumId)}
+            title={t.title}
+            meta={`${fmtCompact(240000 + score * 43000)} streams`}
+            playing={currentTrack?.id === t.id}
+            onPlay={() =>
+              playContext(
+                period === "week" ? "Top players · this week" : "Top players · this month",
+                top.map((x) => x.t.id),
+                i,
+              )
+            }
+          />
         ))}
+      </Rail>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Trending on Instagram — reels-viral picks with dedicated artwork     */
+/* ------------------------------------------------------------------ */
+function InstagramTrending() {
+  const playContext = useWavely((s) => s.playContext);
+  const currentTrack = useCurrentTrack();
+
+  const entries = useMemo(
+    () =>
+      INSTAGRAM_TRENDING.map((e) => ({ ...e, track: trackById.get(e.trackId) })).filter(
+        (e) => !!e.track,
+      ),
+    [],
+  );
+
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-muted-foreground">Trending on Instagram</h3>
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-rose-300">
+          <Instagram className="h-3 w-3" /> Reels
+        </span>
       </div>
+      <Rail label="Trending on Instagram">
+        {entries.map((e, i) => (
+          <ReleaseCard
+            key={e.trackId}
+            fluid
+            badge="none"
+            rank={i + 1}
+            cover={e.cover}
+            title={e.track.title}
+            meta={`${fmtCompact(e.reels)} reels`}
+            playing={currentTrack?.id === e.trackId}
+            onPlay={() =>
+              playContext("Trending on Instagram", entries.map((x) => x.trackId), i)
+            }
+          />
+        ))}
+      </Rail>
     </section>
   );
 }
@@ -777,7 +819,10 @@ export function HomeView() {
       {/* works offline — moods fall back to local/downloaded files */}
       <MoodsRow />
 
-      {!isOffline && <ChartsSection />}
+      {!isOffline && <TopPlayersSection />}
+
+      {/* reels-viral songs with their own trend artwork */}
+      {!isOffline && <InstagramTrending />}
 
       {/* works offline — recent artists from local listening history */}
       <RecentArtists />

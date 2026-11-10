@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
 import { albumCover, fmtTime } from "@/lib/wavely/data";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { EqBars } from "./eq-bars";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,9 @@ export function PlayerBar() {
   const favorites = useWavely((s) => s.favorites);
   const toggleFavorite = useWavely((s) => s.toggleFavorite);
   const setNowPlayingOpen = useWavely((s) => s.setNowPlayingOpen);
+  const nowPlayingPanelOpen = useWavely((s) => s.nowPlayingPanelOpen);
+  const setNowPlayingPanelOpen = useWavely((s) => s.setNowPlayingPanelOpen);
+  const isMobile = useIsMobile();
   const setQueueSheetOpen = useWavely((s) => s.setQueueSheetOpen);
   const setEqOpen = useWavely((s) => s.setEqOpen);
   const setSleepTimerOpen = useWavely((s) => s.setSleepTimerOpen);
@@ -49,6 +53,12 @@ export function PlayerBar() {
   const isFav = favorites.includes(track.id);
   const RepeatIcon = repeat === "one" ? Repeat1 : Repeat;
 
+  /** phone: full-screen now playing — desktop/tablet: Spotify-style left panel */
+  const toggleNowPlaying = () => {
+    if (isMobile) setNowPlayingOpen(true);
+    else setNowPlayingPanelOpen(!nowPlayingPanelOpen);
+  };
+
   return (
     <footer className="z-30 border-t border-border/70 bg-transparent">
       <div className="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3 md:grid-cols-[minmax(180px,1fr)_minmax(320px,2fr)_minmax(180px,1fr)] md:px-6">
@@ -56,10 +66,10 @@ export function PlayerBar() {
         <div
           role="button"
           tabIndex={0}
-          onClick={() => setNowPlayingOpen(true)}
-          onKeyDown={(e) => e.key === "Enter" && setNowPlayingOpen(true)}
+          onClick={toggleNowPlaying}
+          onKeyDown={(e) => e.key === "Enter" && toggleNowPlaying()}
           className="flex min-w-0 cursor-pointer items-center gap-3 text-left"
-          aria-label="Open now playing"
+          aria-label={isMobile ? "Open now playing" : "Toggle now playing panel"}
         >
           <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md">
             <Image src={albumCover(track.albumId)} alt="" fill sizes="48px" className="object-cover" />
@@ -132,7 +142,14 @@ export function PlayerBar() {
 
         {/* right: function icons */}
         <div className="hidden items-center justify-end gap-0.5 md:flex">
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setNowPlayingOpen(true)} aria-label="Lyrics">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-8 w-8 rounded-full", !isMobile && nowPlayingPanelOpen && "text-primary")}
+            onClick={toggleNowPlaying}
+            aria-label={isMobile ? "Lyrics" : "Toggle now playing panel"}
+            aria-pressed={!isMobile ? nowPlayingPanelOpen : undefined}
+          >
             <Mic2 className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setQueueSheetOpen(true)} aria-label="Queue">

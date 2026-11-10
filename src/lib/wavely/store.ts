@@ -129,6 +129,8 @@ interface WavelyState {
 
   /* overlays */
   nowPlayingOpen: boolean;
+  /** desktop/tablet Spotify-style left panel showing the current track (mic button) */
+  nowPlayingPanelOpen: boolean;
   queueSheetOpen: boolean;
   eqOpen: boolean;
   sleepTimerOpen: boolean;
@@ -137,6 +139,7 @@ interface WavelyState {
   /** Musicolet-style "long-press a folder" sheet — the folder path it is open for */
   folderActionsPath: string | null;
   setNowPlayingOpen: (v: boolean) => void;
+  setNowPlayingPanelOpen: (v: boolean) => void;
   setQueueSheetOpen: (v: boolean) => void;
   setEqOpen: (v: boolean) => void;
   setSleepTimerOpen: (v: boolean) => void;
@@ -308,6 +311,7 @@ export const useWavely = create<WavelyState>((set, get) => ({
   history: [...INITIAL_HISTORY],
 
   nowPlayingOpen: false,
+  nowPlayingPanelOpen: false,
   queueSheetOpen: false,
   eqOpen: false,
   sleepTimerOpen: false,
@@ -315,6 +319,7 @@ export const useWavely = create<WavelyState>((set, get) => ({
   setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
   actionsTrackId: null,
   setNowPlayingOpen: (v) => set({ nowPlayingOpen: v }),
+  setNowPlayingPanelOpen: (v) => set({ nowPlayingPanelOpen: v }),
   setQueueSheetOpen: (v) => set({ queueSheetOpen: v }),
   setEqOpen: (v) => set({ eqOpen: v }),
   setSleepTimerOpen: (v) => set({ sleepTimerOpen: v }),
