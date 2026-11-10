@@ -1,0 +1,764 @@
+     1→"use client";
+     2→
+     3→import Image from "next/image";
+     4→import { useMemo, useState } from "react";
+     5→import { motion } from "framer-motion";
+     6→import { SongRow } from "../song-row";
+     7→import { CuratedCard, ReleaseCard } from "../cards";
+     8→import { OfflineBanner } from "../source-mode-chips";
+     9→import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
+    10→import {
+    11→  ALBUMS,
+    12→  ARTISTS,
+    13→  FOLLOWED_ARTIST_IDS,
+    14→  MOODS,
+    15→  TRACKS,
+    16→  albumCover,
+    17→  artistById,
+    18→  fmtAge,
+    19→  trackById,
+    20→  tracksOfArtist,
+    21→} from "@/lib/wavely/data";
+    22→import type { MoodDef } from "@/lib/wavely/data";
+    23→import type { Artist } from "@/lib/wavely/types";
+    24→import { Button } from "@/components/ui/button";
+    25→import { useToast } from "@/hooks/use-toast";
+    26→import { cn } from "@/lib/utils";
+    27→import {
+    28→  ArrowDownToLine,
+    29→  ArrowRight,
+    30→  Brain,
+    31→  Car,
+    32→  ChevronRight,
+    33→  CloudDownload,
+    34→  CloudOff,
+    35→  Coffee,
+    36→  Dumbbell,
+    37→  Flame,
+    38→  Heart,
+    39→  MoonStar,
+    40→  PartyPopper,
+    41→  Play,
+    42→  Sparkles,
+    43→} from "lucide-react";
+    44→import type { LucideIcon } from "lucide-react";
+    45→
+    46→function greeting(): string {
+    47→  const h = new Date().getHours();
+    48→  if (h < 5) return "Good night";
+    49→  if (h < 12) return "Good morning";
+    50→  if (h < 17) return "Good afternoon";
+    51→  if (h < 22) return "Good evening";
+    52→  return "Good night";
+    53→}
+    54→
+    55→function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
+    56→  return (
+    57→    <div className="mb-3 flex items-center justify-between">
+    58→      <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">{title}</h2>
+    59→      {action}
+    60→    </div>
+    61→  );
+    62→}
+    63→
+    64→/** Shared pill toggle for section-level windows ("1 week / 2 weeks / 1 month"). */
+    65→function Segmented<T extends string | number>({
+    66→  options,
+    67→  value,
+    68→  onChange,
+    69→  ariaLabel,
+    70→}: {
+    71→  options: ReadonlyArray<{ value: T; label: string }>;
+    72→  value: T;
+    73→  onChange: (v: T) => void;
+    74→  ariaLabel: string;
+    75→}) {
+    76→  return (
+    77→    <div className="flex shrink-0 items-center gap-1" role="group" aria-label={ariaLabel}>
+    78→      {options.map((o) => (
+    79→        <button
+    80→          key={o.value}
+    81→          onClick={() => onChange(o.value)}
+    82→          aria-pressed={value === o.value}
+    83→          className={cn(
+    84→            "h-7 rounded-full px-3 text-[11px] font-bold transition",
+    85→            value === o.value
+    86→              ? "bg-primary text-primary-foreground"
+    87→              : "bg-secondary text-muted-foreground hover:bg-accent",
+    88→          )}
+    89→        >
+    90→          {o.label}
+    91→        </button>
+    92→      ))}
+    93→    </div>
+    94→  );
+    95→}
+    96→
+    97→/* ---------------------------------------------------------------- */
+    98→/* Compact header — avatar + greeting + search, one row, no waste    */
+    99→/* ---------------------------------------------------------------- */
+   100→function HomeHeader() {
+   101→  const setView = useWavely((s) => s.setView);
+   102→  return (
+   103→    <header className="sticky top-0 z-20 -mx-4 bg-background/85 px-4 pb-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-xl md:-mx-8 md:px-8">
+   104→      <div className="flex items-center gap-3">
+   105→        <button
+   106→          onClick={() => setView("settings")}
+   107→          className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/40 transition hover:ring-primary"
+   108→          aria-label="Open profile"
+   109→        >
+   110→          <Image src="/wavely/avatar.png" alt="Your profile" fill sizes="40px" className="object-cover" />
+   111→        </button>
+   112→        <div className="min-w-0 flex-1">
+   113→          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+   114→            {greeting()}
+   115→          </p>
+   116→          <h1 className="truncate font-display text-xl font-extrabold leading-tight tracking-tight">
+   117→            Hi, Dani
+   118→          </h1>
+   119→        </div>
+   120→        <button
+   121→          onClick={() => setView("search")}
+   122→          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wav-elevated text-foreground transition hover:bg-accent"
+   123→          aria-label="Search"
+   124→        >
+   125→          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-5 w-5" aria-hidden="true">
+   126→            <circle cx="11" cy="11" r="7" />
+   127→            <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+   128→          </svg>
+   129→        </button>
+   130→      </div>
+   131→    </header>
+   132→  );
+   133→}
+   134→
+   135→/* ---------------------------------------------------------------- */
+   136→/* Shortcut chips — one-tap jumps into the library's smart views     */
+   137→/* ---------------------------------------------------------------- */
+   138→function ShortcutChips() {
+   139→  const setView = useWavely((s) => s.setView);
+   140→  const setLibraryTab = useWavely((s) => s.setLibraryTab);
+   141→  const setSongSort = useWavely((s) => s.setSongSort);
+   142→  const setSongFilter = useWavely((s) => s.setSongFilter);
+   143→  const favCount = useWavely((s) => s.favorites.length);
+   144→  const cachedCount = useWavely((s) => s.cachedIds.length);
+   145→  // recomputed on every render (Home remounts on navigation) → stays fresh after saves
+   146→  const savedCount = TRACKS.filter((t) => t.downloaded).length;
+   147→
+   148→  const chip =
+   149→    "flex h-9 shrink-0 snap-start items-center gap-1.5 rounded-full bg-secondary/70 px-4 text-xs font-semibold transition hover:bg-accent active:scale-[0.98]";
+   150→  const count = "rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold tabular-nums";
+   151→
+   152→  return (
+   153→    <div
+   154→      className="no-scrollbar -mx-4 flex snap-x gap-2 overflow-x-auto px-4 md:mx-0 md:px-0"
+   155→      role="group"
+   156→      aria-label="Library shortcuts"
+   157→    >
+   158→      <button
+   159→        className={chip}
+   160→        onClick={() => {
+   161→          setLibraryTab("favorites");
+   162→          setSongFilter("all");
+   163→          setView("library");
+   164→        }}
+   165→        aria-label="Open liked songs in library"
+   166→      >
+   167→        <Heart className="h-3.5 w-3.5" /> Liked songs
+   168→        <span className={count}>{favCount}</span>
+   169→      </button>
+   170→      <button
+   171→        className={chip}
+   172→        onClick={() => {
+   173→          setLibraryTab("songs");
+   174→          setSongSort("date-added");
+   175→          setSongFilter("saved");
+   176→          setView("library");
+   177→        }}
+   178→        aria-label="Open saved downloads in library"
+   179→      >
+   180→        <ArrowDownToLine className="h-3.5 w-3.5" /> Saved
+   181→        <span className={count}>{savedCount}</span>
+   182→      </button>
+   183→      <button
+   184→        className={chip}
+   185→        onClick={() => {
+   186→          setLibraryTab("songs");
+   187→          setSongFilter("all");
+   188→          setSongSort("play-count");
+   189→          setView("library");
+   190→        }}
+   191→        aria-label="Open most played songs in library"
+   192→      >
+   193→        <Flame className="h-3.5 w-3.5" /> Most played
+   194→      </button>
+   195→      <button
+   196→        className={chip}
+   197→        onClick={() => {
+   198→          setLibraryTab("songs");
+   199→          setSongFilter("cached");
+   200→          setView("library");
+   201→        }}
+   202→        aria-label="Open cached streaming songs in library"
+   203→      >
+   204→        <CloudDownload className="h-3.5 w-3.5" /> Cached
+   205→        <span className={count}>{cachedCount}</span>
+   206→      </button>
+   207→    </div>
+   208→  );
+   209→}
+   210→
+   211→/* ---------------------------------------------------------------- */
+   212→/* Liked & favorites — one combined home for both worlds             */
+   213→/* online rows keep their ☁ badge; liking happens via the ⋯ sheet.   */
+   214→/* ---------------------------------------------------------------- */
+   215→function LikedSection({
+   216→  favIds,
+   217→  onOpen,
+   218→}: {
+   219→  favIds: string[];
+   220→  onOpen: () => void;
+   221→}) {
+   222→  const playContext = useWavely((s) => s.playContext);
+   223→  const toggleShuffle = useWavely((s) => s.toggleShuffle);
+   224→
+   225→  const shuffleLiked = () => {
+   226→    if (favIds.length === 0) return;
+   227→    playContext("Liked songs", favIds, Math.floor(Math.random() * favIds.length));
+   228→    if (!useWavely.getState().shuffle) toggleShuffle();
+   229→  };
+   230→
+   231→  return (
+   232→    <section>
+   233→      <SectionHeader
+   234→        title="Liked & favorites"
+   235→        action={
+   236→          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={onOpen}>
+   237→            See all
+   238→          </Button>
+   239→        }
+   240→      />
+   241→      <div className="grid gap-2 sm:grid-cols-2">
+   242→        <motion.button
+   243→          whileTap={{ scale: 0.985 }}
+   244→          onClick={onOpen}
+   245→          className="group relative flex min-h-40 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-primary/45 via-primary/18 to-transparent p-4 text-left"
+   246→          aria-label="Open liked songs"
+   247→        >
+   248→          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg accent-glow">
+   249→            <Heart className="h-5 w-5 fill-primary-foreground" />
+   250→          </span>
+   251→          <span className="mt-4 block">
+   252→            <span className="block font-display text-lg font-bold">Liked songs</span>
+   253→            <span className="mt-0.5 block text-xs text-muted-foreground">
+   254→              {favIds.length} songs — whatever you love, in one place
+   255→            </span>
+   256→          </span>
+   257→          <span
+   258→            role="button"
+   259→            tabIndex={0}
+   260→            onClick={(e) => {
+   261→              e.stopPropagation();
+   262→              shuffleLiked();
+   263→            }}
+   264→            onKeyDown={(e) => {
+   265→              if (e.key === "Enter") {
+   266→                e.stopPropagation();
+   267→                shuffleLiked();
+   268→              }
+   269→            }}
+   270→            className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-xl transition-all hover:scale-105 focus-visible:opacity-100 group-hover:opacity-100"
+   271→            aria-label="Shuffle liked songs"
+   272→          >
+   273→            <Play className="ml-0.5 h-5 w-5 fill-primary-foreground" />
+   274→          </span>
+   275→        </motion.button>
+   276→
+   277→        <div className="flex flex-col justify-center rounded-2xl bg-wav-surface/60 p-1.5">
+   278→          {favIds.slice(0, 3).map((id) => {
+   279→            const t = trackById.get(id)!;
+   280→            return (
+   281→              <SongRow
+   282→                key={id}
+   283→                track={t}
+   284→                compact
+   285→                onPlay={() => playContext("Liked songs", favIds, favIds.indexOf(id))}
+   286→              />
+   287→            );
+   288→          })}
+   289→          {favIds.length > 3 && (
+   290→            <button
+   291→              onClick={onOpen}
+   292→              className="flex items-center gap-1.5 px-2 pb-1.5 pt-1 text-xs font-semibold text-muted-foreground transition hover:text-primary"
+   293→            >
+   294→              +{favIds.length - 3} more <ChevronRight className="h-3 w-3" />
+   295→            </button>
+   296→          )}
+   297→        </div>
+   298→      </div>
+   299→    </section>
+   300→  );
+   301→}
+   302→
+   303→/* ---------------------------------------------------------------- */
+   304→/* OFFLINE world — cached streaming songs still play & can be saved  */
+   305→/* ---------------------------------------------------------------- */
+   306→function OfflineCachedSection() {
+   307→  const playContext = useWavely((s) => s.playContext);
+   308→  const cachedIds = useWavely((s) => s.cachedIds);
+   309→  const cachedTracks = useMemo(
+   310→    () => cachedIds.map((id) => trackById.get(id)!).filter(Boolean),
+   311→    [cachedIds],
+   312→  );
+   313→
+   314→  return (
+   315→    <section className="space-y-2">
+   316→      <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-300/90">
+   317→        <CloudOff className="h-4 w-4 shrink-0" />
+   318→        <p>
+   319→          Online discovery is hidden while you&apos;re offline. Songs cached from streaming below
+   320→          still play — and can be saved instantly.
+   321→        </p>
+   322→      </div>
+   323→      {cachedTracks.length > 0 && (
+   324→        <div className="rounded-2xl bg-wav-surface/50 p-1.5">
+   325→          <p className="px-2 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+   326→            Cached from streaming — {cachedTracks.length} song{cachedTracks.length > 1 ? "s" : ""}
+   327→          </p>
+   328→          {cachedTracks.map((t, i) => (
+   329→            <SongRow
+   330→              key={t.id}
+   331→              track={t}
+   332→              index={i}
+   333→              compact
+   334→              onPlay={() => playContext("Cached songs", cachedIds, i)}
+   335→            />
+   336→          ))}
+   337→        </div>
+   338→      )}
+   339→    </section>
+   340→  );
+   341→}
+   342→
+   343→/* ---------------------------------------------------------------- */
+   344→/* New for you — online release timeline with a time-window switch   */
+   345→/* ---------------------------------------------------------------- */
+   346→function NewForYou() {
+   347→  const playContext = useWavely((s) => s.playContext);
+   348→  const currentTrack = useCurrentTrack();
+   349→  const [win, setWin] = useState<7 | 14 | 30>(7);
+   350→
+   351→  const releases = useMemo(() => {
+   352→    const now = Date.now();
+   353→    return ALBUMS.filter(
+   354→      (a) => a.origin === "online" && a.releasedAt && now - a.releasedAt <= win * 86400000,
+   355→    ).sort((a, b) => {
+   356→      const fa = FOLLOWED_ARTIST_IDS.includes(a.artistId) ? 0 : 1;
+   357→      const fb = FOLLOWED_ARTIST_IDS.includes(b.artistId) ? 0 : 1;
+   358→      // followed artists first, then newest release wins
+   359→      return fa !== fb ? fa - fb : (b.releasedAt ?? 0) - (a.releasedAt ?? 0);
+   360→    });
+   361→  }, [win]);
+   362→
+   363→  return (
+   364→    <section>
+   365→      <div className="mb-2 flex items-center justify-between gap-3">
+   366→        <h3 className="text-sm font-bold text-muted-foreground">New for you</h3>
+   367→        <Segmented
+   368→          ariaLabel="New release time window"
+   369→          value={win}
+   370→          onChange={setWin}
+   371→          options={[
+   372→            { value: 7, label: "1 week" },
+   373→            { value: 14, label: "2 weeks" },
+   374→            { value: 30, label: "1 month" },
+   375→          ]}
+   376→        />
+   377→      </div>
+   378→      {releases.length === 0 ? (
+   379→        <p className="rounded-xl bg-wav-surface/60 px-4 py-3 text-xs text-muted-foreground">
+   380→          Nothing dropped in this window — try 1 month
+   381→        </p>
+   382→      ) : (
+   383→        <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+   384→          {releases.map((a) => (
+   385→            <ReleaseCard
+   386→              key={a.id}
+   387→              cover={a.cover}
+   388→              title={a.title}
+   389→              meta={`${a.artist} • ${fmtAge(a.releasedAt!)}`}
+   390→              playing={currentTrack?.albumId === a.id}
+   391→              onPlay={() =>
+   392→                playContext(
+   393→                  a.title,
+   394→                  TRACKS.filter((t) => t.albumId === a.id).map((t) => t.id),
+   395→                  0,
+   396→                )
+   397→              }
+   398→            />
+   399→          ))}
+   400→        </div>
+   401→      )}
+   402→    </section>
+   403→  );
+   404→}
+   405→
+   406→/* ---------------------------------------------------------------- */
+   407→/* Daily mixes — top genres rebuilt as AI-style radios               */
+   408→/* ---------------------------------------------------------------- */
+   409→function DailyMixes() {
+   410→  const playContext = useWavely((s) => s.playContext);
+   411→
+   412→  const mixes = useMemo(() => {
+   413→    // top 3 genres by summed playCount across the whole catalogue (local + online)
+   414→    const playsByGenre = new Map<string, number>();
+   415→    for (const t of TRACKS) playsByGenre.set(t.genre, (playsByGenre.get(t.genre) ?? 0) + t.playCount);
+   416→    const topGenres = [...playsByGenre.entries()]
+   417→      .sort((a, b) => b[1] - a[1])
+   418→      .slice(0, 3)
+   419→      .map(([genre]) => genre);
+   420→    return topGenres.map((genre, i) => {
+   421→      const mix = TRACKS.filter((t) => t.genre === genre)
+   422→        .sort((a, b) => b.playCount - a.playCount)
+   423→        .slice(0, 8);
+   424→      return {
+   425→        name: `Daily Mix ${i + 1}`,
+   426→        ids: mix.map((t) => t.id),
+   427→        // cover = album of the genre's most-played track (mix is sorted by plays)
+   428→        cover: albumCover(mix[0]?.albumId ?? ""),
+   429→        meta: `${genre} • ${mix.length} songs`,
+   430→      };
+   431→    });
+   432→  }, []);
+   433→
+   434→  return (
+   435→    <section>
+   436→      <div className="mb-2 flex items-center justify-between">
+   437→        <h3 className="text-sm font-bold text-muted-foreground">Daily mixes</h3>
+   438→        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+   439→          <Sparkles className="h-3 w-3" /> AI-built
+   440→        </span>
+   441→      </div>
+   442→      <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+   443→        {mixes.map((m) => (
+   444→          <ReleaseCard
+   445→            key={m.name}
+   446→            cover={m.cover}
+   447→            title={m.name}
+   448→            meta={m.meta}
+   449→            badge="ai"
+   450→            onPlay={() => playContext(m.name, m.ids, Math.floor(Math.random() * m.ids.length))}
+   451→          />
+   452→        ))}
+   453→      </div>
+   454→    </section>
+   455→  );
+   456→}
+   457→
+   458→/* ---------------------------------------------------------------- */
+   459→/* Made for you — Wavely Weekly + AI DJ (was part of ExploreSection)  */
+   460→/* ---------------------------------------------------------------- */
+   461→const DISCOVER_MIX = ["t01", "t35", "t13", "t43", "t26", "t39", "t09", "t31", "t22", "t17"];
+   462→
+   463→function MadeForYou() {
+   464→  const playContext = useWavely((s) => s.playContext);
+   465→  const setView = useWavely((s) => s.setView);
+   466→
+   467→  return (
+   468→    <section>
+   469→      <h3 className="mb-2 text-sm font-bold text-muted-foreground">Made for you</h3>
+   470→      <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+   471→        <CuratedCard
+   472→          image="/wavely/curated-1.png"
+   473→          badge="ai"
+   474→          title="Wavely Weekly"
+   475→          subtitle="Fresh picks built from what you play — updated every Monday."
+   476→          onPlay={() => playContext("Wavely Weekly", DISCOVER_MIX, 0)}
+   477→        />
+   478→        <CuratedCard
+   479→          badge="ai"
+   480→          title="Wavely AI DJ"
+   481→          subtitle="Ask for a playlist, song facts, or just say “surprise me”."
+   482→          onPlay={() => setView("ai")}
+   483→        />
+   484→      </div>
+   485→    </section>
+   486→  );
+   487→}
+   488→
+   489→/* ---------------------------------------------------------------- */
+   490→/* Moods & moments — genre radios that also work offline             */
+   491→/* ---------------------------------------------------------------- */
+   492→const MOOD_ICONS: Record<MoodDef["id"], LucideIcon> = {
+   493→  focus: Brain,
+   494→  workout: Dumbbell,
+   495→  drive: Car,
+   496→  chill: Coffee,
+   497→  party: PartyPopper,
+   498→  tehran: MoonStar,
+   499→};
+   500→
+   501→const MOOD_TINTS = [
+   502→  "bg-primary/12 text-primary",
+   503→  "bg-amber-500/12 text-amber-300",
+   504→  "bg-teal-500/12 text-teal-300",
+   505→  "bg-rose-500/12 text-rose-300",
+   506→  "bg-violet-500/12 text-violet-300",
+   507→  "bg-sky-400/12 text-sky-300",
+   508→];
+   509→
+   510→function MoodsRow() {
+   511→  const isOffline = useWavely((s) => s.isOffline);
+   512→  const playContext = useWavely((s) => s.playContext);
+   513→  const { toast } = useToast();
+   514→
+   515→  // playable song count per mood (offline shrinks the pool to local/downloaded)
+   516→  const counts = useMemo(() => {
+   517→    const out: Record<string, number> = {};
+   518→    for (const m of MOODS) {
+   519→      const candidates = TRACKS.filter((t) => m.genres.includes(t.genre));
+   520→      out[m.id] = isOffline
+   521→        ? candidates.filter((t) => t.origin === "local" || t.downloaded).length
+   522→        : candidates.length;
+   523→    }
+   524→    return out;
+   525→  }, [isOffline]);
+   526→
+   527→  const playMood = (mood: MoodDef) => {
+   528→    let ids = TRACKS.filter((t) => mood.genres.includes(t.genre));
+   529→    if (isOffline) ids = ids.filter((t) => t.origin === "local" || t.downloaded);
+   530→    if (ids.length === 0) {
+   531→      toast({ description: "This mood needs online tracks" });
+   532→      return;
+   533→    }
+   534→    playContext(mood.label, ids.map((t) => t.id), Math.floor(Math.random() * ids.length));
+   535→  };
+   536→
+   537→  return (
+   538→    <section>
+   539→      <h3 className="mb-2 text-sm font-bold text-muted-foreground">Moods & moments</h3>
+   540→      <div className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+   541→        {MOODS.map((mood, i) => {
+   542→          const Icon = MOOD_ICONS[mood.id];
+   543→          return (
+   544→            <button
+   545→              key={mood.id}
+   546→              onClick={() => playMood(mood)}
+   547→              className="flex shrink-0 snap-start items-center gap-2.5 rounded-2xl bg-wav-surface px-4 py-3 transition hover:bg-accent active:scale-[0.98]"
+   548→              aria-label={`Play the ${mood.label} mood`}
+   549→            >
+   550→              <span
+   551→                className={cn(
+   552→                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+   553→                  MOOD_TINTS[i % MOOD_TINTS.length],
+   554→                )}
+   555→              >
+   556→                <Icon className="h-5 w-5" />
+   557→              </span>
+   558→              <span className="min-w-0 text-left">
+   559→                <span className="block whitespace-nowrap text-xs font-bold">{mood.label}</span>
+   560→                <span className="block whitespace-nowrap text-[10px] text-muted-foreground">
+   561→                  {counts[mood.id] ?? 0} songs
+   562→                </span>
+   563→              </span>
+   564→            </button>
+   565→          );
+   566→        })}
+   567→      </div>
+   568→    </section>
+   569→  );
+   570→}
+   571→
+   572→/* ---------------------------------------------------------------- */
+   573→/* Charts — deterministic simulated ranking per week / month         */
+   574→/* ---------------------------------------------------------------- */
+   575→function ChartsSection() {
+   576→  const playContext = useWavely((s) => s.playContext);
+   577→  const [period, setPeriod] = useState<"week" | "month">("week");
+   578→
+   579→  const top5 = useMemo(() => {
+   580→    const bucket = period === "week" ? 604800000 : 2592000000;
+   581→    const slot = Math.floor(Date.now() / bucket);
+   582→    return TRACKS.filter((t) => t.origin === "online")
+   583→      .map((t) => {
+   584→        // stable pseudo-random bump per period — same ranking all week/month
+   585→        const seed = `${t.id}:${period}:${slot}`;
+   586→        let h = 0;
+   587→        for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+   588→        return { t, score: t.playCount + (h % 37) };
+   589→      })
+   590→      .sort((a, b) => b.score - a.score)
+   591→      .slice(0, 5);
+   592→  }, [period]);
+   593→
+   594→  return (
+   595→    <section>
+   596→      <div className="mb-2 flex items-center justify-between gap-3">
+   597→        <h3 className="text-sm font-bold text-muted-foreground">Top streaming</h3>
+   598→        <Segmented
+   599→          ariaLabel="Chart period"
+   600→          value={period}
+   601→          onChange={setPeriod}
+   602→          options={[
+   603→            { value: "week", label: "This week" },
+   604→            { value: "month", label: "This month" },
+   605→          ]}
+   606→        />
+   607→      </div>
+   608→      <div className="rounded-2xl bg-wav-surface/50 p-1.5">
+   609→        {top5.map(({ t }, i) => (
+   610→          <div key={t.id} className="flex items-center gap-3">
+   611→            <span
+   612→              className={cn(
+   613→                "w-6 shrink-0 text-center font-display text-lg font-extrabold tabular-nums",
+   614→                i === 0 ? "text-primary" : "text-muted-foreground",
+   615→              )}
+   616→              aria-hidden="true"
+   617→            >
+   618→              {i + 1}
+   619→            </span>
+   620→            <SongRow
+   621→              track={t}
+   622→              compact
+   623→              onPlay={() =>
+   624→                playContext(
+   625→                  period === "week" ? "Top streaming · this week" : "Top streaming · this month",
+   626→                  top5.map((x) => x.t.id),
+   627→                  i,
+   628→                )
+   629→              }
+   630→            />
+   631→          </div>
+   632→        ))}
+   633→      </div>
+   634→    </section>
+   635→  );
+   636→}
+   637→
+   638→/* ---------------------------------------------------------------- */
+   639→/* Recent artists — from listening history, backfilled by plays      */
+   640→/* ---------------------------------------------------------------- */
+   641→function RecentArtists() {
+   642→  const history = useWavely((s) => s.history);
+   643→  const playContext = useWavely((s) => s.playContext);
+   644→
+   645→  const artists = useMemo(() => {
+   646→    const picked: Artist[] = [];
+   647→    const seen = new Set<string>();
+   648→    // unique artists in most-recent-first history order
+   649→    for (const id of history) {
+   650→      const t = trackById.get(id);
+   651→      if (!t || seen.has(t.artistId)) continue;
+   652→      const a = artistById.get(t.artistId);
+   653→      if (a) {
+   654→        seen.add(a.id);
+   655→        picked.push(a);
+   656→        if (picked.length >= 8) return picked;
+   657→      }
+   658→    }
+   659→    // thin history → backfill with the most-played artists not picked yet
+   660→    if (picked.length < 4) {
+   661→      const byPlays = ARTISTS.filter((a) => !seen.has(a.id))
+   662→        .map((a) => ({ a, plays: tracksOfArtist(a.id).reduce((sum, t) => sum + t.playCount, 0) }))
+   663→        .sort((x, y) => y.plays - x.plays);
+   664→      for (const { a } of byPlays) {
+   665→        picked.push(a);
+   666→        if (picked.length >= 8) break;
+   667→      }
+   668→    }
+   669→    return picked;
+   670→  }, [history]);
+   671→
+   672→  return (
+   673→    <section>
+   674→      <h3 className="mb-2 text-sm font-bold text-muted-foreground">Recent artists</h3>
+   675→      <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+   676→        {artists.map((a) => (
+   677→          <button
+   678→            key={a.id}
+   679→            onClick={() => playContext(a.name, tracksOfArtist(a.id).map((t) => t.id), 0)}
+   680→            className="flex w-20 shrink-0 snap-start flex-col items-center gap-1.5"
+   681→            aria-label={`Play ${a.name}`}
+   682→          >
+   683→            <span className="relative block h-16 w-16 overflow-hidden rounded-full ring-1 ring-border transition hover:ring-2 hover:ring-primary">
+   684→              <Image src={a.image} alt="" fill sizes="64px" className="object-cover" />
+   685→            </span>
+   686→            <span className="w-full truncate text-center text-[11px] text-muted-foreground">
+   687→              {a.name}
+   688→            </span>
+   689→          </button>
+   690→        ))}
+   691→      </div>
+   692→    </section>
+   693→  );
+   694→}
+   695→
+   696→/* ---------------------------------------------------------------- */
+   697→/* Home view                                                         */
+   698→/* ---------------------------------------------------------------- */
+   699→export function HomeView() {
+   700→  const setView = useWavely((s) => s.setView);
+   701→  const isOffline = useWavely((s) => s.isOffline);
+   702→
+   703→  const favIds = useWavely((s) => s.favorites);
+   704→
+   705→  return (
+   706→    <div className="mx-auto w-full max-w-md space-y-6 px-4 pb-10 md:max-w-3xl md:px-8 lg:max-w-5xl">
+   707→      <HomeHeader />
+   708→
+   709→      <OfflineBanner />
+   710→
+   711→      {/* one-tap library shortcuts */}
+   712→      <ShortcutChips />
+   713→
+   714→      {/* offline: cached streaming songs stay playable (replaces online discovery) */}
+   715→      {isOffline && <OfflineCachedSection />}
+   716→
+   717→      {/* combined likes — local & online side by side */}
+   718→      <LikedSection
+   719→        favIds={favIds}
+   720→        onOpen={() => {
+   721→          useWavely.getState().setLibraryTab("favorites");
+   722→          useWavely.getState().setView("library");
+   723→        }}
+   724→      />
+   725→
+   726→      {/* online world — Spotify style */}
+   727→      {!isOffline && <NewForYou />}
+   728→      {!isOffline && <DailyMixes />}
+   729→      {!isOffline && <MadeForYou />}
+   730→
+   731→      {/* works offline — moods fall back to local/downloaded files */}
+   732→      <MoodsRow />
+   733→
+   734→      {!isOffline && <ChartsSection />}
+   735→
+   736→      {/* works offline — recent artists from local listening history */}
+   737→      <RecentArtists />
+   738→
+   739→      {/* AI DJ strip (desktop) */}
+   740→      {!isOffline && (
+   741→        <button
+   742→          onClick={() => setView("ai")}
+   743→          className="group hidden w-full items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-primary/25 via-primary/10 to-transparent p-5 text-left transition hover:from-primary/35 md:flex"
+   744→        >
+   745→          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg accent-glow">
+   746→            <Sparkles className="h-5 w-5" />
+   747→          </div>
+   748→          <div className="min-w-0 flex-1">
+   749→            <h3 className="font-display text-base font-bold">Wavely AI DJ</h3>
+   750→            <p className="truncate text-sm text-muted-foreground">
+   751→              Your assistant lives in the navbar — playlists, trivia, discoveries.
+   752→            </p>
+   753→          </div>
+   754→          <ArrowRight className="h-5 w-5 shrink-0 text-primary transition-transform group-hover:translate-x-1" />
+   755→        </button>
+   756→      )}
+   757→
+   758→      <footer className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-2 pt-2 text-center text-xs text-muted-foreground">
+   759→        Wavely prototype • Musicolet UX × Spotify design • v1.0.3-preview
+   760→      </footer>
+   761→    </div>
+   762→  );
+   763→}
+   764→
