@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
 import { Mic2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 export function LyricsPanel() {
@@ -11,6 +12,7 @@ export function LyricsPanel() {
   const position = useWavely((s) => s.position);
   const seek = useWavely((s) => s.seek);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const activeIndex = useMemo(() => {
     if (!track?.lyrics?.length) return -1;
@@ -40,7 +42,13 @@ export function LyricsPanel() {
             Wavely checks embedded tags first, then .lrc files, then LRCLIB online.
           </p>
         </div>
-        <Button variant="outline" className="gap-2 rounded-full">
+        <Button
+          variant="outline"
+          className="gap-2 rounded-full"
+          onClick={() =>
+            toast({ description: "Lyrics search (LRCLIB) — coming with the Wavely lyrics pipeline" })
+          }
+        >
           <Search className="h-4 w-4" /> Search on LRCLIB
         </Button>
       </div>

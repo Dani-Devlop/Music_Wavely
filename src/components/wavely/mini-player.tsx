@@ -4,6 +4,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
 import { albumCover } from "@/lib/wavely/data";
+import { useIsBigLandscape } from "@/hooks/use-mobile";
 import { EqBars } from "./eq-bars";
 import { Slider } from "@/components/ui/slider";
 import { Pause, Play, SkipForward } from "lucide-react";
@@ -18,6 +19,7 @@ export function MiniPlayer() {
   const position = useWavely((s) => s.position);
   const setNowPlayingOpen = useWavely((s) => s.setNowPlayingOpen);
   const nowPlayingOpen = useWavely((s) => s.nowPlayingOpen);
+  const bigLandscape = useIsBigLandscape();
 
   if (!track || nowPlayingOpen) return null;
 
@@ -32,6 +34,8 @@ export function MiniPlayer() {
       className="fixed inset-x-2 z-30"
       style={{ bottom: "calc(env(safe-area-inset-bottom) + 4.75rem)" }}
     >
+      {/* on big landscape (phone layout on a laptop) center the pill */}
+      <div className={cn("mx-auto w-full", bigLandscape && "max-w-md")}>
       <div className="glass overflow-hidden rounded-xl">
         {/* progress line */}
         <Slider
@@ -73,6 +77,7 @@ export function MiniPlayer() {
             <SkipForward className="h-6 w-6 fill-current" />
           </button>
         </div>
+      </div>
       </div>
     </motion.div>
   );

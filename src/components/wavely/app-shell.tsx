@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
 import { PLAYLISTS } from "@/lib/wavely/data";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useViewport } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { WavelyLogo } from "./logo";
 import { HomeView } from "./views/home-view";
@@ -206,9 +206,18 @@ function Sidebar() {
 function BottomNav() {
   const view = useWavely((s) => s.view);
   const setView = useWavely((s) => s.setView);
+  /* big landscape windows run the phone layout (laptop landscape = Android):
+     keep the floating nav pill centered instead of stretching edge-to-edge */
+  const vp = useViewport();
+  const big = !!vp && vp.width >= 1280 && vp.width > vp.height;
   return (
     <nav
-      className="glass-strong fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex h-14 items-center justify-around rounded-full shadow-[0_10px_36px_rgba(0,0,0,0.65)]"
+      className={cn(
+        "glass-strong fixed z-40 flex h-14 items-center justify-around rounded-full shadow-[0_10px_36px_rgba(0,0,0,0.65)]",
+        big
+          ? "bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2"
+          : "inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))]",
+      )}
       aria-label="Main"
     >
       {NAV.map((n) => {
@@ -260,6 +269,10 @@ function ViewContent() {
 
 export function AppShell() {
   const isMobile = useIsMobile();
+  const vp = useViewport();
+  /* ≥1280px landscape runs the phone layout ("laptop landscape = Android") —
+     keep the content a comfortable centered column instead of stretching */
+  const bigLandscape = !!vp && vp.width >= 1280 && vp.width > vp.height;
   const currentTrack = useCurrentTrack();
   const nowPlayingOpen = useWavely((s) => s.nowPlayingOpen);
   const nowPlayingPanelOpen = useWavely((s) => s.nowPlayingPanelOpen);
@@ -302,6 +315,7 @@ export function AppShell() {
             // content pane grows past the shell and the page can never scroll
             "flex min-w-0 flex-1 overflow-hidden",
             !isMobile && "rounded-2xl bg-background",
+            isMobile && bigLandscape && "mx-auto w-full max-w-3xl",
           )}
         >
           <ViewContent />
