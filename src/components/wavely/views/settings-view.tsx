@@ -1,13 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useWavely, CACHE_LIMIT_MB, useCacheUsage } from "@/lib/wavely/store";
+import { useWavely, CACHE_LIMIT_MB, useCacheUsage, LYRICS_TARGET_LANGS } from "@/lib/wavely/store";
 import { EqualizerView } from "./equalizer-view";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Bell,
   ChevronRight,
@@ -19,6 +26,7 @@ import {
   Github,
   Heart,
   Info,
+  Languages,
   ListMusic,
   Lock,
   Mic2,
@@ -27,6 +35,7 @@ import {
   RotateCcw,
   ScanLine,
   SlidersHorizontal,
+  Sparkles,
   Timer,
   Trash2,
   Waves,
@@ -128,6 +137,13 @@ export function SettingsView() {
   const setEqOpen = useWavely((s) => s.setEqOpen);
   const setSleepTimer = useWavely((s) => s.setSleepTimer);
 
+  // lyrics translation (language-agnostic — user rule #16)
+  const lyricsTranslate = useWavely((s) => s.lyricsTranslate);
+  const setLyricsTranslate = useWavely((s) => s.setLyricsTranslate);
+  const lyricsTargetLang = useWavely((s) => s.lyricsTargetLang);
+  const setLyricsTargetLang = useWavely((s) => s.setLyricsTargetLang);
+  const setOnboardingOpen = useWavely((s) => s.setOnboardingOpen);
+
   if (page === "eq") {
     return (
       <div className="mx-auto max-w-3xl px-4 pb-8 pt-6 md:px-6">
@@ -208,6 +224,33 @@ export function SettingsView() {
         <Row icon={Mic2} title="Lyrics sources" subtitle={lyricsPriority.join("  →  ")} arrow onClick={() => toast({ description: "Drag-to-reorder sources in the full app" })} />
         <Separator />
         <Row icon={Download} title="Auto-save lyrics" subtitle="Cache web lyrics to .lrc" control={<Switch defaultChecked />} />
+        <Separator />
+        <Row
+          icon={Languages}
+          title="Translate lyrics"
+          subtitle="Line-aligned translation under every original line"
+          control={<Switch checked={lyricsTranslate} onCheckedChange={setLyricsTranslate} aria-label="Translate lyrics" />}
+        />
+        <Separator />
+        <Row
+          icon={Languages}
+          title="Translation language"
+          subtitle="Any language — not just Persian"
+          control={
+            <Select value={lyricsTargetLang} onValueChange={setLyricsTargetLang}>
+              <SelectTrigger size="sm" className="w-[8.5rem] rounded-full text-xs" aria-label="Lyrics translation language">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LYRICS_TARGET_LANGS.map((l) => (
+                  <SelectItem key={l.value} value={l.value}>
+                    {l.short}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
       </div>
 
       <SectionHeader icon={FolderDown} title="Downloads & storage" />
@@ -397,6 +440,8 @@ export function SettingsView() {
         <Row icon={Info} title="Version" subtitle="1.0.3-prototype (design preview)" />
         <Separator />
         <Row icon={Github} title="Source code" subtitle="github.com/Dani-Devlop/Music_Wavely" onClick={() => window.open("https://github.com/Dani-Devlop/Music_Wavely", "_blank")} arrow />
+        <Separator />
+        <Row icon={Sparkles} title="Replay setup wizard" subtitle="Re-run the first-run onboarding" onClick={() => setOnboardingOpen(true)} arrow />
         <Separator />
         <Row icon={Heart} title="Made with love" subtitle="Musicolet's soul, Spotify's style" />
       </div>

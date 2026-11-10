@@ -20,6 +20,7 @@ import { QueueSheet } from "./queue-sheet";
 import { TrackActionsSheet } from "./track-actions-sheet";
 import { FolderActionsSheet } from "./folder-actions-sheet";
 import { SleepTimerDialog } from "./sleep-timer";
+import { OnboardingWizard } from "./onboarding-wizard";
 import { PlayerBar } from "./player-bar";
 import { MiniPlayer } from "./mini-player";
 import { Button } from "@/components/ui/button";
@@ -293,6 +294,17 @@ export function AppShell() {
     return () => mql.removeEventListener("change", apply);
   }, []);
 
+  /* first run → onboarding wizard (Android setup flow blueprint) */
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem("wavely-onboarded")) {
+        useWavely.getState().setOnboardingOpen(true);
+      }
+    } catch {
+      /* private mode — skip the auto-open */
+    }
+  }, []);
+
   return (
     <div
       className={cn(
@@ -339,6 +351,7 @@ export function AppShell() {
       <TrackActionsSheet />
       <FolderActionsSheet />
       <SleepTimerDialog />
+      <OnboardingWizard />
 
       <Dialog open={eqOpen} onOpenChange={setEqOpen}>
         <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto rounded-2xl border-border bg-background p-5">

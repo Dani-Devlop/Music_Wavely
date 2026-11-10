@@ -37,6 +37,36 @@ export const CACHE_FILL_SECONDS = 6;
  */
 export const CACHE_LIMIT_MB = 400;
 
+/**
+ * App languages offered in the onboarding wizard (full UI localization ships
+ * with the Flutter build — the prototype stores the choice).
+ */
+export const APP_LANGUAGES = [
+  { value: "English", native: "English" },
+  { value: "Persian (Farsi)", native: "فارسی" },
+  { value: "Arabic", native: "العربية" },
+  { value: "Russian", native: "Русский" },
+  { value: "Turkish", native: "Türkçe" },
+] as const;
+
+/**
+ * Lyrics translation targets — deliberately language-AGNOSTIC (user rule #16:
+ * not Persian-exclusive; a Russian user translates into Russian, etc.).
+ * `short` is the native name shown on the chip / picker.
+ */
+export const LYRICS_TARGET_LANGS = [
+  { value: "Persian (Farsi)", short: "فارسی" },
+  { value: "English", short: "English" },
+  { value: "Arabic", short: "العربية" },
+  { value: "Russian", short: "Русский" },
+  { value: "Turkish", short: "Türkçe" },
+  { value: "French", short: "Français" },
+  { value: "German", short: "Deutsch" },
+  { value: "Spanish", short: "Español" },
+  { value: "Hindi", short: "हिन्दी" },
+  { value: "Chinese (Simplified)", short: "中文" },
+] as const;
+
 /** Rough per-track cache footprint by quality label (prototype estimate). */
 export function cacheMbOf(t?: Track): number {
   if (!t) return 0;
@@ -128,6 +158,19 @@ interface WavelyState {
   history: string[];
   /** tracks the user marked as instrumental — lyrics are never searched again (user rule 3) */
   instrumentalIds: string[];
+
+  /* lyrics translation prefs — language-agnostic (user rule #16: not
+     Persian-exclusive; the wizard and Settings both write these) */
+  lyricsTranslate: boolean;
+  lyricsTargetLang: string;
+  setLyricsTranslate: (v: boolean) => void;
+  setLyricsTargetLang: (v: string) => void;
+
+  /* first-run onboarding wizard (Android setup flow blueprint) */
+  onboardingOpen: boolean;
+  setOnboardingOpen: (v: boolean) => void;
+  appLanguage: string;
+  setAppLanguage: (v: string) => void;
 
   /* overlays */
   nowPlayingOpen: boolean;
@@ -314,6 +357,16 @@ export const useWavely = create<WavelyState>((set, get) => ({
   favorites: [...INITIAL_FAVORITES],
   history: [...INITIAL_HISTORY],
   instrumentalIds: [],
+
+  lyricsTranslate: true,
+  lyricsTargetLang: "Persian (Farsi)",
+  setLyricsTranslate: (v) => set({ lyricsTranslate: v }),
+  setLyricsTargetLang: (v) => set({ lyricsTargetLang: v }),
+
+  onboardingOpen: false,
+  setOnboardingOpen: (v) => set({ onboardingOpen: v }),
+  appLanguage: "English",
+  setAppLanguage: (v) => set({ appLanguage: v }),
 
   nowPlayingOpen: false,
   nowPlayingPanelOpen: false,

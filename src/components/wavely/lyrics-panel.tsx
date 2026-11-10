@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
+import { useWavely, useCurrentTrack, LYRICS_TARGET_LANGS } from "@/lib/wavely/store";
 import { fmtTime } from "@/lib/wavely/data";
 import { cachedLyrics, isRtlText, parseLrc, storeLyrics } from "@/lib/wavely/lyrics";
 import type { FetchedLyrics } from "@/lib/wavely/lyrics";
@@ -55,6 +55,12 @@ export function LyricsPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  /* translation prefs — language-agnostic, set in Settings or the wizard */
+  const lyricsTranslateEnabled = useWavely((s) => s.lyricsTranslate);
+  const targetLang = useWavely((s) => s.lyricsTargetLang);
+  const langShort =
+    LYRICS_TARGET_LANGS.find((l) => l.value === targetLang)?.short ?? targetLang;
+
   const trackId = track?.id;
   const embedded = track?.lyrics ?? [];
   const isInstrumental = !!trackId && instrumentalIds.includes(trackId);
@@ -76,6 +82,13 @@ export function LyricsPanel() {
     setTranslated(null);
     setTranslateOn(false);
   }, [trackId]);
+
+  /* settings changes invalidate the shown translation (new language, or the
+     feature switched off — never leave orphan translations on screen) */
+  useEffect(() => {
+    setTranslated(null);
+    setTranslateOn(false);
+  }, [targetLang, lyricsTranslateEnabled]);
 
   /* rule 1 (my proposal, accepted): auto-fetch when the lyrics view opens —
      but never for instrumental-marked tracks, and never twice per session */
@@ -200,7 +213,7 @@ export function LyricsPanel() {
       return;
     }
     setTranslateOn(true);
-    const cached = translationCache.get(trackId);
+    const cached = translationCache.get(`${trackId}:${targetLang}`);
     if (cached) {
       setTranslated(cached);
       return;
@@ -210,13 +223,13 @@ export function LyricsPanel() {
       const res = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines: currentLines, target: "Persian (Farsi)" }),
+        body: JSON.stringify({ lines: currentLines, target: targetLang }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error("failed");
-      translationCache.set(trackId, data.lines as string[]);
+      translationCache.set(`${trackId}:${targetLang}`, data.lines as string[]);
       setTranslated(data.lines as string[]);
-      toast({ description: "Translated to فارسی" });
+      toast({ description: `Translated to ${langShort}` });
     } catch {
       toast({ description: "Translation failed — try again in a moment" });
       setTranslateOn(false);
@@ -237,23 +250,25 @@ export function LyricsPanel() {
         ref={containerRef}
         className="wavely-scroll h-full min-h-0 overflow-y-auto overscroll-contain scroll-smooth px-5 py-3 md:px-8"
       >
-        <div className="sticky top-0 z-20 flex justify-center pb-2">
-          <button
-            onClick={doTranslate}
-            className={cn(
-              "glass flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition",
-              translateOn ? "text-primary" : "text-muted-foreground hover:text-foreground",
-            )}
-            aria-pressed={translateOn}
-          >
-            {translating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Languages className="h-3.5 w-3.5" />
-            )}
-            {translating ? "Translating…" : translateOn ? "Hide translation" : "Translate → fa"}
-          </button>
-        </div>
+        {lyricsTranslateEnabled && (
+          <div className="sticky top-0 z-20 flex justify-center pb-2">
+            <button
+              onClick={doTranslate}
+              className={cn(
+                "glass flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition",
+                translateOn ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+              aria-pressed={translateOn}
+            >
+              {translating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Languages className="h-3.5 w-3.5" />
+              )}
+              {translating ? "Translating…" : translateOn ? "Hide translation" : `Translate → ${langShort}`}
+            </button>
+          </div>
+        )}
 
         <div dir={rtlOriginal ? "rtl" : "ltr"} className="mx-auto max-w-xl space-y-3 md:space-y-4">
           {syncedLines?.map((line, i) => (
