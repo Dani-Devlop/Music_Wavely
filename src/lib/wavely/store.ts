@@ -126,6 +126,8 @@ interface WavelyState {
   sleepEndsAt: number | null; // epoch ms; null = off
   favorites: string[];
   history: string[];
+  /** tracks the user marked as instrumental — lyrics are never searched again (user rule 3) */
+  instrumentalIds: string[];
 
   /* overlays */
   nowPlayingOpen: boolean;
@@ -175,6 +177,8 @@ interface WavelyState {
   setSpeed: (v: number) => void;
   setSleepTimer: (minutes: number | "track" | null) => void;
   toggleFavorite: (trackId: string) => void;
+  /** mark/unmark a track as instrumental → skips all lyrics lookups */
+  toggleInstrumental: (trackId: string) => void;
   playNext: (trackId: string) => void;
   /** insert several tracks (in order) right after the current one */
   playNextMany: (trackIds: string[]) => void;
@@ -309,6 +313,7 @@ export const useWavely = create<WavelyState>((set, get) => ({
   sleepEndsAt: null,
   favorites: [...INITIAL_FAVORITES],
   history: [...INITIAL_HISTORY],
+  instrumentalIds: [],
 
   nowPlayingOpen: false,
   nowPlayingPanelOpen: false,
@@ -587,6 +592,13 @@ export const useWavely = create<WavelyState>((set, get) => ({
       favorites: s.favorites.includes(trackId)
         ? s.favorites.filter((f) => f !== trackId)
         : [trackId, ...s.favorites],
+    })),
+
+  toggleInstrumental: (trackId) =>
+    set((s) => ({
+      instrumentalIds: s.instrumentalIds.includes(trackId)
+        ? s.instrumentalIds.filter((i) => i !== trackId)
+        : [...s.instrumentalIds, trackId],
     })),
 
   playNext: (trackId) =>
