@@ -67,6 +67,92 @@ export const LYRICS_TARGET_LANGS = [
   { value: "Chinese (Simplified)", short: "中文" },
 ] as const;
 
+/**
+ * Setup-wizard regions (installed-app parity): drives legal-source
+ * availability and metadata market in the real build.
+ */
+export const REGIONS = [
+  { code: "US", name: "United States" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "DE", name: "Germany" },
+  { code: "FR", name: "France" },
+  { code: "ES", name: "Spain" },
+  { code: "IT", name: "Italy" },
+  { code: "IR", name: "Iran" },
+  { code: "TR", name: "Türkiye" },
+  { code: "IN", name: "India" },
+  { code: "JP", name: "Japan" },
+  { code: "KR", name: "South Korea" },
+  { code: "BR", name: "Brazil" },
+] as const;
+
+/** Best-effort region guess from the browser timezone (wizard auto-detect). */
+export function detectRegion(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+    const map: Record<string, string> = {
+      "Asia/Tehran": "IR",
+      "Europe/London": "GB",
+      "Europe/Berlin": "DE",
+      "Europe/Paris": "FR",
+      "Europe/Madrid": "ES",
+      "Europe/Rome": "IT",
+      "Europe/Istanbul": "TR",
+      "Asia/Kolkata": "IN",
+      "Asia/Tokyo": "JP",
+      "Asia/Seoul": "KR",
+      "America/Sao_Paulo": "BR",
+      "America/New_York": "US",
+      "America/Chicago": "US",
+      "America/Los_Angeles": "US",
+    };
+    if (map[tz]) return map[tz];
+    // crude country hint from the locale (e.g. "en-US" → US)
+    const locale = typeof navigator !== "undefined" ? navigator.language : "";
+    const cc = locale.split("-")[1]?.toUpperCase();
+    if (cc && REGIONS.some((r) => r.code === cc)) return cc;
+  } catch {
+    /* SSR / private mode */
+  }
+  return "US";
+}
+
+/** Music languages for the wizard's priority / never-autoplay step. */
+export const MUSIC_LANGUAGES = [
+  { code: "en", name: "English" },
+  { code: "fa", name: "Persian" },
+  { code: "es", name: "Spanish" },
+  { code: "fr", name: "French" },
+  { code: "de", name: "German" },
+  { code: "ar", name: "Arabic" },
+  { code: "hi", name: "Hindi" },
+  { code: "ja", name: "Japanese" },
+  { code: "tr", name: "Turkish" },
+  { code: "ru", name: "Russian" },
+] as const;
+
+export type DownloadQuality = "320" | "flac" | "ask";
+
+/**
+ * Expand the storage-layout template for a track — shared by the "save to
+ * folder" action, the settings preview and the wizard preview tree.
+ * Tokens (case-insensitive): {artist} {album} {title} {year} {country} {genre}
+ */
+export function renderFolderTemplate(template: string, t: Pick<Track, "artist" | "album" | "title" | "year" | "genre"> & { country?: string }): string {
+  const seg = (v: string) => v.replace(/[/\\]/g, "").trim() || "--";
+  return template
+    .replace(/\{\s*artist\s*\}/gi, seg(t.artist))
+    .replace(/\{\s*album\s*\}/gi, seg(t.album))
+    .replace(/\{\s*title\s*\}/gi, seg(t.title))
+    .replace(/\{\s*year\s*\}/gi, seg(String(t.year)))
+    .replace(/\{\s*country\s*\}/gi, seg(t.country ?? "--"))
+    .replace(/\{\s*genre\s*\}/gi, seg(t.genre))
+    .split("/")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .join("/");
+}
+
 /** Rough per-track cache footprint by quality label (prototype estimate). */
 export function cacheMbOf(t?: Track): number {
   if (!t) return 0;
@@ -137,11 +223,37 @@ interface WavelyState {
 
   /* downloads & storage */
   downloadPath: string;
-  folderTemplate: string; // e.g. "{Country}/{Genre}"
+  folderTemplate: string; // e.g. "{artist}/{album}/{title}"
   audioFormat: "mp3-320" | "flac";
   setDownloadPath: (p: string) => void;
   setFolderTemplate: (t: string) => void;
   setAudioFormat: (f: "mp3-320" | "flac") => void;
+
+  /* setup wizard prefs (installed-app parity) */
+  /** metadata/legal-source market, e.g. "IR" — auto-detected from timezone */
+  region: string;
+  setRegion: (c: string) => void;
+  /** music-language priority order (first = most wanted) */
+  musicLanguages: string[];
+  /** languages the explore/autoplay side must never suggest */
+  neverPlayLanguages: string[];
+  addMusicLanguage: (code: string) => void;
+  removeMusicLanguage: (code: string) => void;
+  moveMusicLanguage: (code: string, dir: -1 | 1) => void;
+  toggleNeverPlayLanguage: (code: string) => void;
+  /** quality used when songs are saved from the streaming catalogue */
+  downloadQuality: DownloadQuality;
+  setDownloadQuality: (q: DownloadQuality) => void;
+  /** parental mode — auto-censor swearing + PIN lock (real PIN in Flutter) */
+  parentalMode: boolean;
+  setParentalMode: (v: boolean) => void;
+  /** AI features — mood-aware queues and library chat */
+  aiFeatures: boolean;
+  setAiFeatures: (v: boolean) => void;
+  /** library scan roots — MANY paths, one entry per scan root (user: "چندتا مسیر دارم") */
+  musicFolders: string[];
+  addMusicFolder: (path: string) => void;
+  removeMusicFolder: (path: string) => void;
 
   /* player core */
   queues: QueueDef[];
@@ -311,6 +423,8 @@ export const useWavely = create<WavelyState>((set, get) => ({
   toggleDownload: (trackId) => {
     const t = trackById.get(trackId);
     if (!t || t.origin !== "online") return;
+    // shelve the file under the storage-layout template ({artist}/{album}/{title} …)
+    const relFolder = renderFolderTemplate(get().folderTemplate, t) || "--";
     if (t.downloaded) {
       set({ playbackNotice: `Removed from device: ${t.title}` });
     } else {
@@ -322,15 +436,13 @@ export const useWavely = create<WavelyState>((set, get) => ({
           Object.entries(s.cacheProgress).filter(([id]) => id !== trackId),
         ),
         playbackNotice: inCache
-          ? `Saved from cache to ${get().downloadPath}/${t.country ?? "--"}/${t.genre} — cache space freed`
-          : `Saved to ${get().downloadPath}/${t.country ?? "--"}/${t.genre}`,
+          ? `Saved from cache to ${get().downloadPath}/${relFolder} — cache space freed`
+          : `Saved to ${get().downloadPath}/${relFolder}`,
       }));
     }
     // mutate the catalog entry so the row flips everywhere
     t.downloaded = t.downloaded ? undefined : true;
-    t.folder = t.downloaded
-      ? `${get().downloadPath}/${t.country ?? "--"}/${t.genre}`
-      : "online";
+    t.folder = t.downloaded ? `${get().downloadPath}/${relFolder}` : "online";
     set((s) => ({ downloadVersion: s.downloadVersion + 1 }));
   },
   playbackNotice: null,
@@ -338,11 +450,70 @@ export const useWavely = create<WavelyState>((set, get) => ({
   downloadVersion: 0,
 
   downloadPath: "/storage/emulated/0/Music/Wavely",
-  folderTemplate: "{Country}/{Genre}",
+  folderTemplate: "{artist}/{album}/{title}",
   audioFormat: "flac",
   setDownloadPath: (p) => set({ downloadPath: p }),
   setFolderTemplate: (t) => set({ folderTemplate: t }),
   setAudioFormat: (f) => set({ audioFormat: f }),
+
+  region: detectRegion(),
+  setRegion: (c) => set({ region: c.toUpperCase().slice(0, 2) }),
+
+  musicLanguages: ["en", "fa"],
+  neverPlayLanguages: [],
+  addMusicLanguage: (code) =>
+    set((s) =>
+      s.musicLanguages.includes(code)
+        ? {}
+        : { musicLanguages: [...s.musicLanguages, code], neverPlayLanguages: s.neverPlayLanguages.filter((l) => l !== code) },
+    ),
+  removeMusicLanguage: (code) =>
+    set((s) => ({ musicLanguages: s.musicLanguages.filter((l) => l !== code) })),
+  moveMusicLanguage: (code, dir) =>
+    set((s) => {
+      const langs = [...s.musicLanguages];
+      const i = langs.indexOf(code);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= langs.length) return {};
+      [langs[i], langs[j]] = [langs[j], langs[i]];
+      return { musicLanguages: langs };
+    }),
+  toggleNeverPlayLanguage: (code) =>
+    set((s) => ({
+      neverPlayLanguages: s.neverPlayLanguages.includes(code)
+        ? s.neverPlayLanguages.filter((l) => l !== code)
+        : s.neverPlayLanguages.includes(code)
+          ? s.neverPlayLanguages
+          : [...s.neverPlayLanguages, code],
+      // a "never play" language can't also be in the priority list
+      musicLanguages: s.neverPlayLanguages.includes(code)
+        ? s.musicLanguages
+        : s.musicLanguages.filter((l) => l !== code),
+    })),
+
+  downloadQuality: "320",
+  setDownloadQuality: (q) =>
+    set((s) => ({
+      downloadQuality: q,
+      // keep the legacy audio format in sync so saves preview the right extension
+      audioFormat: q === "320" ? ("mp3-320" as const) : q === "flac" ? ("flac" as const) : s.audioFormat,
+    })),
+
+  parentalMode: false,
+  setParentalMode: (v) => set({ parentalMode: v }),
+
+  aiFeatures: true,
+  setAiFeatures: (v) => set({ aiFeatures: v }),
+
+  musicFolders: ["/storage/emulated/0/Music/Wavely"],
+  addMusicFolder: (path) =>
+    set((s) => {
+      const p = path.trim().replace(/\/+$/, "");
+      if (!p || s.musicFolders.includes(p)) return {};
+      return { musicFolders: [...s.musicFolders, p] };
+    }),
+  removeMusicFolder: (path) =>
+    set((s) => ({ musicFolders: s.musicFolders.filter((f) => f !== path) })),
 
   queues: INITIAL_QUEUES.map((q) => ({ ...q, trackIds: [...q.trackIds] })),
   activeQueueId: "q-main",

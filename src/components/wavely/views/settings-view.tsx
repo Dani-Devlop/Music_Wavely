@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useWavely, CACHE_LIMIT_MB, useCacheUsage, LYRICS_TARGET_LANGS } from "@/lib/wavely/store";
+import {
+  useWavely,
+  CACHE_LIMIT_MB,
+  useCacheUsage,
+  LYRICS_TARGET_LANGS,
+  REGIONS,
+  MUSIC_LANGUAGES,
+} from "@/lib/wavely/store";
 import { EqualizerView } from "./equalizer-view";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -17,11 +24,14 @@ import {
 } from "@/components/ui/select";
 import {
   Bell,
+  Ban,
   ChevronRight,
   CloudDownload,
+  Compass,
   Download,
   Folder,
   FolderDown,
+  FolderPlus,
   FolderSync,
   Github,
   Heart,
@@ -112,8 +122,34 @@ export function SettingsView() {
   const setDownloadPath = useWavely((s) => s.setDownloadPath);
   const folderTemplate = useWavely((s) => s.folderTemplate);
   const setFolderTemplate = useWavely((s) => s.setFolderTemplate);
-  const audioFormat = useWavely((s) => s.audioFormat);
-  const setAudioFormat = useWavely((s) => s.setAudioFormat);
+  const downloadQuality = useWavely((s) => s.downloadQuality);
+  const setDownloadQuality = useWavely((s) => s.setDownloadQuality);
+
+  // setup wizard prefs — same store the wizard writes
+  const region = useWavely((s) => s.region);
+  const setRegion = useWavely((s) => s.setRegion);
+  const musicLanguages = useWavely((s) => s.musicLanguages);
+  const neverPlayLanguages = useWavely((s) => s.neverPlayLanguages);
+  const musicFolders = useWavely((s) => s.musicFolders);
+  const addMusicFolder = useWavely((s) => s.addMusicFolder);
+  const removeMusicFolder = useWavely((s) => s.removeMusicFolder);
+  const parentalMode = useWavely((s) => s.parentalMode);
+  const setParentalMode = useWavely((s) => s.setParentalMode);
+  const aiFeatures = useWavely((s) => s.aiFeatures);
+  const setAiFeatures = useWavely((s) => s.setAiFeatures);
+
+  const FOLDER_SUGGESTIONS = [
+    "/storage/emulated/0/Music",
+    "/storage/0000-0000/Music",
+    "/storage/emulated/0/Download/Music",
+    "/sdcard/Music",
+  ];
+  const addSuggestedFolder = () => {
+    const suggestion =
+      FOLDER_SUGGESTIONS.find((f) => !musicFolders.includes(f)) ??
+      `/storage/emulated/0/Music/Folder-${musicFolders.length + 1}`;
+    addMusicFolder(suggestion);
+  };
   const isOffline = useWavely((s) => s.isOffline);
   const setOffline = useWavely((s) => s.setOffline);
   const cachedCount = useWavely((s) => s.cachedIds.length);
@@ -127,7 +163,6 @@ export function SettingsView() {
   const [hires, setHires] = useState(true);
   const [amoled, setAmoled] = useState(false);
   const [notif, setNotif] = useState(true);
-  const [parental, setParental] = useState(false);
   const [autoDownload, setAutoDownload] = useState(false);
   const [mobileData, setMobileData] = useState(true);
   const [lyricsPriority] = useState(["Embedded (USLT/SYLT)", ".lrc sidecar file", "Web / LRCLIB"]);
@@ -166,6 +201,51 @@ export function SettingsView() {
         <Row icon={Waves} title="AMOLED black" subtitle="True black background" control={<Switch checked={amoled} onCheckedChange={setAmoled} />} />
         <Separator />
         <Row icon={Palette} title="Accent color" subtitle="Wavely green" control={<span className="h-6 w-6 rounded-full bg-primary ring-2 ring-primary/40" />} />
+      </div>
+
+      <SectionHeader icon={Compass} title="Region & languages" />
+      <div className="overflow-hidden rounded-2xl bg-wav-surface">
+        <Row
+          icon={Compass}
+          title="Region"
+          subtitle="Legal-source availability & metadata market"
+          control={
+            <Select value={region} onValueChange={setRegion}>
+              <SelectTrigger size="sm" className="w-[8.5rem] rounded-full text-xs" aria-label="Region">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REGIONS.map((r) => (
+                  <SelectItem key={r.code} value={r.code}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
+        <Separator />
+        <Row
+          icon={Languages}
+          title="Music language priority"
+          subtitle={
+            musicLanguages.length
+              ? musicLanguages.map((c) => MUSIC_LANGUAGES.find((l) => l.code === c)?.name ?? c).join("  →  ")
+              : "None set — edit in the setup wizard"
+          }
+          arrow
+          onClick={() => toast({ description: "Reorder in the setup wizard — Settings editing lands with the Flutter build" })}
+        />
+        <Separator />
+        <Row
+          icon={Ban}
+          title="Never autoplay"
+          subtitle={
+            neverPlayLanguages.length
+              ? neverPlayLanguages.map((c) => MUSIC_LANGUAGES.find((l) => l.code === c)?.name ?? c).join(", ")
+              : "Nothing blocked"
+          }
+        />
       </div>
 
       <SectionHeader icon={SlidersHorizontal} title="Playback" />
@@ -283,7 +363,7 @@ export function SettingsView() {
         <div className="px-3 py-3">
           <p className="mb-1 text-sm font-medium">Folder organisation</p>
           <p className="mb-2 text-xs text-muted-foreground">
-            Build the folder structure for saved songs — your {"{Country}/{Genre}"} idea:
+            Build the folder structure for saved songs — tokens snap into the template:
           </p>
           <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto pb-1">
             {["{Country}", "{Genre}", "{Artist}", "{Album}", "{Year}", "{Title}"].map((tok) => (
@@ -315,7 +395,7 @@ export function SettingsView() {
                 album: "Chrome City",
                 year: 2025,
                 title: "Night Circuit",
-                ext: audioFormat === "flac" ? "flac" : "mp3",
+                ext: downloadQuality === "flac" ? "flac" : "mp3",
               })}
             </p>
           </div>
@@ -323,17 +403,17 @@ export function SettingsView() {
         <Separator />
         <Row
           icon={Download}
-          title="Audio format"
+          title="Download quality"
           subtitle="Quality of saved songs"
           control={
             <div className="flex overflow-hidden rounded-full bg-secondary text-xs font-medium">
-              {(["mp3-320", "flac"] as const).map((f) => (
+              {(["320", "flac", "ask"] as const).map((q) => (
                 <button
-                  key={f}
-                  onClick={() => setAudioFormat(f)}
-                  className={cn("px-3 py-1.5 transition", audioFormat === f && "bg-primary text-primary-foreground")}
+                  key={q}
+                  onClick={() => setDownloadQuality(q)}
+                  className={cn("px-2.5 py-1.5 transition", downloadQuality === q && "bg-primary text-primary-foreground")}
                 >
-                  {f === "flac" ? "FLAC" : "MP3 320"}
+                  {q === "320" ? "320" : q === "flac" ? "FLAC" : "Ask"}
                 </button>
               ))}
             </div>
@@ -345,6 +425,56 @@ export function SettingsView() {
         <Row icon={Download} title="Auto-download favorites" subtitle="From online sources when available" control={<Switch checked={autoDownload} onCheckedChange={setAutoDownload} />} />
         <Separator />
         <Row icon={FolderSync} title="Keep organised on move" subtitle="Re-shelve files if the template changes" control={<Switch defaultChecked />} />
+      </div>
+
+      <SectionHeader icon={Folder} title="Library folders" />
+      <div className="overflow-hidden rounded-2xl bg-wav-surface">
+        {musicFolders.map((path, i) => (
+          <div key={path}>
+            {i > 0 && <Separator />}
+            <div className="flex w-full items-center gap-3 px-3 py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-foreground">
+                <Folder className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="break-all font-mono text-xs">{path}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Scan root {i + 1} of {musicFolders.length}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  if (musicFolders.length <= 1) {
+                    toast({ description: "Wavely needs at least one music folder — add another first" });
+                    return;
+                  }
+                  removeMusicFolder(path);
+                  toast({ description: "Folder removed — rescan to update the library" });
+                }}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                aria-label={`Remove ${path}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+        <Separator />
+        <Row
+          icon={FolderPlus}
+          title="Add music folder"
+          subtitle="Many people keep music in several paths — add them all"
+          onClick={addSuggestedFolder}
+          arrow
+        />
+        <Separator />
+        <Row
+          icon={ScanLine}
+          title="Scan all folders"
+          subtitle={`Rescans ${musicFolders.length} folder${musicFolders.length === 1 ? "" : "s"} for new songs`}
+          onClick={() => toast({ description: `Library scan started — ${musicFolders.length} folder${musicFolders.length === 1 ? "" : "s"}, 34 songs found` })}
+          arrow
+        />
       </div>
 
       <SectionHeader icon={CloudDownload} title="Streaming cache" />
@@ -420,14 +550,26 @@ export function SettingsView() {
       <div className="overflow-hidden rounded-2xl bg-wav-surface">
         <Row icon={ListMusic} title="Queue slots" subtitle="Up to 20 queues, positions saved" />
         <Separator />
-        <Row icon={ScanLine} title="Scan library" subtitle="Rescan folders for new songs" onClick={() => toast({ description: "Library scan started — 34 songs found" })} arrow />
+        <Row icon={ScanLine} title="Scan library" subtitle={`Rescan ${musicFolders.length} folder${musicFolders.length === 1 ? "" : "s"} for new songs`} onClick={() => toast({ description: "Library scan started — 34 songs found" })} arrow />
         <Separator />
         <Row icon={Folder} title="Blacklist folders" subtitle="Hide folders from the library" onClick={() => toast({ description: "Folder picker in the full app" })} arrow />
       </div>
 
       <SectionHeader icon={Lock} title="Parental controls" />
       <div className="overflow-hidden rounded-2xl bg-wav-surface">
-        <Row icon={Lock} title="Require PIN" subtitle="Lock explicit content & settings" control={<Switch checked={parental} onCheckedChange={(v) => { setParental(v); if (v) toast({ description: "PIN setup opens in the full app" }); }} />} />
+        <Row icon={Lock} title="Parental mode" subtitle="Auto-censor swearing · PIN lock on explicit content & settings" control={<Switch checked={parentalMode} onCheckedChange={(v) => { setParentalMode(v); if (v) toast({ description: "PIN setup opens in the full app" }); }} />} />
+      </div>
+
+      <SectionHeader icon={Sparkles} title="AI features" />
+      <div className="overflow-hidden rounded-2xl bg-wav-surface">
+        <Row
+          icon={Sparkles}
+          title="Enable AI features"
+          subtitle="Mood-aware queues and library chat"
+          control={<Switch checked={aiFeatures} onCheckedChange={setAiFeatures} aria-label="Enable AI features" />}
+        />
+        <Separator />
+        <Row icon={Info} title="Bring your own key" subtitle="GEMINI_API_KEY or OPENAI_API_KEY in .env — everything stays local" />
       </div>
 
       <SectionHeader icon={Bell} title="Notifications" />

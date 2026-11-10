@@ -36,6 +36,8 @@ export function AiChatView() {
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentTrack = useWavely((s) => s.currentTrack());
+  const aiFeatures = useWavely((s) => s.aiFeatures);
+  const setAiFeatures = useWavely((s) => s.setAiFeatures);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -73,6 +75,25 @@ export function AiChatView() {
     } finally {
       setBusy(false);
     }
+  }
+
+  /* wizard/settings kill-switch: AI features off → friendly empty state */
+  if (!aiFeatures) {
+    return (
+      <div className="mx-auto flex h-[calc(100dvh-9.5rem)] max-w-3xl flex-col items-center justify-center px-4 text-center md:h-[calc(100dvh-6rem)] md:px-6">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+          <Sparkles className="h-7 w-7 text-primary" />
+        </div>
+        <h1 className="mt-5 font-display text-xl font-bold tracking-tight">AI features are off</h1>
+        <p className="mt-1.5 max-w-xs text-balance text-sm leading-relaxed text-muted-foreground">
+          Mood-aware queues and library chat are disabled — you turned them off during setup.
+        </p>
+        <Button className="mt-6 h-11 rounded-full px-6 text-sm font-bold" onClick={() => setAiFeatures(true)}>
+          <Sparkles className="h-4 w-4" /> Enable AI features
+        </Button>
+        <p className="mt-3 text-xs text-muted-foreground">Also available in Settings → AI features.</p>
+      </div>
+    );
   }
 
   return (
