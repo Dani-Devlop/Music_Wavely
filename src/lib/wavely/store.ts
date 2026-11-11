@@ -133,6 +133,28 @@ export const MUSIC_LANGUAGES = [
 
 export type DownloadQuality = "320" | "flac" | "ask";
 
+/** Signed-in profile (prototype — the real app syncs via the Wavely account). */
+export interface Profile {
+  name: string;
+  email: string;
+  plan: "Free" | "Wavely+";
+  avatar: string;
+}
+
+/** An active login on some device — powers the "Sessions & devices" page. */
+export interface AccountSession {
+  id: string;
+  device: string;
+  platform: string;
+  location: string;
+  lastActive: string;
+  current: boolean;
+  kind: "phone" | "desktop" | "web";
+}
+
+/** Settings sub-pages — account management gets its own full page. */
+export type SettingsPage = "root" | "eq" | "account";
+
 /** Automatic-backup schedule (#11): off = manual only, still from Settings. */
 export type BackupAuto = "weekly" | "monthly" | "onLaunch" | "onExit";
 export const BACKUP_AUTO_LABELS: Record<BackupAuto, string> = {
@@ -275,6 +297,25 @@ interface WavelyState {
   setBackupPath: (p: string) => void;
   setBackupAuto: (f: BackupAuto) => void;
 
+  /* account, sessions, privacy & security — Settings → Account page */
+  profile: Profile;
+  setProfile: (p: Partial<Profile>) => void;
+  sessions: AccountSession[];
+  signOutSession: (id: string) => void;
+  signOutAllSessions: () => void;
+  personalizationCookies: boolean;
+  analyticsCookies: boolean;
+  setPersonalizationCookies: (v: boolean) => void;
+  setAnalyticsCookies: (v: boolean) => void;
+  /** epoch ms of the last "Clear cookies & site data" — shown on the row */
+  cookiesClearedAt: number | null;
+  clearCookies: () => void;
+  twoFactor: boolean;
+  setTwoFactor: (v: boolean) => void;
+  /** Settings sub-page — nav + Home avatar deep-link into "account" */
+  settingsPage: SettingsPage;
+  setSettingsPage: (p: SettingsPage) => void;
+
   /* setup wizard prefs (installed-app parity) */
   /** metadata/legal-source market, e.g. "IR" — auto-detected from timezone */
   region: string;
@@ -413,6 +454,26 @@ const filterByMode = (tracks: Track[], mode: SourceMode): Track[] => {
   if (mode === "all") return tracks;
   if (mode === "local") return tracks.filter((t) => t.origin === "local" || t.downloaded);
   return tracks.filter((t) => t.origin === "online");
+};
+
+/** S27: mode filtering helpers for search entities — kept out of the search view. */
+const albumMatchesMode = (album: { origin?: "local" | "online" }, mode: SourceMode): boolean => {
+  if (mode === "all") return true;
+  if (mode === "local") return album.origin !== "online";
+  return album.origin === "online";
+};
+
+const artistMatchesMode = (artistAlbums: { origin?: "local" | "online" }[], mode: SourceMode): boolean => {
+  if (mode === "all") return true;
+  const albums = artistAlbums.filter(Boolean);
+  if (mode === "local") return albums.some((al) => al.origin !== "online");
+  return albums.some((al) => al.origin === "online");
+};
+
+const playlistMatchesMode = (p: { origin: "local" | "online" | "mixed" }, mode: SourceMode): boolean => {
+  if (mode === "all") return true;
+  if (mode === "local") return p.origin !== "online";
+  return p.origin !== "local";
 };
 
 export const useWavely = create<WavelyState>((set, get) => ({
@@ -555,6 +616,36 @@ export const useWavely = create<WavelyState>((set, get) => ({
       // keep the legacy audio format in sync so saves preview the right extension
       audioFormat: q === "320" ? ("mp3-320" as const) : q === "flac" ? ("flac" as const) : s.audioFormat,
     })),
+
+  /* account, sessions, privacy & security ------------------------------ */
+  profile: { name: "Dani", email: "dani@wavely.app", plan: "Free", avatar: "/wavely/avatar.png" },
+  setProfile: (p) => set((s) => ({ profile: { ...s.profile, ...p } })),
+  sessions: [
+    { id: "s1", device: "Wavely Android app", platform: "Samsung Galaxy S24 · Android 15", location: "Tehran, Iran", lastActive: "Active now", current: true, kind: "phone" },
+    { id: "s2", device: "Chrome — Web player", platform: "Windows 11 · 1920×1080", location: "Tehran, Iran", lastActive: "2 hours ago", current: false, kind: "web" },
+    { id: "s3", device: "Wavely Desktop", platform: "Fedora Linux · Wayland", location: "Berlin, Germany", lastActive: "Yesterday, 23:41", current: false, kind: "desktop" },
+  ],
+  signOutSession: (id) =>
+    set((s) => ({
+      sessions: s.sessions.filter((x) => x.id !== id),
+      playbackNotice: "Signed out of that device — its queue & cache stay on the device until removed",
+    })),
+  signOutAllSessions: () =>
+    set((s) => ({
+      sessions: s.sessions.filter((x) => x.current),
+      playbackNotice: "Signed out everywhere else — this device stays signed in",
+    })),
+  personalizationCookies: true,
+  analyticsCookies: false,
+  setPersonalizationCookies: (v) => set({ personalizationCookies: v }),
+  setAnalyticsCookies: (v) => set({ analyticsCookies: v }),
+  cookiesClearedAt: null,
+  clearCookies: () =>
+    set({ cookiesClearedAt: now(), playbackNotice: "Cookies & site data cleared — preferences reset to defaults" }),
+  twoFactor: false,
+  setTwoFactor: (v) => set({ twoFactor: v }),
+  settingsPage: "root",
+  setSettingsPage: (p) => set({ settingsPage: p }),
 
   parentalMode: false,
   setParentalMode: (v) => set({ parentalMode: v }),
@@ -993,5 +1084,5 @@ export const useIsTrackPlayable = (t: Track | undefined) =>
 export const useCacheUsage = () =>
   useWavely((s) => cacheUsedMb(s.cachedIds));
 
-export { filterByMode };
+export { filterByMode, albumMatchesMode, artistMatchesMode, playlistMatchesMode };
 export const allTracks = TRACKS;

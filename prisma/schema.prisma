@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Wavely schema — S15 (9 core tables) + account/security tables (S17-S24, S36-S64)
+// NOTE: SQLite/Prisma — no scalar lists; JSON-ish fields stored as String.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +10,287 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── S15 core: users ─────────────────────────────────────────────────────────
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
+  id               String    @id @default(uuid()) // S45-2: unguessable UUID
+  email            String    @unique
+  username         String?   @unique
+  name             String?
+  displayName      String?
+  avatar           String?
+  passwordHash     String? // S18-2: never plain text
+  language         String    @default("en") // S10
+  theme            String    @default("system")
+  role             String    @default("user") // S45-3: user | premium | admin
+  emailVerified    Boolean   @default(false)
+  twoFactorEnabled Boolean   @default(false)
+  twoFactorSecret  String? // S39-4: encrypted at rest (S50)
+  telegramId       String?   @unique // S25
+  googleId         String?   @unique // S03 account linking
+  lastLoginAt      DateTime?
+  lastLoginIp      String?
+  failedAttempts   Int       @default(0) // S18-7 progressive lockout
+  lockoutUntil     DateTime?
+  termsAcceptedAt  DateTime? // S66-7
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt // optimistic locking (S71-3)
+  deletedAt        DateTime? // S24-2 grace period
+
+  settings       UserSetting?
+  sessions       Session[]
+  auditLogs      AuditLog[]
+  playlists      Playlist[]
+  downloads      Download[]
+  recoveryCodes  RecoveryCode[]
+  roomsHosted    Room[]         @relation("RoomHost")
+}
+
+// ─── S15 core: sessions ──────────────────────────────────────────────────────
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash        String    @unique // ≥128-bit session id, stored hashed (S40-1)
+  refreshHash      String    @unique // rotating refresh token (S40-5)
+  deviceInfo       String?
+  browser          String?
+  ip               String?
+  createdAt        DateTime  @default(now())
+  lastActivity     DateTime  @default(now())
+  idleExpiresAt    DateTime // S40-4: 30min idle
+  absoluteExpiresAt DateTime // S40-4: 12h absolute
+  revokedAt        DateTime? // S40-6 immediate revocation
+  replacedByHash   String? // rotation chain (reuse detection)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+// ─── S15 core: user_settings ─────────────────────────────────────────────────
+model UserSetting {
+  userId          String  @id
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audioQuality    String  @default("320")
+  downloadPath    String  @default("")
+  captionTemplate String  @default("{title} - {artist}")
+  autoCache       Boolean @default(true) // S72-3 cache management option
+  cacheLimitMb    Int     @default(400)
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── S15 core: downloads ─────────────────────────────────────────────────────
+model Download {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId   String
+  title     String
+  artist    String
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([trackId])
+}
+
+// ─── S15 core: rooms + room_listeners (Listening Party, S04) ─────────────────
+model Room {
+  id              String   @id @default(uuid())
+  hostUserId      String
+  host            User     @relation("RoomHost", fields: [hostUserId], references: [id], onDelete: Cascade)
+  trackId         String
+  isPlaying       Boolean  @default(false)
+  positionSeconds Float    @default(0)
+  pinHash         String? // S04-4: 6-digit one-time PIN
+  pinUsedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  listeners RoomListener[]
+
+  @@index([hostUserId])
+}
+
+model RoomListener {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId    String
+  joinedAt  DateTime @default(now())
+
+  @@unique([roomId, userId])
+}
+
+// ─── S15 core: playlists (is_mixed DEFAULT false — S15-2, AI DJ S07) ─────────
+model Playlist {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  isPublic   Boolean  @default(false)
+  shareToken String   @unique
+  isMixed    Boolean  @default(false) // MUST: DEFAULT false (T-S15-2)
+  mixConfig  String? // JSON string
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tracks PlaylistTrack[]
+
+  @@index([userId])
+  @@index([isMixed])
+}
+
+model PlaylistTrack {
+  id         String   @id @default(uuid())
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  trackId    String
+  position   Int
+
+  @@unique([playlistId, trackId])
+  @@index([playlistId])
+}
+
+// ─── S15 core: bot_config ────────────────────────────────────────────────────
+model BotConfig {
+  key       String   @id
+  value     String
   updatedAt DateTime @updatedAt
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+// ─── Security: audit_logs (S54) — append-only ────────────────────────────────
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  event     String
+  ip        String? // privacy: truncated IP (S54-4)
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([event])
+}
+
+// ─── Security: login attempts (S18-7, S38-7/8) ───────────────────────────────
+model LoginAttempt {
+  id        String   @id @default(uuid())
+  email     String
+  ip        String?
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([ip])
+}
+
+// ─── Security: one-time hashed tokens (S18-3/4, S38-15) ──────────────────────
+model EmailVerification {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// ─── Security: remember-me (S18-9) ───────────────────────────────────────────
+model RememberToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ─── Security: 2FA recovery codes (S39-2) ────────────────────────────────────
+model RecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ─── Security: new-device alerts (S38-10, S40) ───────────────────────────────
+model DeviceAlert {
+  id        String   @id @default(uuid())
+  userId    String
+  device    String
+  ip        String?
+  seen      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─── AI agent quota (S51-8) ──────────────────────────────────────────────────
+model AgentUsage {
+  id        String   @id @default(uuid())
+  userId    String
+  day       String // YYYY-MM-DD
+  tokens    Int      @default(0)
+  requests  Int      @default(0)
+
+  @@unique([userId, day])
+}
+
+// ─── Lyrics engine cache (S70-2: secure per-track cache) ─────────────────────
+model LyricsCache {
+  id        String   @id @default(uuid())
+  trackId   String
+  content   String
+  synced    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([trackId])
+}
+
+// ─── Data export (S24-3: ZIP + temporary link) ───────────────────────────────
+model DataExport {
+  id        String    @id @default(uuid())
+  userId    String
+  filePath  String // outside web root
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// ─── CSRF tokens (S42) ───────────────────────────────────────────────────────
+model CsrfToken {
+  id        String    @id @default(uuid())
+  sessionId String
+  tokenHash String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([sessionId])
+}
+
+// ─── Cache registry (S53: per-user keys, TTL, secure clearing) ───────────────
+model CacheEntry {
+  key        String   @id // "ns:userId:entity" — per-user keys (T-S72-4)
+  namespace  String
+  userId     String?
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([namespace])
+  @@index([userId])
 }

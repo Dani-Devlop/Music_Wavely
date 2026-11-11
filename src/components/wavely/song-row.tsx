@@ -21,12 +21,15 @@ export function SongRow({
   onPlay,
   showIndex = false,
   compact = false,
+  hideOriginChip = false,
 }: {
   track: Track;
   index?: number;
   onPlay: () => void;
   showIndex?: boolean;
   compact?: boolean;
+  /** S27: search results must never carry a local/online badge */
+  hideOriginChip?: boolean;
 }) {
   const { toast } = useToast();
   const currentTrack = useWavely((s) => s.currentTrack());
@@ -103,7 +106,7 @@ export function SongRow({
           )}
         >
           <span className="truncate">{track.title}</span>
-          <OriginBadge track={track} cached={isCached} compact={compact} />
+          {!hideOriginChip && <OriginBadge track={track} cached={isCached} compact={compact} />}
         </p>
         <p className="truncate text-[13px] leading-tight text-muted-foreground">
           {track.artist} • {track.album}

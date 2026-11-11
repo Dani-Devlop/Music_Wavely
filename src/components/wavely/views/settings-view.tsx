@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   useWavely,
   CACHE_LIMIT_MB,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/wavely/store";
 import { TRACKS } from "@/lib/wavely/data";
 import { EqualizerView } from "./equalizer-view";
+import { AccountView } from "./account-view";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -34,8 +36,11 @@ import {
   ChevronRight,
   CloudDownload,
   Compass,
+  Cookie,
   DatabaseBackup,
   Download,
+  Eraser,
+  FileText,
   Folder,
   FolderDown,
   FolderPlus,
@@ -52,10 +57,13 @@ import {
   Palette,
   RotateCcw,
   ScanLine,
+  ShieldCheck,
+  Smartphone,
   SlidersHorizontal,
   Sparkles,
   Timer,
   Trash2,
+  UserRound,
   Waves,
   WifiOff,
 } from "lucide-react";
@@ -120,7 +128,9 @@ const SAMPLE_TRACK = {
 };
 
 export function SettingsView() {
-  const [page, setPage] = useState<"root" | "eq">("root");
+  // sub-page lives in the store so the Home avatar & rows can deep-link (account page)
+  const page = useWavely((s) => s.settingsPage);
+  const setPage = useWavely((s) => s.setSettingsPage);
   const { toast } = useToast();
 
   // downloads & storage (store-backed so the whole app sees them)
@@ -170,6 +180,26 @@ export function SettingsView() {
   const clearCache = useWavely((s) => s.clearCache);
   const cacheUsed = useCacheUsage();
 
+  // S72 — server-side cache preferences (Settings-only management)
+  const [autoCache, setAutoCacheState] = useState(true);
+  const clearServerCache = (scope: "all" | "lyrics") =>
+    fetch("/api/cache", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-csrf-token": getCsrf() },
+      body: JSON.stringify({ scope, confirm: true }),
+    })
+      .then((r) => (r.ok ? undefined : Promise.reject(new Error("cache-clear-failed"))))
+      .catch(() => toast({ description: "Server cache clearing skipped — sign in to manage it" }));
+  const toggleAutoCache = (v: boolean) => {
+    setAutoCacheState(v);
+    fetch("/api/cache", {
+      method: "PUT",
+      headers: { "content-type": "application/json", "x-csrf-token": getCsrf() },
+      body: JSON.stringify({ autoCache: v }),
+    }).catch(() => undefined);
+  };
+  const setAutoCache = toggleAutoCache;
+
   // playback prefs (prototype-local)
   const [gapless, setGapless] = useState(true);
   const [crossfade, setCrossfade] = useState(4);
@@ -193,6 +223,14 @@ export function SettingsView() {
   const setLyricsTargetLang = useWavely((s) => s.setLyricsTargetLang);
   const setOnboardingOpen = useWavely((s) => s.setOnboardingOpen);
 
+  // account & privacy — profile hero + management rows (full page = account-view)
+  const profile = useWavely((s) => s.profile);
+  const sessions = useWavely((s) => s.sessions);
+
+  if (page === "account") {
+    return <AccountView />;
+  }
+
   if (page === "eq") {
     return (
       <div className="mx-auto max-w-3xl px-4 pb-8 pt-6 md:px-6">
@@ -207,6 +245,36 @@ export function SettingsView() {
   return (
     <div className="mx-auto max-w-3xl space-y-1 px-4 pb-10 pt-6 md:px-6">
       <h1 className="mb-1 font-display text-2xl font-bold tracking-tight md:text-3xl">Settings</h1>
+
+      {/* profile hero — tap to open the full Account page */}
+      <button
+        onClick={() => setPage("account")}
+        className="mt-2 flex w-full items-center gap-4 rounded-2xl bg-gradient-to-br from-primary/25 via-primary/10 to-transparent p-4 text-left transition hover:from-primary/35"
+        aria-label="Open account & profile"
+      >
+        <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/40">
+          <Image src={profile.avatar} alt="" fill sizes="56px" unoptimized className="object-cover" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-base font-extrabold">{profile.name}</span>
+          <span className="block truncate text-xs text-muted-foreground">{profile.email}</span>
+          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+            <ShieldCheck className="h-3 w-3" /> {profile.plan} plan
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+      </button>
+
+      <SectionHeader icon={UserRound} title="Account & privacy" />
+      <div className="overflow-hidden rounded-2xl bg-wav-surface">
+        <Row icon={UserRound} title="Account" subtitle="Profile, plan, sign-out & deletion" onClick={() => setPage("account")} arrow />
+        <Separator />
+        <Row icon={Smartphone} title="Sessions & devices" subtitle={`${sessions.length} active sign-in${sessions.length === 1 ? "" : "s"}`} onClick={() => setPage("account")} arrow />
+        <Separator />
+        <Row icon={Cookie} title="Cookies & site data" subtitle="Personalization, analytics & clearing" onClick={() => setPage("account")} arrow />
+        <Separator />
+        <Row icon={ShieldCheck} title="Security" subtitle="Password, 2FA & security notes" onClick={() => setPage("account")} arrow />
+      </div>
 
       <SectionHeader icon={Palette} title="Appearance" />
       <div className="overflow-hidden rounded-2xl bg-wav-surface">
@@ -632,12 +700,43 @@ export function SettingsView() {
         />
         <Separator />
         <Row
+          icon={CloudDownload}
+          title="Auto-cache"
+          subtitle="Cache songs as you stream — fill the cache in the background while you listen"
+          control={<Switch checked={autoCache} onCheckedChange={(v) => setAutoCache(v)} aria-label="Auto-cache" />}
+        />
+        <Separator />
+        <Row
           icon={Trash2}
           title="Clear cache"
           subtitle="Frees space — cached songs go back to streaming-only"
           onClick={() => {
             clearCache();
-            toast({ description: "Streaming cache cleared" });
+            void clearServerCache("all");
+            toast({ description: "Cache cleared — streaming + server caches emptied" });
+          }}
+          arrow
+        />
+        <Separator />
+        <Row
+          icon={FileText}
+          title="Clear lyrics cache"
+          subtitle="Removes cached synced lyrics — the next play fetches fresh ones"
+          onClick={() => {
+            void clearServerCache("lyrics");
+            toast({ description: "Lyrics cache cleared" });
+          }}
+          arrow
+        />
+        <Separator />
+        <Row
+          icon={Eraser}
+          title="Clear local data"
+          subtitle="Resets on-device state — recents, play counts and saved markers stay in your library files"
+          onClick={() => {
+            clearCache();
+            void clearServerCache("all");
+            toast({ description: "Local data cleared" });
           }}
           arrow
         />

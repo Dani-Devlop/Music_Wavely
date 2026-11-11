@@ -84,6 +84,12 @@ function Sidebar() {
   const collapsed = useWavely((s) => s.sidebarCollapsed);
   const setCollapsed = useWavely((s) => s.setSidebarCollapsed);
 
+  /** nav taps reset Settings to its root page (account is a deep-link target) */
+  const goTo = (id: AppView) => {
+    if (id === "settings") useWavely.getState().setSettingsPage("root");
+    setView(id);
+  };
+
   return (
     <aside
       className={cn(
@@ -125,7 +131,7 @@ function Sidebar() {
           return (
             <button
               key={n.id}
-              onClick={() => setView(n.id)}
+              onClick={() => goTo(n.id)}
               title={n.label}
               className={cn(
                 "flex items-center rounded-lg text-sm font-semibold transition-colors",
@@ -211,6 +217,11 @@ function BottomNav() {
      keep the floating nav pill centered instead of stretching edge-to-edge */
   const vp = useViewport();
   const big = !!vp && vp.width >= 1280 && vp.width > vp.height;
+  /* nav taps reset Settings to its root page (account page is a deep-link) */
+  const goTo = (id: AppView) => {
+    if (id === "settings") useWavely.getState().setSettingsPage("root");
+    setView(id);
+  };
   return (
     <nav
       className={cn(
@@ -227,7 +238,7 @@ function BottomNav() {
         return (
           <button
             key={n.id}
-            onClick={() => setView(n.id)}
+            onClick={() => goTo(n.id)}
             className={cn(
               "flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200",
               active

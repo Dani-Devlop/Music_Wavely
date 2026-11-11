@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { SongRow } from "../song-row";
-import { CuratedCard, ReleaseCard } from "../cards";
+import { CuratedCard, ReleaseCard, SectionHead, StartTile } from "../cards";
 import { OfflineBanner } from "../source-mode-chips";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
 import {
@@ -12,17 +12,20 @@ import {
   FOLLOWED_ARTIST_IDS,
   INSTAGRAM_TRENDING,
   MOODS,
+  PLAYLISTS,
   TRACKS,
   albumCover,
   artistById,
   fmtAge,
   fmtCompact,
   trackById,
+  tracksOfAlbum,
   tracksOfArtist,
 } from "@/lib/wavely/data";
 import type { MoodDef } from "@/lib/wavely/data";
 import type { Artist } from "@/lib/wavely/types";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import {
   ArrowDownToLine,
@@ -99,22 +102,27 @@ function Segmented<T extends string | number>({
 /* ---------------------------------------------------------------- */
 function HomeHeader() {
   const setView = useWavely((s) => s.setView);
+  const setSettingsPage = useWavely((s) => s.setSettingsPage);
+  const profile = useWavely((s) => s.profile);
   return (
     <header className="sticky top-0 z-20 -mx-4 bg-background/85 px-4 pb-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-xl md:-mx-8 md:px-8">
       <div className="flex items-center gap-3">
         <button
-          onClick={() => setView("settings")}
+          onClick={() => {
+            setSettingsPage("account");
+            setView("settings");
+          }}
           className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/40 transition hover:ring-primary"
-          aria-label="Open profile"
+          aria-label="Open account & profile"
         >
-          <Image src="/wavely/avatar.png" alt="Your profile" fill sizes="40px" className="object-cover" />
+          <Image src={profile.avatar} alt="Your profile" fill sizes="40px" unoptimized className="object-cover" />
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             {greeting()}
           </p>
           <h1 className="truncate font-display text-xl font-extrabold leading-tight tracking-tight">
-            Hi, Dani
+            Hi, {profile.name.split(" ")[0]}
           </h1>
         </div>
         <button
@@ -334,6 +342,98 @@ function QuickAccessRow() {
 }
 
 /* ---------------------------------------------------------------- */
+/* Start listening — Spotify page 5: a ready-to-play quick-pick grid  */
+/* (history albums + liked + weekly + playlists, every tile starts)   */
+/* ---------------------------------------------------------------- */
+function StartListening() {
+  const playContext = useWavely((s) => s.playContext);
+  const favIds = useWavely((s) => s.favorites);
+  const history = useWavely((s) => s.history);
+  const isOffline = useWavely((s) => s.isOffline);
+  // phone layout (incl. laptop-landscape) → 2 wide tiles; desktop shell → 3-4
+  const isMobileLayout = useIsMobile();
+
+  const tiles = useMemo(() => {
+    // offline shrinks every pool to what can actually play right now
+    const playable = (ids: string[]) =>
+      isOffline
+        ? ids.filter((id) => {
+            const t = trackById.get(id);
+            return !!t && (t.origin === "local" || !!t.downloaded);
+          })
+        : ids;
+
+    const out: { key: string; title: string; cover?: string; gradient?: string; icon?: LucideIcon; ids: string[] }[] = [];
+
+    // liked songs — always first, solid gradient tile
+    if (playable(favIds).length > 0)
+      out.push({
+        key: "liked",
+        title: "Liked songs",
+        gradient: "from-primary to-primary/60",
+        icon: Heart,
+        ids: favIds,
+      });
+
+    // Wavely Weekly — fresh Monday picks
+    if (playable(DISCOVER_MIX).length > 0)
+      out.push({ key: "weekly", title: "Wavely Weekly", cover: "/wavely/curated-1.png", ids: DISCOVER_MIX });
+
+    // the albums behind your listening history — pick up where you left off
+    const seenAlbums = new Set<string>();
+    for (const id of history) {
+      const t = trackById.get(id);
+      if (!t || seenAlbums.has(t.albumId)) continue;
+      seenAlbums.add(t.albumId);
+      const ids = tracksOfAlbum(t.albumId).map((x) => x.id);
+      if (playable(ids).length === 0) continue;
+      out.push({ key: `al-${t.albumId}`, title: t.album, cover: albumCover(t.albumId), ids });
+      if (out.length >= 7) break;
+    }
+
+    // ready-made playlists round it off
+    for (const pl of PLAYLISTS) {
+      if (out.length >= 8) break;
+      if (playable(pl.trackIds).length === 0) continue;
+      const first = trackById.get(pl.trackIds[0]);
+      if (out.some((o) => o.title === pl.name)) continue;
+      out.push({
+        key: pl.id,
+        title: pl.name,
+        cover: first ? albumCover(first.albumId) : undefined,
+        ids: pl.trackIds,
+      });
+    }
+    return out;
+  }, [favIds, history, isOffline]);
+
+  return (
+    <section>
+      <SectionHead title="Start listening" />
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-2",
+          !isMobileLayout && "sm:grid-cols-3 lg:grid-cols-4",
+        )}
+      >
+        {tiles.map((t) => (
+          <StartTile
+            key={t.key}
+            cover={t.cover}
+            title={t.title}
+            gradient={t.gradient}
+            icon={t.icon}
+            onPlay={() =>
+              playContext(t.title, t.ids, Math.floor(Math.random() * t.ids.length))
+            }
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- */
 /* OFFLINE world — cached streaming songs still play & can be saved  */
 /* ---------------------------------------------------------------- */
 function OfflineCachedSection() {
@@ -380,6 +480,7 @@ function NewForYou() {
   const playContext = useWavely((s) => s.playContext);
   const currentTrack = useCurrentTrack();
   const [win, setWin] = useState<7 | 14 | 30>(7);
+  const [expanded, setExpanded] = useState(false);
 
   const releases = useMemo(() => {
     const now = Date.now();
@@ -395,23 +496,47 @@ function NewForYou() {
 
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-bold text-muted-foreground">New for you</h3>
-        <Segmented
-          ariaLabel="New release time window"
-          value={win}
-          onChange={setWin}
-          options={[
-            { value: 7, label: "1 week" },
-            { value: 14, label: "2 weeks" },
-            { value: 30, label: "1 month" },
-          ]}
-        />
-      </div>
+      <SectionHead
+        title="New for you"
+        onSeeAll={releases.length > 0 ? () => setExpanded((v) => !v) : undefined}
+        expanded={expanded}
+        right={
+          <Segmented
+            ariaLabel="New release time window"
+            value={win}
+            onChange={setWin}
+            options={[
+              { value: 7, label: "1 week" },
+              { value: 14, label: "2 weeks" },
+              { value: 30, label: "1 month" },
+            ]}
+          />
+        }
+      />
       {releases.length === 0 ? (
         <p className="rounded-xl bg-wav-surface/60 px-4 py-3 text-xs text-muted-foreground">
           Nothing dropped in this window — try 1 month
         </p>
+      ) : expanded ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {releases.map((a) => (
+            <ReleaseCard
+              key={a.id}
+              fill
+              cover={a.cover}
+              title={a.title}
+              meta={`${a.artist} • ${fmtAge(a.releasedAt!)}`}
+              playing={currentTrack?.albumId === a.id}
+              onPlay={() =>
+                playContext(
+                  a.title,
+                  TRACKS.filter((t) => t.albumId === a.id).map((t) => t.id),
+                  0,
+                )
+              }
+            />
+          ))}
+        </div>
       ) : (
         <Rail label="New releases">
           {releases.map((a) => (
@@ -465,27 +590,50 @@ function DailyMixes() {
     });
   }, []);
 
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-bold text-muted-foreground">Daily mixes</h3>
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary">
-          <Sparkles className="h-3 w-3" /> AI-built
-        </span>
-      </div>
-      <Rail label="Daily mixes">
-        {mixes.map((m) => (
-          <ReleaseCard
-            key={m.name}
-            fluid
-            cover={m.cover}
-            title={m.name}
-            meta={m.meta}
-            badge="ai"
-            onPlay={() => playContext(m.name, m.ids, Math.floor(Math.random() * m.ids.length))}
-          />
-        ))}
-      </Rail>
+      <SectionHead
+        title="Daily mixes"
+        hint="AI-built radios from your top genres"
+        onSeeAll={() => setExpanded((v) => !v)}
+        expanded={expanded}
+        right={
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+            <Sparkles className="h-3 w-3" /> AI
+          </span>
+        }
+      />
+      {expanded ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {mixes.map((m) => (
+            <ReleaseCard
+              key={m.name}
+              fill
+              cover={m.cover}
+              title={m.name}
+              meta={m.meta}
+              badge="ai"
+              onPlay={() => playContext(m.name, m.ids, Math.floor(Math.random() * m.ids.length))}
+            />
+          ))}
+        </div>
+      ) : (
+        <Rail label="Daily mixes">
+          {mixes.map((m) => (
+            <ReleaseCard
+              key={m.name}
+              fluid
+              cover={m.cover}
+              title={m.name}
+              meta={m.meta}
+              badge="ai"
+              onPlay={() => playContext(m.name, m.ids, Math.floor(Math.random() * m.ids.length))}
+            />
+          ))}
+        </Rail>
+      )}
     </section>
   );
 }
@@ -501,7 +649,7 @@ function MadeForYou() {
 
   return (
     <section>
-      <h3 className="mb-2 text-sm font-bold text-muted-foreground">Made for you</h3>
+      <SectionHead title="Made for you" hint="Wavely Weekly + AI DJ" />
       {/* mobile / tablet: wide banner cards */}
       <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:hidden">
         <CuratedCard
@@ -592,7 +740,7 @@ function MoodsRow() {
 
   return (
     <section>
-      <h3 className="mb-2 text-sm font-bold text-muted-foreground">Moods &amp; moments</h3>
+      <SectionHead title="Moods & moments" hint="One tap = an instant radio" />
       <div className="grid grid-cols-2 gap-2.5">
         {MOODS.map((mood) => {
           const empty = (counts[mood.id] ?? 0) === 0;
@@ -648,11 +796,12 @@ function TopPlayersSection() {
   const playContext = useWavely((s) => s.playContext);
   const currentTrack = useCurrentTrack();
   const [period, setPeriod] = useState<"week" | "month">("week");
+  const [expanded, setExpanded] = useState(false);
 
   const top = useMemo(() => {
     const bucket = period === "week" ? 604800000 : 2592000000;
     const slot = Math.floor(Date.now() / bucket);
-    return TRACKS.filter((t) => t.origin === "online")
+    const ranked = TRACKS.filter((t) => t.origin === "online")
       .map((t) => {
         // stable pseudo-random bump per period — same ranking all week/month
         const seed = `${t.id}:${period}:${slot}`;
@@ -660,44 +809,70 @@ function TopPlayersSection() {
         for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
         return { t, score: t.playCount + (h % 37) };
       })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6);
-  }, [period]);
+      .sort((a, b) => b.score - a.score);
+    // rail shows the top 6 cards — See all expands to the full 15-song chart
+    return expanded ? ranked.slice(0, 15) : ranked.slice(0, 6);
+  }, [period, expanded]);
 
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-bold text-muted-foreground">Top players</h3>
-        <Segmented
-          ariaLabel="Chart period"
-          value={period}
-          onChange={setPeriod}
-          options={[
-            { value: "week", label: "This week" },
-            { value: "month", label: "This month" },
-          ]}
-        />
-      </div>
-      <Rail label="Top players chart">
-        {top.map(({ t, score }, i) => (
-          <ReleaseCard
-            key={`${period}-${t.id}`}
-            fluid
-            rank={i + 1}
-            cover={albumCover(t.albumId)}
-            title={t.title}
-            meta={`${fmtCompact(240000 + score * 43000)} streams`}
-            playing={currentTrack?.id === t.id}
-            onPlay={() =>
-              playContext(
-                period === "week" ? "Top players · this week" : "Top players · this month",
-                top.map((x) => x.t.id),
-                i,
-              )
-            }
+      <SectionHead
+        title="Top players"
+        hint="The world's most streamed songs"
+        onSeeAll={() => setExpanded((v) => !v)}
+        expanded={expanded}
+        right={
+          <Segmented
+            ariaLabel="Chart period"
+            value={period}
+            onChange={setPeriod}
+            options={[
+              { value: "week", label: "This week" },
+              { value: "month", label: "This month" },
+            ]}
           />
-        ))}
-      </Rail>
+        }
+      />
+      {expanded ? (
+        <div className="rounded-2xl bg-wav-surface/50 p-1.5">
+          {top.map(({ t, score }, i) => (
+            <SongRow
+              key={`${period}-${t.id}`}
+              track={t}
+              index={i}
+              showIndex
+              onPlay={() =>
+                playContext(
+                  period === "week" ? "Top players · this week" : "Top players · this month",
+                  top.map((x) => x.t.id),
+                  i,
+                )
+              }
+            />
+          ))}
+        </div>
+      ) : (
+        <Rail label="Top players chart">
+          {top.map(({ t, score }, i) => (
+            <ReleaseCard
+              key={`${period}-${t.id}`}
+              fluid
+              rank={i + 1}
+              cover={albumCover(t.albumId)}
+              title={t.title}
+              meta={`${fmtCompact(240000 + score * 43000)} streams`}
+              playing={currentTrack?.id === t.id}
+              onPlay={() =>
+                playContext(
+                  period === "week" ? "Top players · this week" : "Top players · this month",
+                  top.map((x) => x.t.id),
+                  i,
+                )
+              }
+            />
+          ))}
+        </Rail>
+      )}
     </section>
   );
 }
@@ -708,6 +883,7 @@ function TopPlayersSection() {
 function InstagramTrending() {
   const playContext = useWavely((s) => s.playContext);
   const currentTrack = useCurrentTrack();
+  const [expanded, setExpanded] = useState(false);
 
   const entries = useMemo(
     () =>
@@ -719,29 +895,54 @@ function InstagramTrending() {
 
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-bold text-muted-foreground">Trending on Instagram</h3>
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-rose-300">
-          <Instagram className="h-3 w-3" /> Reels
-        </span>
-      </div>
-      <Rail label="Trending on Instagram">
-        {entries.map((e, i) => (
-          <ReleaseCard
-            key={e.trackId}
-            fluid
-            badge="none"
-            rank={i + 1}
-            cover={e.cover}
-            title={e.track.title}
-            meta={`${fmtCompact(e.reels)} reels`}
-            playing={currentTrack?.id === e.trackId}
-            onPlay={() =>
-              playContext("Trending on Instagram", entries.map((x) => x.trackId), i)
-            }
-          />
-        ))}
-      </Rail>
+      <SectionHead
+        title="Trending on Instagram"
+        hint="Songs going viral in Reels"
+        onSeeAll={() => setExpanded((v) => !v)}
+        expanded={expanded}
+        right={
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-rose-300">
+            <Instagram className="h-3 w-3" /> Reels
+          </span>
+        }
+      />
+      {expanded ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {entries.map((e, i) => (
+            <ReleaseCard
+              key={e.trackId}
+              fill
+              badge="none"
+              rank={i + 1}
+              cover={e.cover}
+              title={e.track.title}
+              meta={`${fmtCompact(e.reels)} reels`}
+              playing={currentTrack?.id === e.trackId}
+              onPlay={() =>
+                playContext("Trending on Instagram", entries.map((x) => x.trackId), i)
+              }
+            />
+          ))}
+        </div>
+      ) : (
+        <Rail label="Trending on Instagram">
+          {entries.map((e, i) => (
+            <ReleaseCard
+              key={e.trackId}
+              fluid
+              badge="none"
+              rank={i + 1}
+              cover={e.cover}
+              title={e.track.title}
+              meta={`${fmtCompact(e.reels)} reels`}
+              playing={currentTrack?.id === e.trackId}
+              onPlay={() =>
+                playContext("Trending on Instagram", entries.map((x) => x.trackId), i)
+              }
+            />
+          ))}
+        </Rail>
+      )}
     </section>
   );
 }
@@ -819,6 +1020,9 @@ export function HomeView() {
 
       {/* swipeable quick access — liked · most played · new · discovery · saved · cached */}
       <QuickAccessRow />
+
+      {/* Spotify page 5: ready-to-play quick picks from history, liked & playlists */}
+      <StartListening />
 
       {/* offline: cached streaming songs stay playable (replaces online discovery) */}
       {isOffline && <OfflineCachedSection />}
