@@ -27,19 +27,13 @@ import { cn } from "@/lib/utils";
 import {
   ArrowDownToLine,
   ArrowRight,
-  Brain,
-  Car,
   CloudDownload,
   CloudOff,
-  Coffee,
   Compass,
   Disc3,
-  Dumbbell,
   Flame,
   Heart,
   Instagram,
-  MoonStar,
-  PartyPopper,
   Play,
   Sparkles,
 } from "lucide-react";
@@ -547,25 +541,27 @@ function MadeForYou() {
 }
 
 /* ---------------------------------------------------------------- */
-/* Moods & moments — genre radios that also work offline             */
+/* Moods & moments — Spotify-style mood tiles: 2-col grid, vivid     */
+/* colour per mood, tilted cover art bleeding off the corner         */
 /* ---------------------------------------------------------------- */
-const MOOD_ICONS: Record<MoodDef["id"], LucideIcon> = {
-  focus: Brain,
-  workout: Dumbbell,
-  drive: Car,
-  chill: Coffee,
-  party: PartyPopper,
-  tehran: MoonStar,
+const MOOD_ART: Record<MoodDef["id"], string> = {
+  focus: "/moods/focus.png",
+  workout: "/moods/workout.png",
+  drive: "/moods/drive.png",
+  chill: "/moods/chill.png",
+  party: "/moods/party.png",
+  tehran: "/moods/tehran.png",
 };
 
-const MOOD_TINTS = [
-  "bg-primary/12 text-primary",
-  "bg-amber-500/12 text-amber-300",
-  "bg-teal-500/12 text-teal-300",
-  "bg-rose-500/12 text-rose-300",
-  "bg-violet-500/12 text-violet-300",
-  "bg-sky-400/12 text-sky-300",
-];
+/** vivid tile gradients — each mood gets its own colour identity */
+const MOOD_COLORS: Record<MoodDef["id"], string> = {
+  focus: "from-emerald-500 to-emerald-700",
+  workout: "from-rose-500 to-rose-700",
+  drive: "from-violet-500 to-violet-700",
+  chill: "from-teal-500 to-teal-700",
+  party: "from-fuchsia-500 to-fuchsia-700",
+  tehran: "from-amber-500 to-amber-700",
+};
 
 function MoodsRow() {
   const isOffline = useWavely((s) => s.isOffline);
@@ -596,28 +592,44 @@ function MoodsRow() {
 
   return (
     <section>
-      <h3 className="mb-2 text-sm font-bold text-muted-foreground">Moods & moments</h3>
-      <div className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-        {MOODS.map((mood, i) => {
-          const Icon = MOOD_ICONS[mood.id];
+      <h3 className="mb-2 text-sm font-bold text-muted-foreground">Moods &amp; moments</h3>
+      <div className="grid grid-cols-2 gap-2.5">
+        {MOODS.map((mood) => {
+          const empty = (counts[mood.id] ?? 0) === 0;
           return (
             <button
               key={mood.id}
               onClick={() => playMood(mood)}
-              className="flex shrink-0 snap-start items-center gap-2.5 rounded-2xl bg-wav-surface px-4 py-3 transition hover:bg-accent active:scale-[0.98]"
-              aria-label={`Play the ${mood.label} mood`}
+              className={cn(
+                "group relative h-28 overflow-hidden rounded-2xl text-left transition active:scale-[0.98] sm:h-32",
+                empty && "opacity-50 saturate-50",
+              )}
+              aria-label={`Play the ${mood.label} mood — ${counts[mood.id] ?? 0} songs`}
             >
+              {/* vivid tile colour */}
               <span
-                className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                  MOOD_TINTS[i % MOOD_TINTS.length],
-                )}
+                className={cn("absolute inset-0 bg-gradient-to-br", MOOD_COLORS[mood.id])}
+                aria-hidden
+              />
+              {/* tilted cover art bleeding off the bottom-right corner */}
+              <span
+                className="absolute bottom-0 right-0 h-[70%] aspect-square translate-x-[26%] translate-y-[26%] rotate-[22deg] overflow-hidden rounded-lg shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-transform duration-300 group-hover:scale-[1.06]"
+                aria-hidden
               >
-                <Icon className="h-5 w-5" />
+                <Image
+                  src={MOOD_ART[mood.id]}
+                  alt=""
+                  fill
+                  sizes="(min-width: 768px) 220px, 45vw"
+                  className="object-cover"
+                />
               </span>
-              <span className="min-w-0 text-left">
-                <span className="block whitespace-nowrap text-xs font-bold">{mood.label}</span>
-                <span className="block whitespace-nowrap text-[10px] text-muted-foreground">
+              {/* label + count */}
+              <span className="absolute inset-0 flex flex-col p-3.5">
+                <span className="text-base font-extrabold leading-tight text-white drop-shadow-sm">
+                  {mood.label}
+                </span>
+                <span className="mt-auto text-[10px] font-semibold text-white/80">
                   {counts[mood.id] ?? 0} songs
                 </span>
               </span>
