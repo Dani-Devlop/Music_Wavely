@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { SongRow } from "../song-row";
-import { CuratedCard, ReleaseCard } from "../cards";
+import { CardMenu, CuratedCard, LatestReleaseCard, ReleaseCard, SectionHead, genreTint } from "../cards";
 import { useWavely, useCurrentTrack } from "@/lib/wavely/store";
 import { CACHE_LIMIT_MB, useCacheUsage } from "@/lib/wavely/store";
 import {
@@ -13,8 +13,25 @@ import {
   trackById,
   tracksOfAlbum,
 } from "@/lib/wavely/data";
-import { Cloud, CloudOff, Compass, Heart, Sparkles } from "lucide-react";
+import {
+  Cloud,
+  CloudOff,
+  Compass,
+  Heart,
+  ListPlus,
+  Play,
+  Share2,
+  Sparkles,
+  UserRound,
+  Download,
+} from "lucide-react";
+import {
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 type Window = "7" | "14" | "30" | "visit";
 
@@ -25,12 +42,47 @@ const WINDOWS: { id: Window; label: string }[] = [
   { id: "visit", label: "Since last visit" },
 ];
 
-function SectionTitle({ children, hint }: { children: React.ReactNode; hint?: string }) {
+/** The ⋯ items for a Latest releases card (Spotify page 4 behaviour). */
+function ReleaseMenu({
+  albumId,
+  title,
+  onPlay,
+}: {
+  albumId: string;
+  title: string;
+  onPlay: () => void;
+}) {
+  const { toast } = useToast();
+  const playNextMany = useWavely((s) => s.playNextMany);
+  const addToQueueMany = useWavely((s) => s.addToQueueMany);
+  const trackIds = useMemo(() => tracksOfAlbum(albumId).map((t) => t.id), [albumId]);
+
   return (
-    <div className="mb-2 flex items-baseline justify-between gap-3">
-      <h2 className="font-display text-lg font-bold tracking-tight md:text-xl">{children}</h2>
-      {hint && <span className="truncate text-[11px] text-muted-foreground">{hint}</span>}
-    </div>
+    <CardMenu label={`More options for ${title}`}>
+      <DropdownMenuLabel className="truncate text-xs">{title}</DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={onPlay}>
+        <Play className="h-4 w-4" /> Play album
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => { playNextMany(trackIds); toast({ description: `${title} plays next` }); }}>
+        <ListPlus className="h-4 w-4" /> Play next
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => { addToQueueMany(trackIds); toast({ description: `Added ${title} to the queue` }); }}>
+        <ListPlus className="h-4 w-4" /> Add to queue
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => toast({ description: "Album download lands with the Flutter build — save songs from their ⋯ menu" })}
+      >
+        <Download className="h-4 w-4" /> Save offline
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={() => toast({ description: "Pick a playlist in the full app" })}>
+        <UserRound className="h-4 w-4" /> Go to artist
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => toast({ description: "Link copied to clipboard" })}>
+        <Share2 className="h-4 w-4" /> Share
+      </DropdownMenuItem>
+    </CardMenu>
   );
 }
 
@@ -43,6 +95,8 @@ export function ExploreView() {
   const currentTrack = useCurrentTrack();
   const cacheUsed = useCacheUsage();
   const [win, setWin] = useState<Window>("30");
+  const [expandedReleases, setExpandedReleases] = useState(false);
+  const [expandedCharts, setExpandedCharts] = useState(false);
 
   const onlineAlbums = useMemo(() => ALBUMS.filter((a) => a.origin === "online"), []);
 
@@ -67,10 +121,12 @@ export function ExploreView() {
     [win, lastOnlineAt, onlineAlbums],
   );
 
-  const topStreams = useMemo(
-    () => TRACKS.filter((t) => t.origin === "online" && !t.downloaded).sort((a, b) => b.playCount - a.playCount).slice(0, 8),
+  const allOnlineTracks = useMemo(
+    () =>
+      TRACKS.filter((t) => t.origin === "online").sort((a, b) => b.playCount - a.playCount),
     [],
   );
+  const topStreams = expandedCharts ? allOnlineTracks : allOnlineTracks.slice(0, 8);
 
   const cachedTracks = useMemo(
     () => cachedIds.map((id) => trackById.get(id)!).filter(Boolean),
@@ -81,6 +137,9 @@ export function ExploreView() {
 
   const playAlbum = (albumId: string, title: string) =>
     playContext(title, tracksOfAlbum(albumId).map((t) => t.id), 0);
+
+  const isAlbumPlaying = (albumId: string) =>
+    !!currentTrack && tracksOfAlbum(albumId).some((t) => t.id === currentTrack.id);
 
   return (
     <div className="mx-auto w-full space-y-7 px-4 pb-10 pt-4 md:max-w-3xl md:px-8 md:pt-6 lg:max-w-5xl">
@@ -138,71 +197,103 @@ export function ExploreView() {
         </section>
       ) : (
         <>
-          {/* ---------------- new releases — time windows ---------------- */}
+          {/* ---------------- Latest releases — Spotify page 4 cards ---------------- */}
           <section>
-            <SectionTitle hint="from artists you follow">New releases</SectionTitle>
-            <div className="no-scrollbar -mx-4 mb-3 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
-              {WINDOWS.map((w) => (
-                <button
-                  key={w.id}
-                  onClick={() => setWin(w.id)}
-                  className={cn(
-                    "flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition-all",
-                    win === w.id
-                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
-                      : "border border-border bg-secondary/80 text-muted-foreground hover:text-foreground",
-                  )}
-                  aria-pressed={win === w.id}
-                >
-                  {w.id === "visit" && <Sparkles className="h-3 w-3" />}
-                  {w.label}
-                </button>
-              ))}
-            </div>
+            <SectionHead
+              title="Latest releases"
+              hint="from artists you follow"
+              onSeeAll={() => setExpandedReleases((v) => !v)}
+              expanded={expandedReleases}
+              right={
+                <div className="no-scrollbar flex gap-2 overflow-x-auto">
+                  {WINDOWS.map((w) => (
+                    <button
+                      key={w.id}
+                      onClick={() => setWin(w.id)}
+                      className={cn(
+                        "flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition-all",
+                        win === w.id
+                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                          : "border border-border bg-secondary/80 text-muted-foreground hover:text-foreground",
+                      )}
+                      aria-pressed={win === w.id}
+                    >
+                      {w.id === "visit" && <Sparkles className="h-3 w-3" />}
+                      {w.label}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
 
-            {followedReleases.length > 0 ? (
-              <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-                {followedReleases.map((a) => (
-                  <ReleaseCard
+            {followedReleases.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
+                Nothing new in this window — widen it, or check back soon.
+              </p>
+            ) : expandedReleases ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[...followedReleases, ...moreReleases].map((a) => (
+                  <LatestReleaseCard
                     key={a.id}
+                    fill
                     cover={a.cover}
                     title={a.title}
-                    meta={`${a.artist} • ${fmtAge(a.releasedAt!)}`}
-                    playing={currentTrack !== undefined && tracksOfAlbum(a.id).some((t) => t.id === currentTrack.id)}
+                    meta={`${a.artist} • ${fmtAge(a.releasedAt!)} • ${a.genre}`}
+                    tint={genreTint(a.genre)}
+                    playing={isAlbumPlaying(a.id)}
                     onPlay={() => playAlbum(a.id, a.title)}
+                    onPreview={() => playAlbum(a.id, a.title)}
+                    menu={<ReleaseMenu albumId={a.id} title={a.title} onPlay={() => playAlbum(a.id, a.title)} />}
                   />
                 ))}
               </div>
             ) : (
-              <p className="rounded-xl border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
-                Nothing new in this window — widen it, or check back soon.
-              </p>
-            )}
-
-            {moreReleases.length > 0 && (
               <>
-                <p className="mb-2 mt-4 text-sm font-bold text-muted-foreground">
-                  More new music
-                </p>
-                <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-                  {moreReleases.map((a) => (
-                    <ReleaseCard
+                <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:grid md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] md:overflow-visible md:px-0">
+                  {followedReleases.map((a) => (
+                    <LatestReleaseCard
                       key={a.id}
                       cover={a.cover}
                       title={a.title}
-                      meta={`${a.artist} • ${fmtAge(a.releasedAt!)}`}
-                      playing={currentTrack !== undefined && tracksOfAlbum(a.id).some((t) => t.id === currentTrack.id)}
+                      meta={`${a.artist} • ${fmtAge(a.releasedAt!)} • ${a.genre}`}
+                      tint={genreTint(a.genre)}
+                      playing={isAlbumPlaying(a.id)}
                       onPlay={() => playAlbum(a.id, a.title)}
+                      onPreview={() => playAlbum(a.id, a.title)}
+                      menu={<ReleaseMenu albumId={a.id} title={a.title} onPlay={() => playAlbum(a.id, a.title)} />}
                     />
                   ))}
                 </div>
+
+                {moreReleases.length > 0 && (
+                  <>
+                    <p className="mb-2 mt-4 text-sm font-bold text-muted-foreground">
+                      More new music
+                    </p>
+                    <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:grid md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] md:overflow-visible md:px-0">
+                      {moreReleases.map((a) => (
+                        <LatestReleaseCard
+                          key={a.id}
+                          cover={a.cover}
+                          title={a.title}
+                          meta={`${a.artist} • ${fmtAge(a.releasedAt!)} • ${a.genre}`}
+                          tint={genreTint(a.genre)}
+                          playing={isAlbumPlaying(a.id)}
+                          onPlay={() => playAlbum(a.id, a.title)}
+                          onPreview={() => playAlbum(a.id, a.title)}
+                          menu={<ReleaseMenu albumId={a.id} title={a.title} onPlay={() => playAlbum(a.id, a.title)} />}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </section>
 
           {/* ---------------- made for you ---------------- */}
           <section>
-            <SectionTitle>Made for you</SectionTitle>
+            <SectionHead title="Made for you" hint="Banners built from your taste" />
             <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
               <CuratedCard
                 image="/wavely/curated-1.png"
@@ -229,13 +320,19 @@ export function ExploreView() {
 
           {/* ---------------- charts ---------------- */}
           <section>
-            <SectionTitle hint="most played across Wavely">Top streaming now</SectionTitle>
+            <SectionHead
+              title="Top streaming now"
+              hint="most played across Wavely"
+              onSeeAll={allOnlineTracks.length > 8 ? () => setExpandedCharts((v) => !v) : undefined}
+              expanded={expandedCharts}
+            />
             <div className="rounded-2xl bg-wav-surface/50 p-1.5">
               {topStreams.map((t, i) => (
                 <SongRow
                   key={t.id}
                   track={t}
                   index={i}
+                  showIndex
                   onPlay={() => playContext("Top streaming now", topStreams.map((x) => x.id), i)}
                 />
               ))}
