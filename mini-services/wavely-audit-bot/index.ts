@@ -139,8 +139,9 @@ async function boot(): Promise<void> {
       { command: 'resume', description: 'ادامه ارسال خودکار' },
     ],
   });
-  // first report right away
-  setTimeout(() => { void tick(true); }, 3000);
+  // first audit right after boot — dedupe applies (only send when content changed);
+  // explicit /start or /status still force-send.
+  setTimeout(() => { void tick(false); }, 3000);
   setInterval(() => { void tick(false); }, INTERVAL_MIN * 60_000);
   void pollLoop();
 }
