@@ -54,3 +54,11 @@ server.log
 /skills/tool-results/
 tool-results/
 upload/
+
+# wavely audit bot runtime (never commit runtime state or logs)
+mini-services/**/state.json
+mini-services/**/*.log
+
+# requirement file contains third-party tokens — never commit
+/upload/
+/r-prompt-wavely.md
